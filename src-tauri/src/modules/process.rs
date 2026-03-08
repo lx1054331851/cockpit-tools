@@ -364,10 +364,7 @@ fn powershell_output_with_timeout(
             let _ = child.wait();
             let result = Err(Error::new(
                 ErrorKind::TimedOut,
-                format!(
-                    "PowerShell 进程探测超时（{}ms）",
-                    timeout.as_millis()
-                ),
+                format!("PowerShell 进程探测超时（{}ms）", timeout.as_millis()),
             ));
             log_command_trace_result(&preview, &result, start.elapsed());
             return result;
@@ -1150,18 +1147,29 @@ fn find_antigravity_process_exe() -> Option<std::path::PathBuf> {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        let output = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output().ok()?;
+        let output = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+            .ok()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
         for line in stdout.lines() {
             let line = line.trim();
-            if line.is_empty() { continue; }
+            if line.is_empty() {
+                continue;
+            }
             let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
             let _pid_str = parts.next().unwrap_or("").trim();
             let cmdline = parts.next().unwrap_or("").trim();
             let lower = cmdline.to_lowercase();
-            if !lower.contains("antigravity.app/contents/") { continue; }
-            if lower.contains("antigravity tools.app/contents/") { continue; }
-            if lower.contains("--type=") || lower.contains("crashpad_handler") { continue; }
+            if !lower.contains("antigravity.app/contents/") {
+                continue;
+            }
+            if lower.contains("antigravity tools.app/contents/") {
+                continue;
+            }
+            if lower.contains("--type=") || lower.contains("crashpad_handler") {
+                continue;
+            }
             if let Some(exe) = extract_macos_exe_from_cmdline(cmdline) {
                 return Some(std::path::PathBuf::from(exe));
             }
@@ -1172,7 +1180,13 @@ fn find_antigravity_process_exe() -> Option<std::path::PathBuf> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -1208,9 +1222,11 @@ fn find_antigravity_process_exe() -> Option<std::path::PathBuf> {
                 || exe_path.contains("crashpad");
 
             #[cfg(target_os = "windows")]
-            let is_antigravity = name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
+            let is_antigravity =
+                name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
             #[cfg(target_os = "linux")]
-            let is_antigravity = (name.contains("antigravity") || exe_path.contains("/antigravity"))
+            let is_antigravity = (name.contains("antigravity")
+                || exe_path.contains("/antigravity"))
                 && !name.contains("tools")
                 && !exe_path.contains("tools");
 
@@ -1229,17 +1245,26 @@ fn find_vscode_process_exe() -> Option<std::path::PathBuf> {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        let output = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output().ok()?;
+        let output = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+            .ok()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
         for line in stdout.lines() {
             let line = line.trim();
-            if line.is_empty() { continue; }
+            if line.is_empty() {
+                continue;
+            }
             let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
             let _pid_str = parts.next().unwrap_or("").trim();
             let cmdline = parts.next().unwrap_or("").trim();
             let lower = cmdline.to_lowercase();
-            if !lower.contains("visual studio code.app/contents/macos/") { continue; }
-            if lower.contains("--type=") || lower.contains("crashpad_handler") { continue; }
+            if !lower.contains("visual studio code.app/contents/macos/") {
+                continue;
+            }
+            if lower.contains("--type=") || lower.contains("crashpad_handler") {
+                continue;
+            }
             if let Some(exe) = extract_macos_exe_from_cmdline(cmdline) {
                 return Some(std::path::PathBuf::from(exe));
             }
@@ -1250,7 +1275,13 @@ fn find_vscode_process_exe() -> Option<std::path::PathBuf> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -1302,17 +1333,26 @@ fn find_vscode_process_exe() -> Option<std::path::PathBuf> {
 #[cfg(target_os = "macos")]
 fn find_codex_process_exe() -> Option<std::path::PathBuf> {
     // Use ps to avoid sysinfo TCC dialogs on macOS
-    let output = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output().ok()?;
+    let output = Command::new("ps")
+        .args(["-axww", "-o", "pid=,command="])
+        .output()
+        .ok()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     for line in stdout.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
         let _pid_str = parts.next().unwrap_or("").trim();
         let cmdline = parts.next().unwrap_or("").trim();
         let lower = cmdline.to_lowercase();
-        if !lower.contains("codex.app/contents/macos/codex") { continue; }
-        if lower.contains("--type=") || lower.contains("crashpad_handler") { continue; }
+        if !lower.contains("codex.app/contents/macos/codex") {
+            continue;
+        }
+        if lower.contains("--type=") || lower.contains("crashpad_handler") {
+            continue;
+        }
         if let Some(exe) = extract_macos_exe_from_cmdline(cmdline) {
             return Some(std::path::PathBuf::from(exe));
         }
@@ -1825,7 +1865,10 @@ pub fn is_antigravity_running() -> bool {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let lower = line.trim().to_lowercase();
@@ -1844,7 +1887,13 @@ pub fn is_antigravity_running() -> bool {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -1895,7 +1944,13 @@ pub fn is_pid_running(pid: u32) -> bool {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
         system.process(Pid::from(pid as usize)).is_some()
     }
 }
@@ -2238,11 +2293,16 @@ fn collect_running_process_exe_by_pid() -> HashMap<u32, String> {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let line = line.trim();
-                if line.is_empty() { continue; }
+                if line.is_empty() {
+                    continue;
+                }
                 let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
                 let pid_str = parts.next().unwrap_or("").trim();
                 let cmdline = parts.next().unwrap_or("").trim();
@@ -2451,10 +2511,8 @@ fn collect_antigravity_process_entries_from_powershell(
     expected_exe_path: &str,
 ) -> Vec<(u32, Option<String>)> {
     let mut result = Vec::new();
-    let script = build_windows_path_filtered_process_probe_script(
-        "Antigravity.exe",
-        expected_exe_path,
-    );
+    let script =
+        build_windows_path_filtered_process_probe_script("Antigravity.exe", expected_exe_path);
     let output = powershell_output_with_timeout(
         &["-NoProfile", "-Command", &script],
         WINDOWS_PROCESS_PROBE_TIMEOUT,
@@ -2463,9 +2521,7 @@ fn collect_antigravity_process_entries_from_powershell(
         Ok(value) => value,
         Err(err) => {
             if err.kind() == std::io::ErrorKind::TimedOut {
-                crate::modules::logger::log_warn(
-                    "[AG Probe] PowerShell 进程探测超时（5s）",
-                );
+                crate::modules::logger::log_warn("[AG Probe] PowerShell 进程探测超时（5s）");
             } else {
                 crate::modules::logger::log_warn(&format!(
                     "[AG Probe] PowerShell 进程探测失败: {}",
@@ -2658,19 +2714,11 @@ pub fn collect_antigravity_process_entries() -> Vec<(u32, Option<String>)> {
     {
         let entries = collect_antigravity_process_entries_macos();
         if !entries.is_empty() {
-            return filter_entries_by_expected_launch_path(
-                "AG",
-                entries,
-                expected_launch.clone(),
-            );
+            return filter_entries_by_expected_launch_path("AG", entries, expected_launch.clone());
         }
         let entries = collect_antigravity_process_entries_from_ps();
         if !entries.is_empty() {
-            return filter_entries_by_expected_launch_path(
-                "AG",
-                entries,
-                expected_launch.clone(),
-            );
+            return filter_entries_by_expected_launch_path("AG", entries, expected_launch.clone());
         }
         // macOS 下避免回退到 sysinfo，防止触发 TCC「其他 App 数据」授权弹窗
         return Vec::new();
@@ -2701,11 +2749,7 @@ pub fn collect_antigravity_process_entries() -> Vec<(u32, Option<String>)> {
     {
         let entries = collect_antigravity_process_entries_from_proc();
         if !entries.is_empty() {
-            return filter_entries_by_expected_launch_path(
-                "AG",
-                entries,
-                expected_launch.clone(),
-            );
+            return filter_entries_by_expected_launch_path("AG", entries, expected_launch.clone());
         }
     }
 
@@ -2713,7 +2757,13 @@ pub fn collect_antigravity_process_entries() -> Vec<(u32, Option<String>)> {
     {
         let mut result = Vec::new();
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -2744,11 +2794,7 @@ pub fn collect_antigravity_process_entries() -> Vec<(u32, Option<String>)> {
             result.push((pid_u32, dir));
         }
 
-        return filter_entries_by_expected_launch_path(
-            "AG",
-            result,
-            expected_launch,
-        );
+        return filter_entries_by_expected_launch_path("AG", result, expected_launch);
     }
 }
 
@@ -3186,7 +3232,9 @@ fn collect_vscode_process_entries_from_sysinfo_fallback(
             .collect::<Vec<String>>()
             .join(" ");
         let is_vscode = name == "code.exe" || exe_path.ends_with("\\code.exe");
-        if !is_vscode || is_helper_command_line(&args_line) || args_line.contains("crashpad_handler")
+        if !is_vscode
+            || is_helper_command_line(&args_line)
+            || args_line.contains("crashpad_handler")
         {
             continue;
         }
@@ -3258,7 +3306,13 @@ pub fn collect_vscode_process_entries() -> Vec<(u32, Option<String>)> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -3395,11 +3449,7 @@ pub fn collect_vscode_process_entries() -> Vec<(u32, Option<String>)> {
 
     let mut result: Vec<(u32, Option<String>)> = map.into_iter().collect();
     result.sort_by_key(|(pid, _)| *pid);
-    filter_entries_by_expected_launch_path(
-        "VSCode",
-        result,
-        expected_launch,
-    )
+    filter_entries_by_expected_launch_path("VSCode", result, expected_launch)
 }
 
 pub fn resolve_vscode_pid_from_entries(
@@ -3652,7 +3702,13 @@ fn collect_antigravity_pids_by_user_data_dir(user_data_dir: &str) -> Vec<u32> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -3689,7 +3745,6 @@ fn collect_antigravity_pids_by_user_data_dir(user_data_dir: &str) -> Vec<u32> {
     }
 
     #[cfg(target_os = "macos")]
-
     {
         let entries = collect_antigravity_process_entries_macos();
         if !entries.is_empty() {
@@ -3903,7 +3958,13 @@ pub fn list_antigravity_user_data_dirs() -> Vec<String> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -3923,9 +3984,11 @@ pub fn list_antigravity_user_data_dirs() -> Vec<String> {
             let args = process.cmd();
 
             #[cfg(target_os = "windows")]
-            let is_antigravity = _name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
+            let is_antigravity =
+                _name == "antigravity.exe" || exe_path.ends_with("\\antigravity.exe");
             #[cfg(target_os = "linux")]
-            let is_antigravity = (_name.contains("antigravity") || exe_path.contains("/antigravity"))
+            let is_antigravity = (_name.contains("antigravity")
+                || exe_path.contains("/antigravity"))
                 && !_name.contains("tools")
                 && !exe_path.contains("tools");
 
@@ -3995,11 +4058,16 @@ fn get_antigravity_pids() -> Vec<u32> {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let line = line.trim();
-                if line.is_empty() { continue; }
+                if line.is_empty() {
+                    continue;
+                }
                 let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
                 let pid_str = parts.next().unwrap_or("").trim();
                 let cmdline = parts.next().unwrap_or("").trim();
@@ -4008,8 +4076,12 @@ fn get_antigravity_pids() -> Vec<u32> {
                     Err(_) => continue,
                 };
                 let lower = cmdline.to_lowercase();
-                if !lower.contains("antigravity.app/contents/") { continue; }
-                if lower.contains("antigravity tools.app/contents/") { continue; }
+                if !lower.contains("antigravity.app/contents/") {
+                    continue;
+                }
+                if lower.contains("antigravity tools.app/contents/") {
+                    continue;
+                }
                 // Include both main and helper processes (this function collects all)
                 pids.push(pid);
             }
@@ -4019,7 +4091,13 @@ fn get_antigravity_pids() -> Vec<u32> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -4840,11 +4918,7 @@ pub fn collect_codex_process_entries() -> Vec<(u32, Option<String>)> {
         }
         result.push((pid, codex_home));
     }
-    filter_entries_by_expected_launch_path(
-        "Codex",
-        result,
-        expected_launch,
-    )
+    filter_entries_by_expected_launch_path("Codex", result, expected_launch)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -5193,7 +5267,10 @@ pub fn is_opencode_running() -> bool {
         // Use ps to avoid sysinfo TCC dialogs on macOS
         let app_lower = OPENCODE_APP_NAME.to_lowercase();
         let bundle_pattern = format!("{}.app/contents/", app_lower);
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let lower = line.trim().to_lowercase();
@@ -5211,7 +5288,13 @@ pub fn is_opencode_running() -> bool {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
         #[cfg(target_os = "windows")]
@@ -5280,11 +5363,16 @@ fn get_opencode_pids() -> Vec<u32> {
         // Use ps to avoid sysinfo TCC dialogs on macOS
         let app_lower = OPENCODE_APP_NAME.to_lowercase();
         let bundle_pattern = format!("{}.app/contents/", app_lower);
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let line = line.trim();
-                if line.is_empty() { continue; }
+                if line.is_empty() {
+                    continue;
+                }
                 let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
                 let pid_str = parts.next().unwrap_or("").trim();
                 let cmdline = parts.next().unwrap_or("").trim();
@@ -5306,7 +5394,13 @@ fn get_opencode_pids() -> Vec<u32> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -5602,7 +5696,13 @@ fn get_vscode_pids() -> Vec<u32> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut system = System::new();
-        system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet).with_cmd(UpdateKind::OnlyIfNotSet));
+        system.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
 
         let current_pid = std::process::id();
 
@@ -5769,8 +5869,8 @@ pub fn start_vscode_with_args_with_new_window(
             }
         }
 
-        let child = spawn_command_with_trace(&mut cmd)
-            .map_err(|e| format!("启动 VS Code 失败: {}", e))?;
+        let child =
+            spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 VS Code 失败: {}", e))?;
         crate::modules::logger::log_info("VS Code 启动命令已发送");
         return Ok(child.id());
     }
@@ -5871,8 +5971,8 @@ pub fn start_vscode_default_with_args_with_new_window(
                 cmd.arg(trimmed);
             }
         }
-        let child = spawn_command_with_trace(&mut cmd)
-            .map_err(|e| format!("启动 VS Code 失败: {}", e))?;
+        let child =
+            spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 VS Code 失败: {}", e))?;
         crate::modules::logger::log_info("VS Code 默认实例启动命令已发送");
         return Ok(child.id());
     }

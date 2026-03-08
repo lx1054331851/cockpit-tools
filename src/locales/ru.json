@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "Подтвердить",
     "cancel": "Отмена",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "Обновить",
       "restart": "Перезапустить"
-    }
+    },
+    "gemini": "Близнецы"
   },
   "platformLayout": {
     "title": "Макет платформ",
@@ -455,7 +456,10 @@
       "autoUpdate": "Фоновое автообновление",
       "autoUpdateDesc": "При обнаружении новой версии обновление выполняется в фоне, а после завершения предлагается перезапуск.",
       "autoUpdateOff": "Выключено (ручное обновление)",
-      "autoUpdateOn": "Включено (тихое обновление)"
+      "autoUpdateOn": "Включено (тихое обновление)",
+      "opencodeAuthOverwrite": "Перезаписать логин OpenCode при переключении Кодекса",
+      "opencodeAuthOverwriteDesc": "Если выключено, переключается только Codex, а OpenCode сохраняет текущее состояние входа в систему.",
+      "opencodeRestartRequiresOverwrite": "Сначала включите «Перезаписывать логин OpenCode при переключении Кодекса»."
     },
     "network": {
       "apiTitle": "API антигравитационной кабины",
@@ -628,9 +632,9 @@
       "importSuccess": "Импортировано аккаунтов: {{count}}",
       "importPartial": "Импортировано {{success}}, ошибка {{fail}}",
       "importFailed": "Импорт не удался, проверьте refresh_token",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} не удалось: {{failList}}",
+      "refreshingQuota": "Обновление квоты {{done}}/{{total}} (вы можете закрыть это диалоговое окно)",
+      "quotaRefreshDone": "Обновление квоты завершено"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "Отпечаток:",
       "generateFailed": "Не удалось создать",
       "importFailed": "Не удалось импортировать",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} не удалось: {{failList}}",
+      "refreshingQuota": "Обновление квоты {{done}}/{{total}} (вы можете закрыть это диалоговое окно)",
+      "quotaRefreshDone": "Обновление квоты завершено",
       "importing": "Импорт...",
       "loadFailed": "Не удалось загрузить список отпечатков",
       "processing": "Обработка...",
@@ -815,9 +819,9 @@
     "importSuccess": "Успешно импортировано {{count}} аккаунтов",
     "importLocalSuccess": "Аккаунт успешно импортирован: {{email}}",
     "importFailed": "Ошибка импорта: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} не удалось: {{failList}}",
+    "refreshingQuota": "Обновление квоты {{done}}/{{total}} (вы можете закрыть это диалоговое окно)",
+    "quotaRefreshDone": "Обновление квоты завершено",
     "exportFailed": "Ошибка экспорта: {{error}}",
     "bindFailed": "Ошибка привязки: {{error}}",
     "jsonRequired": "Пожалуйста, введите или вставьте JSON-содержимое",
@@ -1334,7 +1338,12 @@
       "title": "Настройки Cursor",
       "appPath": "Путь к Cursor"
     },
-    "cursorRefreshInterval": "Автообновление квоты"
+    "cursorRefreshInterval": "Автообновление квоты",
+    "gemini": {
+      "title": "Настройки Близнецов",
+      "appPath": "Путь CLI Gemini"
+    },
+    "geminiRefreshInterval": "Автоматическое обновление квоты"
   },
   "quotaAlert": {
     "bannerText": "Предупреждение о квоте для {{email}} (порог {{threshold}}%, минимум {{lowest}}%, модели: {{models}})",
@@ -1835,6 +1844,58 @@
       },
       "summary": "Этот раздел объясняет использование Wakeup-задачи и проверка в повседневном процессе.",
       "title": "Wakeup-задачи и проверка"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "Переключиться на Близнецов",
+    "title": "Управление аккаунтом Близнецов",
+    "empty": {
+      "description": "Нажмите «Добавить учетную запись», чтобы начать управлять своими учетными записями Gemini."
+    },
+    "addModal": {
+      "title": "Добавить учетную запись Gemini"
+    },
+    "oauth": {
+      "desc": "Нажмите кнопку ниже и завершите авторизацию Gemini OAuth в своем браузере."
+    },
+    "token": {
+      "desc": "Вставьте свой токен доступа Gemini (JWT) или экспортированные данные JSON.",
+      "formatHint": "Обязательные поля и примеры (нажмите, чтобы развернуть)",
+      "formatRequired": "Один токен: вставьте JWT напрямую; пакетный импорт: используйте формат массива JSON",
+      "singleExample": "Одиночный пример (JWT)",
+      "batchExample": "Пример пакетной обработки (JSON)"
+    },
+    "import": {
+      "localDesc": "Импортируйте данные учетной записи Gemini из локального каталога конфигурации Gemini (~/.gemini) или файла JSON.",
+      "localClient": "Импорт из локального Gemini"
+    },
+    "flowNotice": {
+      "title": "Руководство по учетной записи Gemini (нажмите, чтобы развернуть/свернуть)",
+      "desc": "Управляйте учетными записями Gemini, импортируя их из локальной конфигурации Gemini, вставляя токен JWT или входя в систему через OAuth.",
+      "reason": "Область разрешений: чтение и запись oauth_creds.json, google_accounts.json и settings.json по умолчанию ~/.gemini или пути экземпляра (GEMINI_CLI_HOME/.gemini) для импорта учетной записи и локального внедрения учетных данных (переключение учетной записи).",
+      "storage": "Область сети: OAuth и обновление вызывают официальные API Google/Gemini (например, oauth2.googleapis.com и googleapis.com). Отправляются только обязательные поля аутентификации/квоты; файлы локальной учетной записи не загружаются на сторонние серверы."
+    },
+    "updated": {
+      "label": "Обновлено {{relative}} назад"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "Осталось {{value}}%",
+      "resetsIn": "Сбрасывается в {{relative}}",
+      "resetsSoon": "Скоро сброс",
+      "resetsUnknown": "Время сброса неизвестно",
+      "onDemand": "По требованию"
+    },
+    "instances": {
+      "unsupported": "Управление несколькими экземплярами Gemini пока не поддерживается.",
+      "unsupportedDescPlatform": "Мультиэкземпляр Gemini поддерживается только в macOS, Windows и Linux.",
+      "launchDialogTitle": "Запустить экземпляр",
+      "launchHint": "Скопируйте команду и запустите вручную или выполните ее непосредственно в терминале.",
+      "runInTerminal": "Запустить в терминале"
+    },
+    "switch": {
+      "success": "Аккаунт успешно переключен"
     }
   }
 }

@@ -767,6 +767,7 @@ fn handle_set_language(language: &str, source: Option<&str>) -> Result<String, S
         windsurf_auto_refresh_minutes: current.windsurf_auto_refresh_minutes,
         kiro_auto_refresh_minutes: current.kiro_auto_refresh_minutes,
         cursor_auto_refresh_minutes: current.cursor_auto_refresh_minutes,
+        gemini_auto_refresh_minutes: current.gemini_auto_refresh_minutes,
         close_behavior: current.close_behavior,
         minimize_behavior: current.minimize_behavior,
         hide_dock_icon: current.hide_dock_icon,
@@ -778,6 +779,7 @@ fn handle_set_language(language: &str, source: Option<&str>) -> Result<String, S
         kiro_app_path: current.kiro_app_path,
         cursor_app_path: current.cursor_app_path,
         opencode_sync_on_switch: current.opencode_sync_on_switch,
+        opencode_auth_overwrite_on_switch: current.opencode_auth_overwrite_on_switch,
         codex_launch_on_switch: current.codex_launch_on_switch,
         auto_switch_enabled: current.auto_switch_enabled,
         auto_switch_threshold: current.auto_switch_threshold,
@@ -793,6 +795,8 @@ fn handle_set_language(language: &str, source: Option<&str>) -> Result<String, S
         kiro_quota_alert_threshold: current.kiro_quota_alert_threshold,
         cursor_quota_alert_enabled: current.cursor_quota_alert_enabled,
         cursor_quota_alert_threshold: current.cursor_quota_alert_threshold,
+        gemini_quota_alert_enabled: current.gemini_quota_alert_enabled,
+        gemini_quota_alert_threshold: current.gemini_quota_alert_threshold,
     };
 
     config::save_user_config(&new_config)?;

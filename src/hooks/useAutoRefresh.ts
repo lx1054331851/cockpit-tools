@@ -6,6 +6,7 @@ import { useGitHubCopilotAccountStore } from '../stores/useGitHubCopilotAccountS
 import { useWindsurfAccountStore } from '../stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from '../stores/useKiroAccountStore';
 import { useCursorAccountStore } from '../stores/useCursorAccountStore';
+import { useGeminiAccountStore } from '../stores/useGeminiAccountStore';
 
 interface GeneralConfig {
   language: string;
@@ -16,6 +17,7 @@ interface GeneralConfig {
   windsurf_auto_refresh_minutes: number;
   kiro_auto_refresh_minutes: number;
   cursor_auto_refresh_minutes: number;
+  gemini_auto_refresh_minutes: number;
   auto_switch_enabled: boolean;
   close_behavior: string;
   opencode_app_path?: string;
@@ -26,9 +28,12 @@ interface GeneralConfig {
   kiro_app_path?: string;
   cursor_app_path?: string;
   opencode_sync_on_switch?: boolean;
+  opencode_auth_overwrite_on_switch?: boolean;
   codex_launch_on_switch?: boolean;
   cursor_quota_alert_enabled?: boolean;
   cursor_quota_alert_threshold?: number;
+  gemini_quota_alert_enabled?: boolean;
+  gemini_quota_alert_threshold?: number;
 }
 
 export function useAutoRefresh() {
@@ -42,6 +47,7 @@ export function useAutoRefresh() {
   const refreshAllWindsurfTokens = useWindsurfAccountStore((state) => state.refreshAllTokens);
   const refreshAllKiroTokens = useKiroAccountStore((state) => state.refreshAllTokens);
   const refreshAllCursorTokens = useCursorAccountStore((state) => state.refreshAllTokens);
+  const refreshAllGeminiTokens = useGeminiAccountStore((state) => state.refreshAllTokens);
 
   const agIntervalRef = useRef<number | null>(null);
   const autoSwitchIntervalRef = useRef<number | null>(null);
@@ -50,6 +56,7 @@ export function useAutoRefresh() {
   const windsurfIntervalRef = useRef<number | null>(null);
   const kiroIntervalRef = useRef<number | null>(null);
   const cursorIntervalRef = useRef<number | null>(null);
+  const geminiIntervalRef = useRef<number | null>(null);
 
   const agRefreshingRef = useRef(false);
   const codexRefreshingRef = useRef(false);
@@ -57,6 +64,7 @@ export function useAutoRefresh() {
   const windsurfRefreshingRef = useRef(false);
   const kiroRefreshingRef = useRef(false);
   const cursorRefreshingRef = useRef(false);
+  const geminiRefreshingRef = useRef(false);
   const autoSwitchRefreshingRef = useRef(false);
 
   const setupRunningRef = useRef(false);
@@ -91,6 +99,10 @@ export function useAutoRefresh() {
     if (cursorIntervalRef.current) {
       window.clearInterval(cursorIntervalRef.current);
       cursorIntervalRef.current = null;
+    }
+    if (geminiIntervalRef.current) {
+      window.clearInterval(geminiIntervalRef.current);
+      geminiIntervalRef.current = null;
     }
   }, []);
 
@@ -148,6 +160,7 @@ export function useAutoRefresh() {
                     windsurfAutoRefreshMinutes: config.windsurf_auto_refresh_minutes,
                     kiroAutoRefreshMinutes: config.kiro_auto_refresh_minutes,
                     cursorAutoRefreshMinutes: config.cursor_auto_refresh_minutes,
+                    geminiAutoRefreshMinutes: config.gemini_auto_refresh_minutes,
                     closeBehavior: config.close_behavior || 'ask',
                     opencodeAppPath: config.opencode_app_path ?? '',
                     antigravityAppPath: config.antigravity_app_path ?? '',
@@ -157,9 +170,13 @@ export function useAutoRefresh() {
                     kiroAppPath: config.kiro_app_path ?? '',
                     cursorAppPath: config.cursor_app_path ?? '',
                     opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? true,
+                    opencodeAuthOverwriteOnSwitch:
+                      config.opencode_auth_overwrite_on_switch ?? true,
                     codexLaunchOnSwitch: config.codex_launch_on_switch ?? true,
                     cursorQuotaAlertEnabled: config.cursor_quota_alert_enabled ?? false,
                     cursorQuotaAlertThreshold: config.cursor_quota_alert_threshold ?? 20,
+                    geminiQuotaAlertEnabled: config.gemini_quota_alert_enabled ?? false,
+                    geminiQuotaAlertThreshold: config.gemini_quota_alert_threshold ?? 20,
                   });
                   config.auto_refresh_minutes = 2;
                 }
@@ -314,6 +331,29 @@ export function useAutoRefresh() {
             console.log('[AutoRefresh] Cursor 已禁用');
           }
 
+          if (config.gemini_auto_refresh_minutes > 0) {
+            console.log(`[AutoRefresh] Gemini 已启用: 每 ${config.gemini_auto_refresh_minutes} 分钟`);
+            const geminiMs = config.gemini_auto_refresh_minutes * 60 * 1000;
+
+            geminiIntervalRef.current = window.setInterval(async () => {
+              if (geminiRefreshingRef.current) {
+                return;
+              }
+              geminiRefreshingRef.current = true;
+
+              try {
+                console.log('[AutoRefresh] 触发 Gemini 配额刷新...');
+                await refreshAllGeminiTokens();
+              } catch (e) {
+                console.error('[AutoRefresh] Gemini 刷新失败:', e);
+              } finally {
+                geminiRefreshingRef.current = false;
+              }
+            }, geminiMs);
+          } else {
+            console.log('[AutoRefresh] Gemini 已禁用');
+          }
+
           // 自动切号开启时，额外每 60 秒刷新当前账号（不影响原有配额自动刷新规则）
           if (config.auto_switch_enabled) {
             console.log('[AutoRefresh] 自动切号已启用: 每 60 秒刷新当前账号');
@@ -350,6 +390,7 @@ export function useAutoRefresh() {
     fetchCurrentAccount,
     refreshAllCodexQuotas,
     refreshAllCursorTokens,
+    refreshAllGeminiTokens,
     refreshAllGhcpTokens,
     refreshAllKiroTokens,
     refreshAllQuotas,

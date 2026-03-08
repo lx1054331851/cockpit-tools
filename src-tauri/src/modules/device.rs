@@ -245,7 +245,9 @@ pub struct ReadProfileWithAutofillResult {
 }
 
 /// 从 storage.json 读取当前设备指纹；缺失字段时自动补齐并回写
-pub fn read_profile_with_autofill(storage_path: &Path) -> Result<ReadProfileWithAutofillResult, String> {
+pub fn read_profile_with_autofill(
+    storage_path: &Path,
+) -> Result<ReadProfileWithAutofillResult, String> {
     let content =
         fs::read_to_string(storage_path).map_err(|e| format!("读取 storage.json 失败: {}", e))?;
     let json: Value =

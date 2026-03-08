@@ -106,15 +106,16 @@ pub async fn cursor_create_instance(
     copy_source_instance_id: Option<String>,
     init_mode: Option<String>,
 ) -> Result<InstanceProfileView, String> {
-    let instance =
-        modules::cursor_instance::create_instance(modules::cursor_instance::CreateInstanceParams {
+    let instance = modules::cursor_instance::create_instance(
+        modules::cursor_instance::CreateInstanceParams {
             name,
             user_data_dir,
             extra_args: extra_args.unwrap_or_default(),
             bind_account_id,
             copy_source_instance_id,
             init_mode,
-        })?;
+        },
+    )?;
 
     let initialized = is_profile_initialized(&instance.user_data_dir);
     Ok(InstanceProfileView::from_profile(
@@ -178,13 +179,14 @@ pub async fn cursor_update_instance(
         }
     }
 
-    let instance =
-        modules::cursor_instance::update_instance(modules::cursor_instance::UpdateInstanceParams {
+    let instance = modules::cursor_instance::update_instance(
+        modules::cursor_instance::UpdateInstanceParams {
             instance_id,
             name,
             extra_args,
             bind_account_id,
-        })?;
+        },
+    )?;
 
     let running = instance
         .last_pid
@@ -218,7 +220,8 @@ pub async fn cursor_start_instance(instance_id: String) -> Result<InstanceProfil
         let default_dir_str = default_dir.to_string_lossy().to_string();
         let default_settings = modules::cursor_instance::load_default_settings()?;
 
-        if let Some(pid) = modules::cursor_instance::resolve_cursor_pid(default_settings.last_pid, None)
+        if let Some(pid) =
+            modules::cursor_instance::resolve_cursor_pid(default_settings.last_pid, None)
         {
             modules::process::close_pid(pid, 20)?;
             let _ = modules::cursor_instance::update_default_pid(None)?;
@@ -261,9 +264,10 @@ pub async fn cursor_start_instance(instance_id: String) -> Result<InstanceProfil
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
 
-    if let Some(pid) =
-        modules::cursor_instance::resolve_cursor_pid(instance.last_pid, Some(&instance.user_data_dir))
-    {
+    if let Some(pid) = modules::cursor_instance::resolve_cursor_pid(
+        instance.last_pid,
+        Some(&instance.user_data_dir),
+    ) {
         modules::process::close_pid(pid, 20)?;
         let _ = modules::cursor_instance::update_instance_pid(&instance.id, None)?;
     }
@@ -283,7 +287,8 @@ pub async fn cursor_start_instance(instance_id: String) -> Result<InstanceProfil
     let updated = modules::cursor_instance::update_instance_after_start(&instance.id, pid)?;
 
     let running =
-        modules::cursor_instance::resolve_cursor_pid(Some(pid), Some(&updated.user_data_dir)).is_some();
+        modules::cursor_instance::resolve_cursor_pid(Some(pid), Some(&updated.user_data_dir))
+            .is_some();
     let initialized = is_profile_initialized(&updated.user_data_dir);
     Ok(InstanceProfileView::from_profile(
         updated,
@@ -299,7 +304,8 @@ pub async fn cursor_stop_instance(instance_id: String) -> Result<InstanceProfile
         let default_dir_str = default_dir.to_string_lossy().to_string();
         let default_settings = modules::cursor_instance::load_default_settings()?;
 
-        if let Some(pid) = modules::cursor_instance::resolve_cursor_pid(default_settings.last_pid, None)
+        if let Some(pid) =
+            modules::cursor_instance::resolve_cursor_pid(default_settings.last_pid, None)
         {
             modules::process::close_pid(pid, 20)?;
         }
@@ -333,9 +339,10 @@ pub async fn cursor_stop_instance(instance_id: String) -> Result<InstanceProfile
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
 
-    if let Some(pid) =
-        modules::cursor_instance::resolve_cursor_pid(instance.last_pid, Some(&instance.user_data_dir))
-    {
+    if let Some(pid) = modules::cursor_instance::resolve_cursor_pid(
+        instance.last_pid,
+        Some(&instance.user_data_dir),
+    ) {
         modules::process::close_pid(pid, 20)?;
     }
 
@@ -365,8 +372,11 @@ pub async fn cursor_open_instance_window(instance_id: String) -> Result<(), Stri
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
 
-    modules::cursor_instance::focus_cursor_instance(instance.last_pid, Some(&instance.user_data_dir))
-        .map_err(|err| {
+    modules::cursor_instance::focus_cursor_instance(
+        instance.last_pid,
+        Some(&instance.user_data_dir),
+    )
+    .map_err(|err| {
         format!(
             "定位 Cursor 实例窗口失败: instance_id={}, err={}",
             instance.id, err

@@ -86,8 +86,7 @@ pub fn run() {
             {
                 app.handle()
                     .plugin(tauri_plugin_updater::Builder::new().build())?;
-                app.handle()
-                    .plugin(tauri_plugin_process::init())?;
+                app.handle().plugin(tauri_plugin_process::init())?;
                 info!("[Updater] Tauri Updater + Process 插件已初始化");
             }
 
@@ -108,10 +107,7 @@ pub fn run() {
                         ..current_config
                     };
                     if let Err(e) = modules::config::save_user_config(&new_config) {
-                        logger::log_error(&format!(
-                            "[SyncSettings] 保存合并后的配置失败: {}",
-                            e
-                        ));
+                        logger::log_error(&format!("[SyncSettings] 保存合并后的配置失败: {}", e));
                     }
                 }
             });
@@ -360,6 +356,34 @@ pub fn run() {
             commands::cursor::cursor_oauth_login_complete,
             commands::cursor::cursor_oauth_login_cancel,
             commands::cursor::inject_cursor_account,
+            // Gemini Commands
+            commands::gemini::list_gemini_accounts,
+            commands::gemini::delete_gemini_account,
+            commands::gemini::delete_gemini_accounts,
+            commands::gemini::import_gemini_from_json,
+            commands::gemini::import_gemini_from_local,
+            commands::gemini::export_gemini_accounts,
+            commands::gemini::refresh_gemini_token,
+            commands::gemini::refresh_all_gemini_tokens,
+            commands::gemini::gemini_oauth_login_start,
+            commands::gemini::gemini_oauth_login_complete,
+            commands::gemini::gemini_oauth_login_cancel,
+            commands::gemini::add_gemini_account_with_token,
+            commands::gemini::update_gemini_account_tags,
+            commands::gemini::get_gemini_accounts_index_path,
+            commands::gemini::inject_gemini_account,
+            // Gemini Instance Commands
+            commands::gemini_instance::gemini_get_instance_defaults,
+            commands::gemini_instance::gemini_list_instances,
+            commands::gemini_instance::gemini_create_instance,
+            commands::gemini_instance::gemini_update_instance,
+            commands::gemini_instance::gemini_delete_instance,
+            commands::gemini_instance::gemini_start_instance,
+            commands::gemini_instance::gemini_stop_instance,
+            commands::gemini_instance::gemini_open_instance_window,
+            commands::gemini_instance::gemini_close_all_instances,
+            commands::gemini_instance::gemini_get_instance_launch_command,
+            commands::gemini_instance::gemini_execute_instance_launch_command,
             // Cursor Instance Commands
             commands::cursor_instance::cursor_get_instance_defaults,
             commands::cursor_instance::cursor_list_instances,

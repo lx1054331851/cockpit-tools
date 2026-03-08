@@ -358,15 +358,12 @@ pub async fn open_instance_window(instance_id: String) -> Result<(), String> {
         .find(|item| item.id == instance_id)
         .ok_or("实例不存在")?;
 
-    modules::process::focus_antigravity_instance(
-        instance.last_pid,
-        Some(&instance.user_data_dir),
-    )
-    .map_err(|err| {
-        format!(
-            "定位 Antigravity 实例窗口失败: instance_id={}, err={}",
-            instance.id, err
-        )
-    })?;
+    modules::process::focus_antigravity_instance(instance.last_pid, Some(&instance.user_data_dir))
+        .map_err(|err| {
+            format!(
+                "定位 Antigravity 实例窗口失败: instance_id={}, err={}",
+                instance.id, err
+            )
+        })?;
     Ok(())
 }

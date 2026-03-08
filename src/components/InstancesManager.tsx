@@ -41,7 +41,9 @@ interface InstancesManagerProps<TAccount extends AccountLike> {
   renderAccountQuotaPreview: (account: TAccount) => ReactNode;
   renderAccountBadge?: (account: TAccount) => ReactNode;
   getAccountSearchText?: (account: TAccount) => string;
-  appType?: 'antigravity' | 'codex' | 'vscode' | 'windsurf' | 'kiro' | 'cursor';
+  appType?: 'antigravity' | 'codex' | 'vscode' | 'windsurf' | 'kiro' | 'cursor' | 'gemini';
+  onInstanceStarted?: (instance: InstanceProfile) => void | Promise<void>;
+  resolveStartSuccessMessage?: (instance: InstanceProfile) => string;
 }
 
 const INSTANCE_AUTO_REFRESH_INTERVAL_MS = 10_000;
@@ -72,6 +74,8 @@ export function InstancesManager<TAccount extends AccountLike>({
   renderAccountBadge,
   getAccountSearchText,
   appType = 'antigravity',
+  onInstanceStarted,
+  resolveStartSuccessMessage,
 }: InstancesManagerProps<TAccount>) {
   const { t } = useTranslation();
   const {
@@ -132,6 +136,9 @@ export function InstancesManager<TAccount extends AccountLike>({
 
   const startingInstanceIdSet = useMemo(() => new Set(startingInstanceIds), [startingInstanceIds]);
   const stoppingInstanceIdSet = useMemo(() => new Set(stoppingInstanceIds), [stoppingInstanceIds]);
+  const isGeminiApp = appType === 'gemini';
+  const supportsStopControl = !isGeminiApp;
+  const hidePathFieldInEditModal = isGeminiApp && Boolean(editing?.isDefault);
 
   const markInstanceStarting = useCallback((instanceId: string) => {
     setStartingInstanceIds((prev) => (prev.includes(instanceId) ? prev : [...prev, instanceId]));
@@ -467,7 +474,9 @@ export function InstancesManager<TAccount extends AccountLike>({
       rawApp === 'antigravity' ||
       rawApp === 'vscode' ||
       rawApp === 'windsurf' ||
-      rawApp === 'kiro'
+      rawApp === 'kiro' ||
+      rawApp === 'cursor' ||
+      rawApp === 'gemini'
         ? rawApp
         : appType;
     const retry = instanceId
@@ -510,10 +519,22 @@ export function InstancesManager<TAccount extends AccountLike>({
       }
 
       try {
-        await startInstance(instance.id);
+        const startedInstance = await startInstance(instance.id);
+        let startHookError: string | null = null;
+        if (onInstanceStarted) {
+          try {
+            await onInstanceStarted(startedInstance);
+          } catch (callbackError) {
+            startHookError = String(callbackError);
+            setMessage({ text: startHookError, tone: 'error' });
+          }
+        }
         triggerDelayedRefreshAfterStart();
-        if (showSuccessMessage) {
-          setMessage({ text: t('instances.messages.started', '实例已启动') });
+        if (showSuccessMessage && !startHookError) {
+          const successMessage = resolveStartSuccessMessage
+            ? resolveStartSuccessMessage(startedInstance)
+            : t('instances.messages.started', '实例已启动');
+          setMessage({ text: successMessage });
         }
         return 'started';
       } catch (e) {
@@ -528,12 +549,21 @@ export function InstancesManager<TAccount extends AccountLike>({
         }
       }
     },
-    [handleMissingPathError, markInstanceStarting, startInstance, t, triggerDelayedRefreshAfterStart, unmarkInstanceStarting],
+    [
+      handleMissingPathError,
+      markInstanceStarting,
+      onInstanceStarted,
+      resolveStartSuccessMessage,
+      startInstance,
+      t,
+      triggerDelayedRefreshAfterStart,
+      unmarkInstanceStarting,
+    ],
   );
 
   const handleStart = async (instance: InstanceProfile) => {
     await startStoppedInstance(instance, {
-      showRunningNotice: true,
+      showRunningNotice: supportsStopControl,
       showSuccessMessage: true,
     });
   };
@@ -1245,14 +1275,16 @@ export function InstancesManager<TAccount extends AccountLike>({
           >
             <Play size={16} />
           </button>
-          <button
-            className="btn btn-secondary"
-            onClick={handleCloseAll}
-            disabled={bulkActionLoading || restartingAll}
-            title={t('instances.actions.stopAll', '全部关闭')}
-          >
-            <Square size={16} />
-          </button>
+          {supportsStopControl && (
+            <button
+              className="btn btn-secondary"
+              onClick={handleCloseAll}
+              disabled={bulkActionLoading || restartingAll}
+              title={t('instances.actions.stopAll', '全部关闭')}
+            >
+              <Square size={16} />
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={handleRefresh}
@@ -1284,7 +1316,7 @@ export function InstancesManager<TAccount extends AccountLike>({
           </button>
         </div>
       ) : (
-        <div className="instances-list">
+        <div className={`instances-list${isGeminiApp ? ' instances-list-no-pid' : ''}`}>
           <div className="instances-list-header">
             <div></div>
             <div>{t('instances.columns.instance', '实例')}</div>
@@ -1377,22 +1409,26 @@ export function InstancesManager<TAccount extends AccountLike>({
                   >
                     <Play size={16} />
                   </button>
-                  <button
-                    className="icon-button"
-                    title={t('instances.actions.openWindow', '定位窗口')}
-                    onClick={() => handleLocateInstance(instance)}
-                    disabled={!instance.running || isInstanceBusy || restartingAll || bulkActionLoading}
-                  >
-                    <ExternalLink size={16} />
-                  </button>
-                  <button
-                    className="icon-button danger"
-                    title={t('instances.actions.stop', '停止')}
-                    onClick={() => handleStop(instance)}
-                    disabled={!instance.running || isInstanceBusy || restartingAll || bulkActionLoading}
-                  >
-                    <Square size={16} />
-                  </button>
+                  {!isGeminiApp && (
+                    <button
+                      className="icon-button"
+                      title={t('instances.actions.openWindow', '定位窗口')}
+                      onClick={() => handleLocateInstance(instance)}
+                      disabled={!instance.running || isInstanceBusy || restartingAll || bulkActionLoading}
+                    >
+                      <ExternalLink size={16} />
+                    </button>
+                  )}
+                  {!isGeminiApp && (
+                    <button
+                      className="icon-button danger"
+                      title={t('instances.actions.stop', '停止')}
+                      onClick={() => handleStop(instance)}
+                      disabled={!instance.running || isInstanceBusy || restartingAll || bulkActionLoading}
+                    >
+                      <Square size={16} />
+                    </button>
+                  )}
                   <button
                     className="icon-button"
                     title={t('instances.actions.edit', '编辑')}
@@ -1608,30 +1644,32 @@ export function InstancesManager<TAccount extends AccountLike>({
                 </div>
               )}
 
-              <div className="form-group">
-                <label>{t('instances.form.path', '实例目录')}</label>
-                <div className="instance-path-row">
-                  <input
-                    className="form-input"
-                    value={formPath}
-                    onChange={(e) => setFormPath(e.target.value)}
-                    placeholder={t('instances.form.pathPlaceholder', '选择实例目录')}
-                    disabled={Boolean(editing)}
-                  />
-                  {!editing && (
-                    <button className="btn btn-secondary" onClick={handleSelectPath}>
-                      <FolderOpen size={16} />
-                      {t('instances.actions.selectPath', '选择目录')}
-                    </button>
+              {!hidePathFieldInEditModal && (
+                <div className="form-group">
+                  <label>{t('instances.form.path', '实例目录')}</label>
+                  <div className="instance-path-row">
+                    <input
+                      className="form-input"
+                      value={formPath}
+                      onChange={(e) => setFormPath(e.target.value)}
+                      placeholder={t('instances.form.pathPlaceholder', '选择实例目录')}
+                      disabled={Boolean(editing)}
+                    />
+                    {!editing && (
+                      <button className="btn btn-secondary" onClick={handleSelectPath}>
+                        <FolderOpen size={16} />
+                        {t('instances.actions.selectPath', '选择目录')}
+                      </button>
+                    )}
+                  </div>
+                  {!editing && formInitMode !== 'existingDir' && (
+                    <p className="form-hint">{t('instances.form.pathAutoHint', '修改名称时自动更新路径，也可手动选择')}</p>
+                  )}
+                  {editing && (
+                    <p className="form-hint">{t('instances.form.pathReadOnly', '编辑时不可修改路径')}</p>
                   )}
                 </div>
-                {!editing && formInitMode !== 'existingDir' && (
-                  <p className="form-hint">{t('instances.form.pathAutoHint', '修改名称时自动更新路径，也可手动选择')}</p>
-                )}
-                {editing && (
-                  <p className="form-hint">{t('instances.form.pathReadOnly', '编辑时不可修改路径')}</p>
-                )}
-              </div>
+              )}
 
               {!editing && formInitMode === 'copy' && (
                 <div className="form-group">

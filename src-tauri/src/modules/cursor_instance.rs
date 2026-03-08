@@ -567,11 +567,16 @@ fn collect_running_process_exe_by_pid() -> HashMap<u32, String> {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let line = line.trim();
-                if line.is_empty() { continue; }
+                if line.is_empty() {
+                    continue;
+                }
                 let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
                 let pid_str = parts.next().unwrap_or("").trim();
                 let cmdline = parts.next().unwrap_or("").trim();
@@ -1142,7 +1147,8 @@ fn spawn_cursor_windows(
             cmd.arg(arg.trim());
         }
     }
-    let child = spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 Cursor 失败: {}", e))?;
+    let child =
+        spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 Cursor 失败: {}", e))?;
     Ok(child.id())
 }
 
@@ -1169,7 +1175,8 @@ fn spawn_cursor_unix(
             cmd.arg(arg.trim());
         }
     }
-    let child = spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 Cursor 失败: {}", e))?;
+    let child =
+        spawn_command_with_trace(&mut cmd).map_err(|e| format!("启动 Cursor 失败: {}", e))?;
     Ok(child.id())
 }
 
@@ -1206,7 +1213,11 @@ pub fn start_cursor_default_with_args_with_new_window(
     use_new_window: bool,
 ) -> Result<u32, String> {
     let default_dir = get_default_cursor_user_data_dir()?;
-    start_cursor_with_args_with_new_window(&default_dir.to_string_lossy(), extra_args, use_new_window)
+    start_cursor_with_args_with_new_window(
+        &default_dir.to_string_lossy(),
+        extra_args,
+        use_new_window,
+    )
 }
 
 pub fn close_cursor(user_data_dirs: &[String], timeout_secs: u64) -> Result<(), String> {
@@ -1269,7 +1280,8 @@ pub fn close_cursor(user_data_dirs: &[String], timeout_secs: u64) -> Result<(), 
 fn ensure_profile_global_storage(profile_dir: &Path) -> Result<PathBuf, String> {
     let global_storage = profile_dir.join("User").join("globalStorage");
     if !global_storage.exists() {
-        fs::create_dir_all(&global_storage).map_err(|e| format!("创建 globalStorage 失败: {}", e))?;
+        fs::create_dir_all(&global_storage)
+            .map_err(|e| format!("创建 globalStorage 失败: {}", e))?;
     }
     Ok(global_storage)
 }

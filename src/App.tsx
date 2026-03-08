@@ -20,6 +20,7 @@ import { useGitHubCopilotAccountStore } from './stores/useGitHubCopilotAccountSt
 import { useWindsurfAccountStore } from './stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from './stores/useKiroAccountStore';
 import { useCursorAccountStore } from './stores/useCursorAccountStore';
+import { useGeminiAccountStore } from './stores/useGeminiAccountStore';
 import type { UpdateCheckResult } from './components/UpdateNotification';
 import type { Update as UpdaterUpdate } from '@tauri-apps/plugin-updater';
 import { parseUpdaterReleaseNotes } from './utils/updaterReleaseNotes';
@@ -55,6 +56,9 @@ const KiroAccountsPage = lazy(() =>
 );
 const CursorAccountsPage = lazy(() =>
   import('./pages/CursorAccountsPage').then((module) => ({ default: module.CursorAccountsPage })),
+);
+const GeminiAccountsPage = lazy(() =>
+  import('./pages/GeminiAccountsPage').then((module) => ({ default: module.GeminiAccountsPage })),
 );
 const FingerprintsPage = lazy(() =>
   import('./pages/FingerprintsPage').then((module) => ({ default: module.FingerprintsPage })),
@@ -152,7 +156,7 @@ type QuotaAlertPayload = {
   triggered_at: number;
 };
 
-type QuotaAlertPlatform = 'antigravity' | 'codex' | 'github_copilot' | 'windsurf' | 'kiro' | 'cursor';
+type QuotaAlertPlatform = 'antigravity' | 'codex' | 'github_copilot' | 'windsurf' | 'kiro' | 'cursor' | 'gemini';
 type UpdateCheckSource = 'auto' | 'manual';
 type UpdateActionState = 'hidden' | 'available' | 'downloading' | 'ready';
 
@@ -175,6 +179,8 @@ function normalizeQuotaAlertPlatform(platform: string | undefined): QuotaAlertPl
       return 'kiro';
     case 'cursor':
       return 'cursor';
+    case 'gemini':
+      return 'gemini';
     default:
       return 'antigravity';
   }
@@ -195,6 +201,8 @@ function getQuotaAlertPlatformLabel(
       return 'Kiro';
     case 'cursor':
       return 'Cursor';
+    case 'gemini':
+      return t('nav.gemini', 'Gemini');
     default:
       return t('nav.overview', 'Antigravity');
   }
@@ -212,6 +220,8 @@ function getQuotaAlertTargetPage(platform: QuotaAlertPlatform): Page {
       return 'kiro';
     case 'cursor':
       return 'cursor';
+    case 'gemini':
+      return 'gemini';
     default:
       return 'overview';
   }
@@ -229,6 +239,8 @@ function getQuotaAlertQuickSettingsType(platform: QuotaAlertPlatform): QuickSett
       return 'kiro';
     case 'cursor':
       return 'cursor';
+    case 'gemini':
+      return 'gemini';
     default:
       return 'antigravity';
   }
@@ -1092,6 +1104,9 @@ function App() {
                     } else if (platform === 'cursor') {
                       await useCursorAccountStore.getState().switchAccount(targetAccountId);
                       setPage('cursor');
+                    } else if (platform === 'gemini') {
+                      await useGeminiAccountStore.getState().switchAccount(targetAccountId);
+                      setPage('gemini');
                     } else {
                       await useAccountStore.getState().switchAccount(targetAccountId);
                       setPage('overview');
@@ -1251,6 +1266,10 @@ function App() {
       {
         command: 'refresh_all_cursor_tokens',
         errorMessage: 'Failed to refresh Cursor:',
+      },
+      {
+        command: 'refresh_all_gemini_tokens',
+        errorMessage: 'Failed to refresh Gemini:',
       },
     ] as const;
 
@@ -1469,6 +1488,7 @@ function App() {
             case 'windsurf':
             case 'kiro':
             case 'cursor':
+            case 'gemini':
             case 'manual':
             case 'settings':
               setPage(target as Page);
@@ -1766,6 +1786,7 @@ function App() {
           {page === 'windsurf' && <WindsurfAccountsPage />}
           {page === 'kiro' && <KiroAccountsPage />}
           {page === 'cursor' && <CursorAccountsPage />}
+          {page === 'gemini' && <GeminiAccountsPage />}
           {page === 'instances' && <InstancesPage onNavigate={setPage} />}
           {page === 'fingerprints' && <FingerprintsPage onNavigate={setPage} />}
           {page === 'wakeup' && <WakeupTasksPage onNavigate={setPage} />}

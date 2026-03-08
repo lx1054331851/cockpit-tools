@@ -107,12 +107,7 @@ fn normalize_extension_credentials(
 ) -> HashMap<String, ExtensionCredential> {
     let mut filtered = HashMap::new();
     for (key, mut item) in accounts {
-        let email = item
-            .email
-            .clone()
-            .unwrap_or(key)
-            .trim()
-            .to_lowercase();
+        let email = item.email.clone().unwrap_or(key).trim().to_lowercase();
         let refresh_token = item
             .refresh_token
             .clone()
@@ -994,7 +989,10 @@ pub async fn import_from_files_logic(file_paths: Vec<String>) -> Result<FileImpo
         return Err("未找到有效的 refresh_token".to_string());
     }
 
-    modules::logger::log_info(&format!("发现 {} 个候选账号，开始导入...", candidates.len()));
+    modules::logger::log_info(&format!(
+        "发现 {} 个候选账号，开始导入...",
+        candidates.len()
+    ));
 
     let mut imported = Vec::new();
     let mut failed: Vec<FileImportFailure> = Vec::new();
@@ -1003,11 +1001,14 @@ pub async fn import_from_files_logic(file_paths: Vec<String>) -> Result<FileImpo
     for (index, (email_opt, refresh_token)) in candidates.into_iter().enumerate() {
         // 发送进度事件
         if let Some(app_handle) = crate::get_app_handle() {
-            let _ = app_handle.emit("accounts:file-import-progress", serde_json::json!({
-                "current": index + 1,
-                "total": total,
-                "email": email_opt.as_deref().unwrap_or(""),
-            }));
+            let _ = app_handle.emit(
+                "accounts:file-import-progress",
+                serde_json::json!({
+                    "current": index + 1,
+                    "total": total,
+                    "email": email_opt.as_deref().unwrap_or(""),
+                }),
+            );
         }
 
         // 使用 refresh_token 获取 access_token
@@ -1021,7 +1022,8 @@ pub async fn import_from_files_logic(file_paths: Vec<String>) -> Result<FileImpo
                         Ok(info) => info.email,
                         Err(e) => {
                             modules::logger::log_error(&format!(
-                                "获取用户信息失败，跳过此条目: {}", e
+                                "获取用户信息失败，跳过此条目: {}",
+                                e
                             ));
                             continue;
                         }
@@ -1053,12 +1055,19 @@ pub async fn import_from_files_logic(file_paths: Vec<String>) -> Result<FileImpo
                 let label = email_opt.as_deref().unwrap_or("unknown").to_string();
                 let msg = format!("Token 刷新失败: {}", e);
                 modules::logger::log_error(&format!("{}: {}", label, msg));
-                failed.push(FileImportFailure { email: label, error: msg });
+                failed.push(FileImportFailure {
+                    email: label,
+                    error: msg,
+                });
             }
         }
     }
 
-    modules::logger::log_info(&format!("文件导入完成，成功 {} 个，失败 {} 个", imported.len(), failed.len()));
+    modules::logger::log_info(&format!(
+        "文件导入完成，成功 {} 个，失败 {} 个",
+        imported.len(),
+        failed.len()
+    ));
 
     if !imported.is_empty() {
         modules::websocket::broadcast_data_changed("import_from_files");
@@ -1098,7 +1107,9 @@ fn extract_import_entry(
 }
 
 /// 从 VS Code SecretStorage 导入插件账号
-pub async fn import_from_extension_credentials(app: Option<&tauri::AppHandle>) -> Result<usize, String> {
+pub async fn import_from_extension_credentials(
+    app: Option<&tauri::AppHandle>,
+) -> Result<usize, String> {
     let parsed_accounts = load_extension_credentials_from_secret_storage()?;
 
     if parsed_accounts.is_empty() {
@@ -1119,13 +1130,7 @@ pub async fn import_from_extension_credentials(app: Option<&tauri::AppHandle>) -
 
     for (index, (key, item)) in candidates.into_iter().enumerate() {
         let email = item.email.unwrap_or_else(|| key.clone());
-        emit_extension_import_progress(
-            app,
-            "import",
-            index + 1,
-            total_candidates,
-            Some(&email),
-        );
+        emit_extension_import_progress(app, "import", index + 1, total_candidates, Some(&email));
         let refresh_token = match item.refresh_token {
             Some(token) if !token.trim().is_empty() => token,
             _ => continue,
@@ -1195,10 +1200,7 @@ pub async fn import_from_extension_credentials(app: Option<&tauri::AppHandle>) -
                 }
             }
             Err(e) => {
-                modules::logger::log_warn(&format!(
-                    "导入后刷新配额失败 {}: {}",
-                    account.email, e
-                ));
+                modules::logger::log_warn(&format!("导入后刷新配额失败 {}: {}", account.email, e));
             }
         }
     }

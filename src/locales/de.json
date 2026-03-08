@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "Bestätigen",
     "cancel": "Abbrechen",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "Aktualisieren",
       "restart": "Neustart"
-    }
+    },
+    "gemini": "Gemini-Konten"
   },
   "platformLayout": {
     "title": "Plattformlayout",
@@ -455,7 +456,10 @@
       "autoUpdate": "Automatische Hintergrund-Updates",
       "autoUpdateDesc": "Wenn eine neue Version erkannt wird, wird im Hintergrund still aktualisiert und danach zum Neustart aufgefordert.",
       "autoUpdateOff": "Aus (manuelles Update)",
-      "autoUpdateOn": "Ein (stilles Update)"
+      "autoUpdateOn": "Ein (stilles Update)",
+      "opencodeAuthOverwrite": "OpenCode-Anmeldung beim Wechsel von Codex überschreiben",
+      "opencodeAuthOverwriteDesc": "Wenn deaktiviert, wird nur Codex gewechselt und OpenCode behält den aktuellen Anmeldestatus",
+      "opencodeRestartRequiresOverwrite": "Aktivieren Sie zuerst „OpenCode-Anmeldung beim Wechsel von Codex überschreiben“"
     },
     "network": {
       "apiTitle": "Antigravity-Cockpit-API",
@@ -628,9 +632,9 @@
       "importSuccess": "{{count}} Konten importiert",
       "importPartial": "{{success}} Konten importiert, {{fail}} fehlgeschlagen",
       "importFailed": "Import fehlgeschlagen, refresh_token prüfen",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} fehlgeschlagen: {{failList}}",
+      "refreshingQuota": "Kontingent wird aktualisiert {{done}}/{{total}} (dieses Fenster kann geschlossen werden)",
+      "quotaRefreshDone": "Kontingentaktualisierung abgeschlossen"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "Fingerabdruck:",
       "generateFailed": "Erstellung fehlgeschlagen",
       "importFailed": "Import fehlgeschlagen",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} fehlgeschlagen: {{failList}}",
+      "refreshingQuota": "Kontingent wird aktualisiert {{done}}/{{total}} (dieses Fenster kann geschlossen werden)",
+      "quotaRefreshDone": "Kontingentaktualisierung abgeschlossen",
       "importing": "Importieren...",
       "loadFailed": "Fingerabdruckliste konnte nicht geladen werden",
       "processing": "Wird verarbeitet...",
@@ -815,9 +819,9 @@
     "importSuccess": "{{count}} Konten erfolgreich importiert",
     "importLocalSuccess": "Konto erfolgreich importiert: {{email}}",
     "importFailed": "Import fehlgeschlagen: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} fehlgeschlagen: {{failList}}",
+    "refreshingQuota": "Kontingent wird aktualisiert {{done}}/{{total}} (dieses Fenster kann geschlossen werden)",
+    "quotaRefreshDone": "Kontingentaktualisierung abgeschlossen",
     "exportFailed": "Export fehlgeschlagen: {{error}}",
     "bindFailed": "Verbindung fehlgeschlagen: {{error}}",
     "jsonRequired": "Bitte geben Sie den JSON-Inhalt ein oder fügen Sie ihn ein",
@@ -1334,7 +1338,12 @@
       "title": "Cursor-Einstellungen",
       "appPath": "Cursor-Pfad"
     },
-    "cursorRefreshInterval": "Kontingent automatisch aktualisieren"
+    "cursorRefreshInterval": "Kontingent automatisch aktualisieren",
+    "gemini": {
+      "title": "Gemini-Einstellungen",
+      "appPath": "Gemini-Pfad"
+    },
+    "geminiRefreshInterval": "Kontingent automatisch aktualisieren"
   },
   "quotaAlert": {
     "bannerText": "Kontingentwarnung für {{email}} (Schwelle {{threshold}} %, Minimum {{lowest}} %, Modelle: {{models}})",
@@ -1835,6 +1844,58 @@
       },
       "summary": "Dieser Abschnitt erklärt die Nutzung von Wakeup-Aufgaben und Verifikation im täglichen Workflow.",
       "title": "Wakeup-Aufgaben und Verifikation"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "Zu Gemini wechseln",
+    "updated": {
+      "label": "Vor {{relative}} aktualisiert"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "{{value}}% verbleibend",
+      "resetsIn": "Zurückgesetzt in {{relative}}",
+      "resetsSoon": "Wird bald zurückgesetzt",
+      "resetsUnknown": "Zeitpunkt der Zurücksetzung unbekannt",
+      "onDemand": "Bei Bedarf"
+    },
+    "title": "Gemini-Kontoverwaltung",
+    "instances": {
+      "unsupported": "Gemini-Mehrinstanzverwaltung wird derzeit nicht unterstützt.",
+      "unsupportedDescPlatform": "Gemini-Mehrinstanzen werden nur unter macOS, Windows und Linux unterstützt.",
+      "launchDialogTitle": "Instanz starten",
+      "launchHint": "Kopieren Sie den Befehl und führen Sie ihn manuell aus oder direkt im Terminal.",
+      "runInTerminal": "Im Terminal ausführen"
+    },
+    "switch": {
+      "success": "Konto erfolgreich gewechselt"
+    },
+    "empty": {
+      "description": "Klicken Sie auf „Konto hinzufügen“, um Ihre Gemini-Konten zu verwalten"
+    },
+    "addModal": {
+      "title": "Gemini-Konto hinzufügen"
+    },
+    "oauth": {
+      "desc": "Klicken Sie auf die Schaltfläche unten und schließen Sie die Gemini-Autorisierung im Browser ab."
+    },
+    "token": {
+      "desc": "Fügen Sie Ihr Gemini-Zugriffstoken (JWT) oder exportierte JSON-Daten ein.",
+      "formatHint": "Erforderliche Felder und Beispiele (klicken zum Aufklappen)",
+      "formatRequired": "Einzelnes Token: JWT direkt einfügen; Massenimport: JSON-Array-Format verwenden",
+      "singleExample": "Einzelbeispiel (JWT)",
+      "batchExample": "Massenbeispiel (JSON)"
+    },
+    "import": {
+      "localDesc": "Kontodaten vom lokalen Gemini-Client oder einer JSON-Datei importieren.",
+      "localClient": "Vom lokalen Gemini importieren"
+    },
+    "flowNotice": {
+      "title": "Gemini-Kontoleitfaden (zum Auf-/Zuklappen klicken)",
+      "desc": "Verwalten Sie Gemini-Konten durch Import aus der lokalen Gemini-Installation oder durch Einfügen von JWT-Token. Daten werden nur lokal verarbeitet.",
+      "reason": "Berechtigungsumfang: Lesen und Schreiben von oauth_creds.json, google_accounts.json und settings.json im Standardpfad ~/.gemini oder Instanzpfad (GEMINI_CLI_HOME/.gemini) für Kontoimport und lokale Anmeldeinjektionsfunktionen (Kontowechsel).",
+      "storage": "Netzwerkumfang: OAuth und Quotenaktualisierung rufen offizielle Google/Gemini-APIs auf (z. B. oauth2.googleapis.com und googleapis.com). Es werden nur notwendige Auth-/Quotenfelder gesendet; lokale Dateien werden nicht an Drittserver hochgeladen."
     }
   }
 }

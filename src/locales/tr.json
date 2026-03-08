@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "Onayla",
     "cancel": "İptal",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "Güncelle",
       "restart": "Yeniden başlat"
-    }
+    },
+    "gemini": "İkizler burcu"
   },
   "platformLayout": {
     "title": "Platform Düzeni",
@@ -455,7 +456,10 @@
       "autoUpdate": "Arka planda otomatik güncelleme",
       "autoUpdateDesc": "Yeni sürüm algılandığında güncelleme arka planda sessizce yapılır ve tamamlandığında yeniden başlatma istenir.",
       "autoUpdateOff": "Kapalı (manuel güncelleme)",
-      "autoUpdateOn": "Açık (sessiz güncelleme)"
+      "autoUpdateOn": "Açık (sessiz güncelleme)",
+      "opencodeAuthOverwrite": "Codex'i değiştirirken OpenCode oturum açma bilgilerinin üzerine yazın",
+      "opencodeAuthOverwriteDesc": "Kapalıyken yalnızca Codex açılır ve OpenCode mevcut oturum açma durumunu korur",
+      "opencodeRestartRequiresOverwrite": "İlk önce \"Kodeksi değiştirirken OpenCode oturum açma bilgilerinin üzerine yaz\" seçeneğini etkinleştirin"
     },
     "network": {
       "apiTitle": "Yerçekimine Karşı Kokpit API'si",
@@ -628,9 +632,9 @@
       "importSuccess": "{{count}} hesap içe aktarıldı",
       "importPartial": "{{success}} hesap başarıyla içe aktarıldı, {{fail}} hata",
       "importFailed": "İçe aktarma başarısız, lütfen refresh_token'ı kontrol edin",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} başarısız oldu: {{failList}}",
+      "refreshingQuota": "Kota yenileniyor {{done}}/{{total}} (bu iletişim kutusunu kapatabilirsiniz)",
+      "quotaRefreshDone": "Kota yenileme tamamlandı"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "Parmak izi:",
       "generateFailed": "Oluşturma başarısız",
       "importFailed": "İçe aktarma başarısız",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} başarısız oldu: {{failList}}",
+      "refreshingQuota": "Kota yenileniyor {{done}}/{{total}} (bu iletişim kutusunu kapatabilirsiniz)",
+      "quotaRefreshDone": "Kota yenileme tamamlandı",
       "importing": "İçe aktarılıyor...",
       "loadFailed": "Parmak izi listesi yüklenemedi",
       "processing": "İşleniyor...",
@@ -815,9 +819,9 @@
     "importSuccess": "{{count}} hesap başarıyla içe aktarıldı",
     "importLocalSuccess": "Hesap başarıyla içe aktarıldı: {{email}}",
     "importFailed": "İçe aktarma hatası: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} başarısız oldu: {{failList}}",
+    "refreshingQuota": "Kota yenileniyor {{done}}/{{total}} (bu iletişim kutusunu kapatabilirsiniz)",
+    "quotaRefreshDone": "Kota yenileme tamamlandı",
     "exportFailed": "Dışa aktarma hatası: {{error}}",
     "bindFailed": "Bağlama hatası: {{error}}",
     "jsonRequired": "Lütfen JSON içeriğini girin veya yapıştırın",
@@ -1334,7 +1338,12 @@
       "title": "Cursor Ayarları",
       "appPath": "Cursor Yolu"
     },
-    "cursorRefreshInterval": "Kota otomatik yenileme"
+    "cursorRefreshInterval": "Kota otomatik yenileme",
+    "gemini": {
+      "title": "İkizler Ayarları",
+      "appPath": "Gemini CLI Yolu"
+    },
+    "geminiRefreshInterval": "Kota Otomatik Yenileme"
   },
   "quotaAlert": {
     "bannerText": "{{email}} için kota uyarısı (eşik {{threshold}}%, en düşük {{lowest}}%, modeller: {{models}})",
@@ -1835,6 +1844,58 @@
       },
       "summary": "Bu bölüm, günlük akışta Wakeup görevleri ve doğrulama kullanımını açıklar.",
       "title": "Wakeup görevleri ve doğrulama"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "Gemini'ye geçiş",
+    "title": "Gemini Hesap Yönetimi",
+    "empty": {
+      "description": "Gemini hesaplarınızı yönetmeye başlamak için \"Hesap Ekle\"ye tıklayın"
+    },
+    "addModal": {
+      "title": "Gemini Hesabı Ekle"
+    },
+    "oauth": {
+      "desc": "Aşağıdaki düğmeye tıklayın ve tarayıcınızda Gemini OAuth yetkilendirmesini tamamlayın."
+    },
+    "token": {
+      "desc": "Gemini Erişim Simgenizi (JWT) veya dışa aktarılan JSON verilerinizi yapıştırın.",
+      "formatHint": "Zorunlu alanlar ve örnekler (genişletmek için tıklayın)",
+      "formatRequired": "Tek jeton: JWT'yi doğrudan yapıştırın; toplu içe aktarma: JSON dizi biçimini kullanın",
+      "singleExample": "Tek örnek (JWT)",
+      "batchExample": "Toplu örnek (JSON)"
+    },
+    "import": {
+      "localDesc": "Gemini hesap verilerini yerel Gemini yapılandırma dizininden (~/.gemini) veya bir JSON dosyasından içe aktarın.",
+      "localClient": "Yerel Gemini'den ithalat"
+    },
+    "flowNotice": {
+      "title": "Gemini hesap kılavuzu (genişletmek/daraltmak için tıklayın)",
+      "desc": "Yerel Gemini yapılandırmasından içe aktararak, bir JWT jetonu yapıştırarak veya OAuth aracılığıyla oturum açarak Gemini hesaplarını yönetin.",
+      "reason": "İzin kapsamı: hesap içe aktarma ve yerel kimlik bilgileri ekleme (hesap değiştirme) için varsayılan ~/.gemini veya örnek yolu (GEMINI_CLI_HOME/.gemini) altında oauth_creds.json, google_accounts.json ve settings.json okuyun ve yazın.",
+      "storage": "Ağ kapsamı: OAuth ve yenileme, resmi Google/Gemini API'lerini (oauth2.googleapis.com ve googleapis.com gibi) çağırır. Yalnızca gerekli kimlik doğrulama/kota alanları gönderilir; yerel hesap dosyaları üçüncü taraf sunuculara yüklenmez."
+    },
+    "updated": {
+      "label": "{{relative}} önce güncellendi"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "{{value}}% kaldı",
+      "resetsIn": "{{relative}}'da sıfırlanır",
+      "resetsSoon": "Yakında sıfırlanacak",
+      "resetsUnknown": "Sıfırlama zamanı bilinmiyor",
+      "onDemand": "Talep üzerine"
+    },
+    "instances": {
+      "unsupported": "Gemini çoklu örnek yönetimi henüz desteklenmiyor.",
+      "unsupportedDescPlatform": "Gemini çoklu örneği yalnızca macOS, Windows ve Linux'ta desteklenir.",
+      "launchDialogTitle": "Örneği Başlat",
+      "launchHint": "Komutu kopyalayın ve manuel olarak çalıştırın veya doğrudan terminalde çalıştırın.",
+      "runInTerminal": "Terminalde Çalıştır"
+    },
+    "switch": {
+      "success": "Hesap başarıyla değiştirildi"
     }
   }
 }

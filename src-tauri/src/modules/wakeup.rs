@@ -756,7 +756,8 @@ async fn resolve_requested_model_for_official_ls(
                             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                                 let details = parsed.get("error").and_then(|e| e.get("details"));
                                 let appeal_url = extract_appeal_url_from_error_details(details);
-                                let validation_url = extract_validation_url_from_error_details(details);
+                                let validation_url =
+                                    extract_validation_url_from_error_details(details);
                                 let message = parsed
                                     .get("error")
                                     .and_then(|e| e.get("message"))
@@ -973,7 +974,10 @@ struct GatewayTrajectoryErrorDetail {
     step_json: String,
 }
 
-fn classify_gateway_error_kind(error_code: Option<i64>, appeal_url: &Option<String>) -> &'static str {
+fn classify_gateway_error_kind(
+    error_code: Option<i64>,
+    appeal_url: &Option<String>,
+) -> &'static str {
     if error_code == Some(403) && appeal_url.is_some() {
         return "tos_violation";
     }
@@ -982,8 +986,8 @@ fn classify_gateway_error_kind(error_code: Option<i64>, appeal_url: &Option<Stri
         Some(429) => "quota",
         // gRPC canonical codes: RESOURCE_EXHAUSTED=8, DEADLINE_EXCEEDED=4, INTERNAL=13, UNAVAILABLE=14
         // 同时覆盖 HTTP 侧常见的临时失败码。
-        Some(8) | Some(4) | Some(13) | Some(14) | Some(408) | Some(500) | Some(502)
-        | Some(503) | Some(504) => "temporary",
+        Some(8) | Some(4) | Some(13) | Some(14) | Some(408) | Some(500) | Some(502) | Some(503)
+        | Some(504) => "temporary",
         _ => "generic",
     }
 }
@@ -1174,9 +1178,7 @@ fn extract_validation_url_from_error_details(
     None
 }
 
-fn extract_appeal_url_from_error_details(
-    details: Option<&serde_json::Value>,
-) -> Option<String> {
+fn extract_appeal_url_from_error_details(details: Option<&serde_json::Value>) -> Option<String> {
     let details = details?;
     let parsed = match details {
         serde_json::Value::String(text) => serde_json::from_str::<serde_json::Value>(text).ok()?,

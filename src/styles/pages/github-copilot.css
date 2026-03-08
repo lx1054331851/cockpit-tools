@@ -310,6 +310,12 @@
   letter-spacing: normal;
 }
 
+.gemini-accounts-page .ghcp-account-card .tier-badge,
+.gemini-accounts-page .account-table .tier-badge {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .ghcp-account-card .tier-badge.free,
 .ghcp-accounts-page .account-table .tier-badge.free {
   background: var(--plan-free-bg);

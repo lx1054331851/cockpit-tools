@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "Confirmar",
     "cancel": "Cancelar",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "Atualizar",
       "restart": "Reiniciar"
-    }
+    },
+    "gemini": "Gêmeos"
   },
   "platformLayout": {
     "title": "Layout de plataformas",
@@ -455,7 +456,10 @@
       "autoUpdate": "Atualização automática em segundo plano",
       "autoUpdateDesc": "Quando uma nova versão for detectada, a atualização ocorrerá em segundo plano e, ao concluir, será solicitado reinício.",
       "autoUpdateOff": "Desativado (atualização manual)",
-      "autoUpdateOn": "Ativado (atualização silenciosa)"
+      "autoUpdateOn": "Ativado (atualização silenciosa)",
+      "opencodeAuthOverwrite": "Substituir o login do OpenCode ao trocar o Codex",
+      "opencodeAuthOverwriteDesc": "Quando desligado, apenas o Codex é alternado e o OpenCode mantém seu estado de login atual",
+      "opencodeRestartRequiresOverwrite": "Habilite primeiro \"Substituir login do OpenCode ao trocar o Codex\""
     },
     "network": {
       "apiTitle": "API de cockpit antigravidade",
@@ -628,9 +632,9 @@
       "importSuccess": "Importadas {{count}} contas",
       "importPartial": "Importadas {{success}} contas, falharam {{fail}}",
       "importFailed": "Falha na importação, verifique refresh_token",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} falhou: {{failList}}",
+      "refreshingQuota": "Atualizando cota {{done}}/{{total}} (você pode fechar esta caixa de diálogo)",
+      "quotaRefreshDone": "Atualização de cota concluída"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "Impressão digital:",
       "generateFailed": "Falha ao gerar",
       "importFailed": "Falha ao importar",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} falhou: {{failList}}",
+      "refreshingQuota": "Atualizando cota {{done}}/{{total}} (você pode fechar esta caixa de diálogo)",
+      "quotaRefreshDone": "Atualização de cota concluída",
       "importing": "Importando...",
       "loadFailed": "Falha ao carregar a lista de impressões digitais",
       "processing": "Processando...",
@@ -815,9 +819,9 @@
     "importSuccess": "Importadas com sucesso {{count}} contas",
     "importLocalSuccess": "Conta importada com sucesso: {{email}}",
     "importFailed": "Falha na importação: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} falhou: {{failList}}",
+    "refreshingQuota": "Atualizando cota {{done}}/{{total}} (você pode fechar esta caixa de diálogo)",
+    "quotaRefreshDone": "Atualização de cota concluída",
     "exportFailed": "Falha na exportação: {{error}}",
     "bindFailed": "Falha na vinculação: {{error}}",
     "jsonRequired": "Por favor, digite ou cole o conteúdo JSON",
@@ -1334,7 +1338,12 @@
       "title": "Configurações do Cursor",
       "appPath": "Caminho do Cursor"
     },
-    "cursorRefreshInterval": "Atualização automática de cota"
+    "cursorRefreshInterval": "Atualização automática de cota",
+    "gemini": {
+      "title": "Configurações de Gêmeos",
+      "appPath": "Caminho CLI Gemini"
+    },
+    "geminiRefreshInterval": "Atualização automática de cota"
   },
   "quotaAlert": {
     "bannerText": "Alerta de cota para {{email}} (limite {{threshold}}%, mínimo {{lowest}}%, modelos: {{models}})",
@@ -1835,6 +1844,58 @@
       },
       "summary": "Esta seção explica como usar Tarefas wakeup e verificação no fluxo diário.",
       "title": "Tarefas wakeup e verificação"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "Mudar para Gêmeos",
+    "updated": {
+      "label": "Atualizado {{relative}} atrás"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "{{value}}% restantes",
+      "resetsIn": "Reinicia em {{relative}}",
+      "resetsSoon": "Reinicia em breve",
+      "resetsUnknown": "Hora de redefinição desconhecida",
+      "onDemand": "Sob demanda"
+    },
+    "title": "Gerenciamento de contas Gêmeos",
+    "instances": {
+      "unsupported": "O gerenciamento de múltiplas instâncias do Gemini ainda não é compatível.",
+      "unsupportedDescPlatform": "A multiinstância Gemini é compatível apenas com macOS, Windows e Linux.",
+      "launchDialogTitle": "Iniciar instância",
+      "launchHint": "Copie o comando e execute-o manualmente ou execute-o diretamente no terminal.",
+      "runInTerminal": "Execute no Terminal"
+    },
+    "switch": {
+      "success": "Conta trocada com sucesso"
+    },
+    "empty": {
+      "description": "Clique em \"Adicionar conta\" para começar a gerenciar suas contas Gemini"
+    },
+    "addModal": {
+      "title": "Adicionar conta Gemini"
+    },
+    "oauth": {
+      "desc": "Clique no botão abaixo e preencha a autorização Gemini OAuth em seu navegador."
+    },
+    "token": {
+      "desc": "Cole seu token de acesso Gemini (JWT) ou dados JSON exportados.",
+      "formatHint": "Campos obrigatórios e exemplos (clique para expandir)",
+      "formatRequired": "Token único: cole o JWT diretamente; importação em lote: use o formato de matriz JSON",
+      "singleExample": "Exemplo único (JWT)",
+      "batchExample": "Exemplo de lote (JSON)"
+    },
+    "import": {
+      "localDesc": "Importe dados da conta Gemini do diretório de configuração local do Gemini (~/.gemini) ou de um arquivo JSON.",
+      "localClient": "Importar do Gemini local"
+    },
+    "flowNotice": {
+      "title": "Guia da conta Gemini (clique para expandir/recolher)",
+      "desc": "Gerencie contas Gemini importando da configuração local do Gemini, colando um token JWT ou fazendo login via OAuth.",
+      "reason": "Escopo de permissão: ler e gravar oauth_creds.json, google_accounts.json e settings.json no padrão ~/.gemini ou caminho de instância (GEMINI_CLI_HOME/.gemini) para importação de conta e injeção de credenciais locais (troca de conta).",
+      "storage": "Escopo da rede: OAuth e atualização chamam APIs oficiais do Google/Gemini (como oauth2.googleapis.com e googleapis.com). Apenas os campos de autenticação/cota obrigatórios são enviados; os arquivos da conta local não são carregados em servidores de terceiros."
     }
   }
 }

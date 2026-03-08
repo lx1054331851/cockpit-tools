@@ -30,6 +30,7 @@ const PAGE_PLATFORM_MAP: Partial<Record<Page, PlatformId>> = {
   windsurf: 'windsurf',
   kiro: 'kiro',
   cursor: 'cursor',
+  gemini: 'gemini',
 };
 
 export function SideNav({

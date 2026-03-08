@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "確認",
     "cancel": "取消",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "更新",
       "restart": "重新啟動"
-    }
+    },
+    "gemini": "雙子座"
   },
   "platformLayout": {
     "title": "平台佈局",
@@ -455,7 +456,10 @@
       "autoUpdate": "背景自動更新",
       "autoUpdateDesc": "偵測到新版本時，於背景靜默更新；完成後提示重新啟動。",
       "autoUpdateOff": "關閉（手動更新）",
-      "autoUpdateOn": "開啟（靜默更新）"
+      "autoUpdateOn": "開啟（靜默更新）",
+      "opencodeAuthOverwrite": "切換 Codex 時覆蓋 OpenCode 登入",
+      "opencodeAuthOverwriteDesc": "關閉時，僅切換 Codex，OpenCode 保持目前登入狀態",
+      "opencodeRestartRequiresOverwrite": "首先啟用“切換 Codex 時覆蓋 OpenCode 登入”"
     },
     "network": {
       "apiTitle": "反重力駕駛艙 API",
@@ -628,9 +632,9 @@
       "importSuccess": "匯入成功 {{count}} 個帳號",
       "importPartial": "匯入成功 {{success}} 個，失敗 {{fail}} 個",
       "importFailed": "匯入失敗，請檢查 refresh_token",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} 失敗：{{failList}}",
+      "refreshingQuota": "刷新配額{{done}}/{{total}}（您可以關閉此對話方塊）",
+      "quotaRefreshDone": "配額刷新完成"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "指紋：",
       "generateFailed": "產生失敗",
       "importFailed": "匯入失敗",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} 失敗：{{failList}}",
+      "refreshingQuota": "刷新配額{{done}}/{{total}}（您可以關閉此對話方塊）",
+      "quotaRefreshDone": "配額刷新完成",
       "importing": "匯入中...",
       "loadFailed": "載入指紋列表失敗",
       "processing": "處理中...",
@@ -815,9 +819,9 @@
     "importSuccess": "成功匯入 {{count}} 個帳號",
     "importLocalSuccess": "成功匯入帳號: {{email}}",
     "importFailed": "匯入失敗: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} 失敗：{{failList}}",
+    "refreshingQuota": "刷新配額{{done}}/{{total}}（您可以關閉此對話方塊）",
+    "quotaRefreshDone": "配額刷新完成",
     "exportFailed": "匯出失敗: {{error}}",
     "bindFailed": "綁定失敗: {{error}}",
     "jsonRequired": "請輸入或貼上 JSON 内容",
@@ -1334,7 +1338,12 @@
       "title": "Cursor 設定",
       "appPath": "Cursor 路徑"
     },
-    "cursorRefreshInterval": "配額自動更新"
+    "cursorRefreshInterval": "配額自動更新",
+    "gemini": {
+      "title": "雙子座設定",
+      "appPath": "Gemini CLI 路徑"
+    },
+    "geminiRefreshInterval": "配額自動刷新"
   },
   "quotaAlert": {
     "bannerText": "帳號 {{email}} 觸發配額預警（閾值 {{threshold}}%，最低 {{lowest}}%，模型：{{models}}）",
@@ -1835,6 +1844,58 @@
       },
       "summary": "用於定時運行喚醒任務和批量驗證結果，幫助你持續追蹤帳號可用性與狀態。",
       "title": "喚醒任務與驗證"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "切換到雙子座",
+    "title": "雙子座帳戶管理",
+    "empty": {
+      "description": "點擊「新增帳戶」開始管理您的 Gemini 帳戶"
+    },
+    "addModal": {
+      "title": "新增雙子座帳戶"
+    },
+    "oauth": {
+      "desc": "點選下方按鈕，在瀏覽器中完成Gemini OAuth授權。"
+    },
+    "token": {
+      "desc": "貼上您的 Gemini 存取權令牌 (JWT) 或匯出的 JSON 資料。",
+      "formatHint": "必填欄位和範例（點擊展開）",
+      "formatRequired": "單token：直接貼上JWT；批次匯入：使用JSON陣列格式",
+      "singleExample": "單一範例 (JWT)",
+      "batchExample": "批量範例（JSON）"
+    },
+    "import": {
+      "localDesc": "從本機 Gemini 設定目錄 (~/.gemini) 或 JSON 檔案匯入 Gemini 帳戶資料。",
+      "localClient": "從當地 Gemini 進口"
+    },
+    "flowNotice": {
+      "title": "Gemini 帳號指南（點選展開/折疊）",
+      "desc": "透過從本機 Gemini 設定匯入、貼上 JWT 令牌或透過 OAuth 登入來管理 Gemini 帳戶。",
+      "reason": "權限範圍：在預設~/.gemini或實例路徑（GEMINI_CLI_HOME/.gemini）下讀寫oauth_creds.json、google_accounts.json、settings.json，用於帳戶導入和本地憑證注入（帳戶切換）。",
+      "storage": "網路範圍：OAuth 和刷新呼叫官方 Google/Gemini API（例如 oauth2.googleapis.com 和 googleapis.com）。僅發送必需的身份驗證/配額欄位；本機帳戶檔案不會上傳到第三方伺服器。"
+    },
+    "updated": {
+      "label": "更新 {{relative}} 前"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "剩 {{value}}%",
+      "resetsIn": "在 {{relative}} 中重置",
+      "resetsSoon": "很快就會重置",
+      "resetsUnknown": "重置時間未知",
+      "onDemand": "一經請求"
+    },
+    "instances": {
+      "unsupported": "尚不支援Gemini多實例管理。",
+      "unsupportedDescPlatform": "Gemini 多執行個體僅在 macOS、Windows 和 Linux 上支援。",
+      "launchDialogTitle": "啟動實例",
+      "launchHint": "複製命令並手動運行，或直接在終端機中執行。",
+      "runInTerminal": "在終端機中運行"
+    },
+    "switch": {
+      "success": "帳號切換成功"
     }
   }
 }

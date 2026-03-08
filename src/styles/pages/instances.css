@@ -187,6 +187,16 @@
   background: var(--bg-hover);
 }
 
+.instances-list.instances-list-no-pid .instances-list-header > div:nth-child(5),
+.instances-list.instances-list-no-pid .instance-item > div:nth-child(5) {
+  display: none;
+}
+
+.instances-list.instances-list-no-pid .instances-list-header > div:nth-child(3),
+.instances-list.instances-list-no-pid .instance-item > div:nth-child(3) {
+  display: none;
+}
+
 .instance-item:last-child {
   border-bottom: none;
 }

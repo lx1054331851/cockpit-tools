@@ -278,10 +278,7 @@ pub fn check_version_jump() -> Result<Option<VersionJumpInfo>, String> {
     settings.last_run_version = current.clone();
     save_update_settings(&settings)?;
 
-    logger::log_info(&format!(
-        "检测到版本跳跃: {} -> {}",
-        previous, current
-    ));
+    logger::log_info(&format!("检测到版本跳跃: {} -> {}", previous, current));
 
     Ok(Some(VersionJumpInfo {
         previous_version: previous,

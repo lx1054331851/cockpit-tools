@@ -35,6 +35,7 @@ interface GeneralConfig {
   windsurf_auto_refresh_minutes: number;
   kiro_auto_refresh_minutes: number;
   cursor_auto_refresh_minutes: number;
+  gemini_auto_refresh_minutes: number;
   close_behavior: 'ask' | 'minimize' | 'quit';
   minimize_behavior?: 'dock_and_tray' | 'tray_only';
   hide_dock_icon?: boolean;
@@ -46,6 +47,7 @@ interface GeneralConfig {
   kiro_app_path: string;
   cursor_app_path: string;
   opencode_sync_on_switch: boolean;
+  opencode_auth_overwrite_on_switch: boolean;
   codex_launch_on_switch: boolean;
   auto_switch_enabled: boolean;
   auto_switch_threshold: number;
@@ -61,6 +63,8 @@ interface GeneralConfig {
   kiro_quota_alert_threshold: number;
   cursor_quota_alert_enabled: boolean;
   cursor_quota_alert_threshold: number;
+  gemini_quota_alert_enabled: boolean;
+  gemini_quota_alert_threshold: number;
 }
 
 type AppPathTarget = 'antigravity' | 'codex' | 'vscode' | 'opencode' | 'windsurf' | 'kiro' | 'cursor';
@@ -73,6 +77,7 @@ const FALLBACK_PLATFORM_SETTINGS_ORDER: Record<PlatformId, number> = {
   windsurf: 3,
   kiro: 4,
   cursor: 5,
+  gemini: 6,
 };
 type UpdateCheckSource = 'auto' | 'manual';
 type UpdateCheckFinishedDetail = {
@@ -127,6 +132,7 @@ export function SettingsPage() {
   const [windsurfAutoRefresh, setWindsurfAutoRefresh] = useState('10');
   const [kiroAutoRefresh, setKiroAutoRefresh] = useState('10');
   const [cursorAutoRefresh, setCursorAutoRefresh] = useState('10');
+  const [geminiAutoRefresh, setGeminiAutoRefresh] = useState('10');
   const [closeBehavior, setCloseBehavior] = useState<'ask' | 'minimize' | 'quit'>('ask');
   const [hideDockIcon, setHideDockIcon] = useState(false);
   const [opencodeAppPath, setOpencodeAppPath] = useState('');
@@ -138,6 +144,7 @@ export function SettingsPage() {
   const [cursorAppPath, setCursorAppPath] = useState('');
   const [appPathResetDetectingTargets, setAppPathResetDetectingTargets] = useState<Set<AppPathTarget>>(new Set());
   const [opencodeSyncOnSwitch, setOpencodeSyncOnSwitch] = useState(true);
+  const [opencodeAuthOverwriteOnSwitch, setOpencodeAuthOverwriteOnSwitch] = useState(true);
   const [codexLaunchOnSwitch, setCodexLaunchOnSwitch] = useState(true);
   const [autoSwitchEnabled, setAutoSwitchEnabled] = useState(false);
   const [autoSwitchThreshold, setAutoSwitchThreshold] = useState('20');
@@ -153,12 +160,15 @@ export function SettingsPage() {
   const [kiroQuotaAlertThreshold, setKiroQuotaAlertThreshold] = useState('20');
   const [cursorQuotaAlertEnabled, setCursorQuotaAlertEnabled] = useState(false);
   const [cursorQuotaAlertThreshold, setCursorQuotaAlertThreshold] = useState('20');
+  const [geminiQuotaAlertEnabled, setGeminiQuotaAlertEnabled] = useState(false);
+  const [geminiQuotaAlertThreshold, setGeminiQuotaAlertThreshold] = useState('20');
   const [autoRefreshCustomMode, setAutoRefreshCustomMode] = useState(false);
   const [codexAutoRefreshCustomMode, setCodexAutoRefreshCustomMode] = useState(false);
   const [ghcpAutoRefreshCustomMode, setGhcpAutoRefreshCustomMode] = useState(false);
   const [windsurfAutoRefreshCustomMode, setWindsurfAutoRefreshCustomMode] = useState(false);
   const [kiroAutoRefreshCustomMode, setKiroAutoRefreshCustomMode] = useState(false);
   const [cursorAutoRefreshCustomMode, setCursorAutoRefreshCustomMode] = useState(false);
+  const [geminiAutoRefreshCustomMode, setGeminiAutoRefreshCustomMode] = useState(false);
   const [autoSwitchThresholdCustomMode, setAutoSwitchThresholdCustomMode] = useState(false);
   const [quotaAlertThresholdCustomMode, setQuotaAlertThresholdCustomMode] = useState(false);
   const [codexQuotaAlertThresholdCustomMode, setCodexQuotaAlertThresholdCustomMode] = useState(false);
@@ -166,6 +176,7 @@ export function SettingsPage() {
   const [windsurfQuotaAlertThresholdCustomMode, setWindsurfQuotaAlertThresholdCustomMode] = useState(false);
   const [kiroQuotaAlertThresholdCustomMode, setKiroQuotaAlertThresholdCustomMode] = useState(false);
   const [cursorQuotaAlertThresholdCustomMode, setCursorQuotaAlertThresholdCustomMode] = useState(false);
+  const [geminiQuotaAlertThresholdCustomMode, setGeminiQuotaAlertThresholdCustomMode] = useState(false);
   const [generalLoaded, setGeneralLoaded] = useState(false);
   const generalSaveTimerRef = useRef<number | null>(null);
   const suppressGeneralSaveRef = useRef(false);
@@ -286,7 +297,8 @@ export function SettingsPage() {
       !ghcpAutoRefresh.trim() ||
       !windsurfAutoRefresh.trim() ||
       !kiroAutoRefresh.trim() ||
-      !cursorAutoRefresh.trim()
+      !cursorAutoRefresh.trim() ||
+      !geminiAutoRefresh.trim()
     ) {
       return;
     }
@@ -297,6 +309,7 @@ export function SettingsPage() {
     const windsurfAutoRefreshNum = parseInt(windsurfAutoRefresh, 10) || -1;
     const kiroAutoRefreshNum = parseInt(kiroAutoRefresh, 10) || -1;
     const cursorAutoRefreshNum = parseInt(cursorAutoRefresh, 10) || -1;
+    const geminiAutoRefreshNum = parseInt(geminiAutoRefresh, 10) || -1;
     const parsedAutoSwitchThreshold = Number.parseInt(autoSwitchThreshold, 10);
     const parsedQuotaAlertThreshold = Number.parseInt(quotaAlertThreshold, 10);
     const parsedCodexQuotaAlertThreshold = Number.parseInt(codexQuotaAlertThreshold, 10);
@@ -304,6 +317,7 @@ export function SettingsPage() {
     const parsedWindsurfQuotaAlertThreshold = Number.parseInt(windsurfQuotaAlertThreshold, 10);
     const parsedKiroQuotaAlertThreshold = Number.parseInt(kiroQuotaAlertThreshold, 10);
     const parsedCursorQuotaAlertThreshold = Number.parseInt(cursorQuotaAlertThreshold, 10);
+    const parsedGeminiQuotaAlertThreshold = Number.parseInt(geminiQuotaAlertThreshold, 10);
 
     if (suppressGeneralSaveRef.current) {
       suppressGeneralSaveRef.current = false;
@@ -321,6 +335,7 @@ export function SettingsPage() {
           windsurfAutoRefreshMinutes: windsurfAutoRefreshNum,
           kiroAutoRefreshMinutes: kiroAutoRefreshNum,
           cursorAutoRefreshMinutes: cursorAutoRefreshNum,
+          geminiAutoRefreshMinutes: geminiAutoRefreshNum,
           closeBehavior,
           hideDockIcon,
           opencodeAppPath,
@@ -331,6 +346,7 @@ export function SettingsPage() {
           kiroAppPath,
           cursorAppPath,
           opencodeSyncOnSwitch,
+          opencodeAuthOverwriteOnSwitch,
           codexLaunchOnSwitch,
           autoSwitchEnabled,
           autoSwitchThreshold: Number.isNaN(parsedAutoSwitchThreshold) ? 20 : parsedAutoSwitchThreshold,
@@ -356,6 +372,10 @@ export function SettingsPage() {
           cursorQuotaAlertThreshold: Number.isNaN(parsedCursorQuotaAlertThreshold)
             ? 20
             : parsedCursorQuotaAlertThreshold,
+          geminiQuotaAlertEnabled,
+          geminiQuotaAlertThreshold: Number.isNaN(parsedGeminiQuotaAlertThreshold)
+            ? 20
+            : parsedGeminiQuotaAlertThreshold,
         });
         window.dispatchEvent(new Event('config-updated'));
       } catch (err) {
@@ -376,6 +396,7 @@ export function SettingsPage() {
     windsurfAutoRefresh,
     kiroAutoRefresh,
     cursorAutoRefresh,
+    geminiAutoRefresh,
     closeBehavior,
     hideDockIcon,
     generalLoaded,
@@ -389,6 +410,7 @@ export function SettingsPage() {
     kiroAppPath,
     cursorAppPath,
     opencodeSyncOnSwitch,
+    opencodeAuthOverwriteOnSwitch,
     codexLaunchOnSwitch,
     autoSwitchEnabled,
     autoSwitchThreshold,
@@ -404,6 +426,8 @@ export function SettingsPage() {
     kiroQuotaAlertThreshold,
     cursorQuotaAlertEnabled,
     cursorQuotaAlertThreshold,
+    geminiQuotaAlertEnabled,
+    geminiQuotaAlertThreshold,
     t,
   ]);
 
@@ -558,6 +582,7 @@ export function SettingsPage() {
       setWindsurfAutoRefresh(String(config.windsurf_auto_refresh_minutes ?? 10));
       setKiroAutoRefresh(String(config.kiro_auto_refresh_minutes ?? 10));
       setCursorAutoRefresh(String(config.cursor_auto_refresh_minutes ?? 10));
+      setGeminiAutoRefresh(String(config.gemini_auto_refresh_minutes ?? 10));
       setCloseBehavior(config.close_behavior || 'ask');
       setHideDockIcon(Boolean(config.hide_dock_icon));
       setOpencodeAppPath(config.opencode_app_path || '');
@@ -568,6 +593,7 @@ export function SettingsPage() {
       setKiroAppPath(config.kiro_app_path || '');
       setCursorAppPath(config.cursor_app_path || '');
       setOpencodeSyncOnSwitch(config.opencode_sync_on_switch ?? true);
+      setOpencodeAuthOverwriteOnSwitch(config.opencode_auth_overwrite_on_switch ?? true);
       setCodexLaunchOnSwitch(config.codex_launch_on_switch ?? true);
       setAutoSwitchEnabled(config.auto_switch_enabled ?? false);
       setAutoSwitchThreshold(String(config.auto_switch_threshold ?? 20));
@@ -583,12 +609,15 @@ export function SettingsPage() {
       setKiroQuotaAlertThreshold(String(config.kiro_quota_alert_threshold ?? 20));
       setCursorQuotaAlertEnabled(config.cursor_quota_alert_enabled ?? false);
       setCursorQuotaAlertThreshold(String(config.cursor_quota_alert_threshold ?? 20));
+      setGeminiQuotaAlertEnabled(config.gemini_quota_alert_enabled ?? false);
+      setGeminiQuotaAlertThreshold(String(config.gemini_quota_alert_threshold ?? 20));
       setAutoRefreshCustomMode(false);
       setCodexAutoRefreshCustomMode(false);
       setGhcpAutoRefreshCustomMode(false);
       setWindsurfAutoRefreshCustomMode(false);
       setKiroAutoRefreshCustomMode(false);
       setCursorAutoRefreshCustomMode(false);
+      setGeminiAutoRefreshCustomMode(false);
       setAutoSwitchThresholdCustomMode(false);
       setQuotaAlertThresholdCustomMode(false);
       setCodexQuotaAlertThresholdCustomMode(false);
@@ -596,6 +625,7 @@ export function SettingsPage() {
       setWindsurfQuotaAlertThresholdCustomMode(false);
       setKiroQuotaAlertThresholdCustomMode(false);
       setCursorQuotaAlertThresholdCustomMode(false);
+      setGeminiQuotaAlertThresholdCustomMode(false);
       // 同步语言
       changeLanguage(config.language);
       applyTheme(config.theme);
@@ -739,6 +769,7 @@ export function SettingsPage() {
   const windsurfAutoRefreshIsPreset = REFRESH_PRESET_VALUES.includes(windsurfAutoRefresh);
   const kiroAutoRefreshIsPreset = REFRESH_PRESET_VALUES.includes(kiroAutoRefresh);
   const cursorAutoRefreshIsPreset = REFRESH_PRESET_VALUES.includes(cursorAutoRefresh);
+  const geminiAutoRefreshIsPreset = REFRESH_PRESET_VALUES.includes(geminiAutoRefresh);
   const autoSwitchThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(autoSwitchThreshold);
   const quotaAlertThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(quotaAlertThreshold);
   const codexQuotaAlertThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(codexQuotaAlertThreshold);
@@ -746,6 +777,7 @@ export function SettingsPage() {
   const windsurfQuotaAlertThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(windsurfQuotaAlertThreshold);
   const kiroQuotaAlertThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(kiroQuotaAlertThreshold);
   const cursorQuotaAlertThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(cursorQuotaAlertThreshold);
+  const geminiQuotaAlertThresholdIsPreset = THRESHOLD_PRESET_VALUES.includes(geminiQuotaAlertThreshold);
 
   // 检查更新
   const handleCheckUpdate = () => {
@@ -1327,8 +1359,29 @@ export function SettingsPage() {
 
               <div className="settings-row">
                 <div className="row-label">
+                  <div className="row-title">{t('settings.general.opencodeAuthOverwrite')}</div>
+                  <div className="row-desc">{t('settings.general.opencodeAuthOverwriteDesc')}</div>
+                </div>
+                <div className="row-control">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={opencodeAuthOverwriteOnSwitch}
+                      onChange={(e) => setOpencodeAuthOverwriteOnSwitch(e.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="settings-row">
+                <div className="row-label">
                   <div className="row-title">{t('settings.general.opencodeRestart')}</div>
-                  <div className="row-desc">{t('settings.general.opencodeRestartDesc')}</div>
+                  <div className="row-desc">
+                    {opencodeAuthOverwriteOnSwitch
+                      ? t('settings.general.opencodeRestartDesc')
+                      : t('settings.general.opencodeRestartRequiresOverwrite')}
+                  </div>
                 </div>
                 <div className="row-control">
                   <label className="switch">
@@ -1336,6 +1389,7 @@ export function SettingsPage() {
                       type="checkbox"
                       checked={opencodeSyncOnSwitch}
                       onChange={(e) => setOpencodeSyncOnSwitch(e.target.checked)}
+                      disabled={!opencodeAuthOverwriteOnSwitch}
                     />
                     <span className="slider"></span>
                   </label>
@@ -2196,6 +2250,155 @@ export function SettingsPage() {
                 </div>
               )}
             </div>
+              </div>
+
+              <div style={{ order: platformSettingsOrder.gemini }}>
+                <div className="group-title">{t('quickSettings.gemini.title', 'Gemini 设置')}</div>
+                <div className="settings-group">
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">{t('quickSettings.geminiRefreshInterval', '配额自动刷新')}</div>
+                      <div className="row-desc">{t('settings.general.windsurfAutoRefreshDesc', '后台自动更新频率')}</div>
+                    </div>
+                    <div className="row-control">
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {geminiAutoRefreshCustomMode ? (
+                          <div className="settings-inline-input" style={{ minWidth: '120px', width: 'auto' }}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={999}
+                              className="settings-select settings-select--input-mode settings-select--with-unit"
+                              value={geminiAutoRefresh}
+                              placeholder={t('quickSettings.inputMinutes', '输入分钟数')}
+                              onChange={(e) => setGeminiAutoRefresh(sanitizeNumberInput(e.target.value))}
+                              onBlur={() => {
+                                const normalized = normalizeNumberInput(geminiAutoRefresh, 1, 999);
+                                setGeminiAutoRefresh(normalized);
+                                setGeminiAutoRefreshCustomMode(false);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const normalized = normalizeNumberInput(geminiAutoRefresh, 1, 999);
+                                  setGeminiAutoRefresh(normalized);
+                                  setGeminiAutoRefreshCustomMode(false);
+                                }
+                              }}
+                            />
+                            <span className="settings-input-unit">{t('settings.general.minutes')}</span>
+                          </div>
+                        ) : (
+                          <select
+                            className="settings-select"
+                            style={{ minWidth: '120px', width: 'auto' }}
+                            value={geminiAutoRefresh}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'custom') {
+                                setGeminiAutoRefreshCustomMode(true);
+                                setGeminiAutoRefresh(geminiAutoRefresh !== '-1' ? geminiAutoRefresh : '1');
+                                return;
+                              }
+                              setGeminiAutoRefreshCustomMode(false);
+                              setGeminiAutoRefresh(val);
+                            }}
+                          >
+                            {!geminiAutoRefreshIsPreset && (
+                              <option value={geminiAutoRefresh}>
+                                {geminiAutoRefresh} {t('settings.general.minutes')}
+                              </option>
+                            )}
+                            <option value="-1">{t('settings.general.autoRefreshDisabled')}</option>
+                            <option value="2">2 {t('settings.general.minutes')}</option>
+                            <option value="5">5 {t('settings.general.minutes')}</option>
+                            <option value="10">10 {t('settings.general.minutes')}</option>
+                            <option value="15">15 {t('settings.general.minutes')}</option>
+                            <option value="custom">{t('settings.general.autoRefreshCustom')}</option>
+                          </select>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">{t('quickSettings.quotaAlert.enable', '超额预警')}</div>
+                      <div className="row-desc">{t('quickSettings.quotaAlert.hint', '当当前账号任意模型配额低于阈值时，发送原生通知并在页面提示快捷切号。')}</div>
+                    </div>
+                    <div className="row-control">
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={geminiQuotaAlertEnabled}
+                          onChange={(e) => setGeminiQuotaAlertEnabled(e.target.checked)}
+                        />
+                        <span className="slider"></span>
+                      </label>
+                    </div>
+                  </div>
+                  {geminiQuotaAlertEnabled && (
+                    <div className="settings-row" style={{ animation: 'fadeUp 0.3s ease both' }}>
+                      <div className="row-label">
+                        <div className="row-title">{t('quickSettings.quotaAlert.threshold', '预警阈值')}</div>
+                        <div className="row-desc">{t('quickSettings.quotaAlert.thresholdDesc', '任意模型配额低于此百分比时触发预警')}</div>
+                      </div>
+                      <div className="row-control">
+                        {geminiQuotaAlertThresholdCustomMode ? (
+                          <div className="settings-inline-input">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              className="settings-select settings-select--input-mode settings-select--with-unit"
+                              value={geminiQuotaAlertThreshold}
+                              placeholder={t('quickSettings.inputPercent', '输入百分比')}
+                              onChange={(e) => setGeminiQuotaAlertThreshold(sanitizeNumberInput(e.target.value))}
+                              onBlur={() => {
+                                const normalized = normalizeNumberInput(geminiQuotaAlertThreshold, 0, 100);
+                                setGeminiQuotaAlertThreshold(normalized);
+                                setGeminiQuotaAlertThresholdCustomMode(false);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const normalized = normalizeNumberInput(geminiQuotaAlertThreshold, 0, 100);
+                                  setGeminiQuotaAlertThreshold(normalized);
+                                  setGeminiQuotaAlertThresholdCustomMode(false);
+                                }
+                              }}
+                            />
+                            <span className="settings-input-unit">%</span>
+                          </div>
+                        ) : (
+                          <select
+                            className="settings-select"
+                            value={geminiQuotaAlertThreshold}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'custom') {
+                                setGeminiQuotaAlertThresholdCustomMode(true);
+                                setGeminiQuotaAlertThreshold(geminiQuotaAlertThreshold || '20');
+                                return;
+                              }
+                              setGeminiQuotaAlertThresholdCustomMode(false);
+                              setGeminiQuotaAlertThreshold(val);
+                            }}
+                          >
+                            {!geminiQuotaAlertThresholdIsPreset && (
+                              <option value={geminiQuotaAlertThreshold}>{geminiQuotaAlertThreshold}%</option>
+                            )}
+                            <option value="0">0%</option>
+                            <option value="20">20%</option>
+                            <option value="40">40%</option>
+                            <option value="60">60%</option>
+                            <option value="custom">{t('settings.general.autoRefreshCustom')}</option>
+                          </select>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

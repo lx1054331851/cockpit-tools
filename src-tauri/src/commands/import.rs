@@ -27,7 +27,9 @@ pub async fn import_from_json(json_content: String) -> Result<Vec<models::Accoun
 }
 
 #[tauri::command]
-pub async fn import_from_files(file_paths: Vec<String>) -> Result<modules::import::FileImportResult, String> {
+pub async fn import_from_files(
+    file_paths: Vec<String>,
+) -> Result<modules::import::FileImportResult, String> {
     modules::import::import_from_files_logic(file_paths).await
 }
 

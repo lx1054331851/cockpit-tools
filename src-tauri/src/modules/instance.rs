@@ -299,7 +299,11 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
         name,
         user_data_dir,
         extra_args: params.extra_args.trim().to_string(),
-        bind_account_id: if create_empty { None } else { params.bind_account_id },
+        bind_account_id: if create_empty {
+            None
+        } else {
+            params.bind_account_id
+        },
         created_at: Utc::now().timestamp_millis(),
         last_launched_at: None,
         last_pid: None,

@@ -7,6 +7,23 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.11.0] - 2026-03-08
+
+### Added
+- **Gemini platform full integration across backend and frontend**: Added Gemini models/commands/modules/OAuth on Tauri side, plus account pages, services, stores, icons, navigation, and platform metadata wiring on frontend.
+- **Gemini account lifecycle support**: Added OAuth login, Access Token/JSON import, local `~/.gemini` import, quota refresh, tag management, account export, and local credential injection for account switching.
+- **Gemini multi-instance management**: Added Gemini instance store/commands with default and custom profile directories, account binding/injection, launch command generation, and one-click terminal execution.
+- **Gemini settings and runtime integration**: Added `gemini_auto_refresh_minutes`, Gemini quota-alert enable/threshold config, and integrated Gemini into Settings, Quick Settings, auto-refresh scheduler, dashboard, and tray/runtime surfaces.
+- **Gemini docs and i18n coverage**: Updated README (EN/ZH) and locale keys for Gemini overview, instance workflows, switching, importing, and flow notices.
+
+### Changed
+- **Post-switch UX now supports provider-specific success actions**: `useProviderAccountsPage` now exposes an inject-success callback; Gemini overview uses it to open a launch-command modal immediately after switching.
+- **Gemini launch semantics aligned with default-instance behavior**: Default-instance launch command now uses plain `gemini`; custom instances keep `GEMINI_CLI_HOME=... gemini`.
+- **Gemini launch modal wording updated for generic use**: Launch dialog title now uses “Launch Instance” instead of a multi-instance-specific label.
+- **Gemini instance UI simplified to match actual CLI behavior**: Removed runtime-state/PID/stop expectations in Gemini instance list and aligned default-instance edit behavior with real launch semantics.
+- **Shared platform/presentation pipeline expanded for Gemini**: Added Gemini to shared platform typing/navigation/meta and unified Gemini account plan/quota presentation in reusable account view helpers.
+
+---
 ## [0.10.1] - 2026-03-07
 
 ### Added

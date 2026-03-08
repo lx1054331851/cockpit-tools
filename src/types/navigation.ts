@@ -7,6 +7,7 @@ export type Page =
   | 'windsurf'
   | 'kiro'
   | 'cursor'
+  | 'gemini'
   | 'codex-instances'
   | 'instances'
   | 'accounts'

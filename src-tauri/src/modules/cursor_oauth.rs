@@ -100,9 +100,7 @@ pub fn start_login() -> Result<CursorOAuthStartResponse, String> {
     })
 }
 
-pub async fn complete_login(
-    login_id: &str,
-) -> Result<CursorImportPayload, String> {
+pub async fn complete_login(login_id: &str) -> Result<CursorImportPayload, String> {
     let (uuid, code_verifier) = {
         let pending = PENDING_OAUTH_STATE
             .lock()
@@ -177,22 +175,15 @@ pub async fn complete_login(
                             attempt
                         ));
                     }
-                    tokio::time::sleep(std::time::Duration::from_millis(
-                        OAUTH_POLL_INTERVAL_MS,
-                    ))
-                    .await;
+                    tokio::time::sleep(std::time::Duration::from_millis(OAUTH_POLL_INTERVAL_MS))
+                        .await;
                     continue;
                 }
 
                 if status != 200 {
-                    logger::log_warn(&format!(
-                        "[Cursor OAuth] 轮询返回异常状态码: {}",
-                        status
-                    ));
-                    tokio::time::sleep(std::time::Duration::from_millis(
-                        OAUTH_POLL_INTERVAL_MS,
-                    ))
-                    .await;
+                    logger::log_warn(&format!("[Cursor OAuth] 轮询返回异常状态码: {}", status));
+                    tokio::time::sleep(std::time::Duration::from_millis(OAUTH_POLL_INTERVAL_MS))
+                        .await;
                     continue;
                 }
 
@@ -201,8 +192,8 @@ pub async fn complete_login(
                     .await
                     .map_err(|e| format!("读取轮询响应失败: {}", e))?;
 
-                let poll_data: PollResponse = serde_json::from_str(&body)
-                    .map_err(|e| format!("解析轮询响应失败: {}", e))?;
+                let poll_data: PollResponse =
+                    serde_json::from_str(&body).map_err(|e| format!("解析轮询响应失败: {}", e))?;
 
                 if let (Some(access_token), Some(refresh_token)) =
                     (poll_data.access_token, poll_data.refresh_token)
@@ -253,20 +244,12 @@ pub async fn complete_login(
                 }
 
                 logger::log_warn("[Cursor OAuth] 轮询成功但响应缺少 token");
-                tokio::time::sleep(std::time::Duration::from_millis(
-                    OAUTH_POLL_INTERVAL_MS,
-                ))
-                .await;
+                tokio::time::sleep(std::time::Duration::from_millis(OAUTH_POLL_INTERVAL_MS)).await;
             }
             Err(err) => {
-                logger::log_warn(&format!(
-                    "[Cursor OAuth] 轮询请求失败: {}, 将重试",
-                    err
-                ));
-                tokio::time::sleep(std::time::Duration::from_millis(
-                    OAUTH_POLL_INTERVAL_MS * 2,
-                ))
-                .await;
+                logger::log_warn(&format!("[Cursor OAuth] 轮询请求失败: {}, 将重试", err));
+                tokio::time::sleep(std::time::Duration::from_millis(OAUTH_POLL_INTERVAL_MS * 2))
+                    .await;
             }
         }
     }

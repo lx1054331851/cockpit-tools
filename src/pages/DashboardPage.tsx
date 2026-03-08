@@ -6,6 +6,7 @@ import { useGitHubCopilotAccountStore } from '../stores/useGitHubCopilotAccountS
 import { useWindsurfAccountStore } from '../stores/useWindsurfAccountStore';
 import { useKiroAccountStore } from '../stores/useKiroAccountStore';
 import { useCursorAccountStore } from '../stores/useCursorAccountStore';
+import { useGeminiAccountStore } from '../stores/useGeminiAccountStore';
 import { usePlatformLayoutStore } from '../stores/usePlatformLayoutStore';
 import { Page } from '../types/navigation';
 import { Users, CheckCircle2, Sparkles, RotateCw, Play, Github, HelpCircle } from 'lucide-react';
@@ -22,6 +23,12 @@ import {
   isKiroAccountBanned,
 } from '../types/kiro';
 import { CursorAccount, getCursorUsage } from '../types/cursor';
+import {
+  GeminiAccount,
+  getGeminiPlanBadgeClass,
+  getGeminiPlanDisplayName,
+  getGeminiTierQuotaSummary,
+} from '../types/gemini';
 import './DashboardPage.css';
 import { AnnouncementCenter } from '../components/AnnouncementCenter';
 import { RobotIcon } from '../components/icons/RobotIcon';
@@ -29,6 +36,7 @@ import { CodexIcon } from '../components/icons/CodexIcon';
 import { WindsurfIcon } from '../components/icons/WindsurfIcon';
 import { KiroIcon } from '../components/icons/KiroIcon';
 import { CursorIcon } from '../components/icons/CursorIcon';
+import { GeminiIcon } from '../components/icons/GeminiIcon';
 import { PlatformId, PLATFORM_PAGE_MAP } from '../types/platform';
 import { getPlatformLabel, renderPlatformIcon } from '../utils/platformMeta';
 import { isPrivacyModeEnabledByDefault, maskSensitiveValue } from '../utils/privacy';
@@ -52,6 +60,7 @@ const GHCP_CURRENT_ACCOUNT_ID_KEY = 'agtools.github_copilot.current_account_id';
 const WINDSURF_CURRENT_ACCOUNT_ID_KEY = 'agtools.windsurf.current_account_id';
 const KIRO_CURRENT_ACCOUNT_ID_KEY = 'agtools.kiro.current_account_id';
 const CURSOR_CURRENT_ACCOUNT_ID_KEY = 'agtools.cursor.current_account_id';
+const GEMINI_CURRENT_ACCOUNT_ID_KEY = 'agtools.gemini.current_account_id';
 const DASHBOARD_DEFERRED_PREFETCH_DELAY_MS = 1200;
 let dashboardStartupPrefetched = false;
 
@@ -143,6 +152,13 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     switchAccount: switchCursorAccount,
   } = useCursorAccountStore();
 
+  // Gemini Data
+  const {
+    accounts: geminiAccounts,
+    fetchAccounts: fetchGeminiAccounts,
+    switchAccount: switchGeminiAccount,
+  } = useGeminiAccountStore();
+
   const agCurrentId = agCurrent?.id;
   const codexCurrentId = codexCurrent?.id;
 
@@ -187,6 +203,7 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
         fetchWindsurfAccounts(),
         fetchKiroAccounts(),
         fetchCursorAccounts(),
+        fetchGeminiAccounts(),
       ]);
     };
 
@@ -214,15 +231,17 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
         githubCopilotAccounts.length +
         windsurfAccounts.length +
         kiroAccounts.length +
-        cursorAccounts.length,
+        cursorAccounts.length +
+        geminiAccounts.length,
       antigravity: agAccounts.length,
       codex: codexAccounts.length,
       githubCopilot: githubCopilotAccounts.length,
       windsurf: windsurfAccounts.length,
       kiro: kiroAccounts.length,
       cursor: cursorAccounts.length,
+      gemini: geminiAccounts.length,
     };
-  }, [agAccounts, codexAccounts, githubCopilotAccounts, windsurfAccounts, kiroAccounts, cursorAccounts]);
+  }, [agAccounts, codexAccounts, githubCopilotAccounts, windsurfAccounts, kiroAccounts, cursorAccounts, geminiAccounts]);
 
   // Refresh States
   const [refreshing, setRefreshing] = React.useState<Set<string>>(new Set());
@@ -255,6 +274,13 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
       return null;
     }
   });
+  const [geminiCurrentId, setGeminiCurrentId] = React.useState<string | null>(() => {
+    try {
+      return localStorage.getItem(GEMINI_CURRENT_ACCOUNT_ID_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [cardRefreshing, setCardRefreshing] = React.useState<{
     ag: boolean;
     codex: boolean;
@@ -262,6 +288,7 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     windsurf: boolean;
     kiro: boolean;
     cursor: boolean;
+    gemini: boolean;
   }>({
     ag: false,
     codex: false,
@@ -269,6 +296,7 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     windsurf: false,
     kiro: false,
     cursor: false,
+    gemini: false,
   });
 
   // Refresh Handlers
@@ -357,6 +385,22 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     setRefreshing((prev) => new Set(prev).add(accountId));
     try {
       await useCursorAccountStore.getState().refreshToken(accountId);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setRefreshing((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const handleRefreshGemini = async (accountId: string) => {
+    if (refreshing.has(accountId)) return;
+    setRefreshing((prev) => new Set(prev).add(accountId));
+    try {
+      await useGeminiAccountStore.getState().refreshToken(accountId);
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {
@@ -458,6 +502,21 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     }
   };
 
+  const handleRefreshGeminiCard = async () => {
+    if (cardRefreshing.gemini) return;
+    setCardRefreshing((prev) => ({ ...prev, gemini: true }));
+    const idsToRefresh = [geminiCurrent?.id, geminiRecommended?.id].filter(Boolean) as string[];
+    try {
+      for (const id of idsToRefresh) {
+        await useGeminiAccountStore.getState().refreshToken(id);
+      }
+    } catch (error) {
+      console.error('Card refresh failed:', error);
+    } finally {
+      setCardRefreshing((prev) => ({ ...prev, gemini: false }));
+    }
+  };
+
   const handleSwitchGitHubCopilot = async (accountId: string) => {
     if (switching.has(accountId)) return;
     setSwitching((prev) => new Set(prev).add(accountId));
@@ -519,6 +578,24 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
       await switchCursorAccount(accountId);
       setCursorCurrentId(accountId);
       localStorage.setItem(CURSOR_CURRENT_ACCOUNT_ID_KEY, accountId);
+    } catch (error) {
+      console.error('Switch failed:', error);
+    } finally {
+      setSwitching((prev) => {
+        const next = new Set(prev);
+        next.delete(accountId);
+        return next;
+      });
+    }
+  };
+
+  const handleSwitchGemini = async (accountId: string) => {
+    if (switching.has(accountId)) return;
+    setSwitching((prev) => new Set(prev).add(accountId));
+    try {
+      await switchGeminiAccount(accountId);
+      setGeminiCurrentId(accountId);
+      localStorage.setItem(GEMINI_CURRENT_ACCOUNT_ID_KEY, accountId);
     } catch (error) {
       console.error('Switch failed:', error);
     } finally {
@@ -629,6 +706,19 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     });
   }, [cursorAccounts, cursorCurrentId]);
 
+  const geminiCurrent = useMemo(() => {
+    if (geminiAccounts.length === 0) return null;
+    if (geminiCurrentId) {
+      const current = geminiAccounts.find((account) => account.id === geminiCurrentId);
+      if (current) return current;
+    }
+    return geminiAccounts.reduce((prev, curr) => {
+      const prevScore = prev.last_used || prev.created_at || 0;
+      const currScore = curr.last_used || curr.created_at || 0;
+      return currScore > prevScore ? curr : prev;
+    });
+  }, [geminiAccounts, geminiCurrentId]);
+
   React.useEffect(() => {
     if (!cursorCurrentId) return;
     const exists = cursorAccounts.some((account) => account.id === cursorCurrentId);
@@ -636,6 +726,14 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     setCursorCurrentId(null);
     localStorage.removeItem(CURSOR_CURRENT_ACCOUNT_ID_KEY);
   }, [cursorAccounts, cursorCurrentId]);
+
+  React.useEffect(() => {
+    if (!geminiCurrentId) return;
+    const exists = geminiAccounts.some((account) => account.id === geminiCurrentId);
+    if (exists) return;
+    setGeminiCurrentId(null);
+    localStorage.removeItem(GEMINI_CURRENT_ACCOUNT_ID_KEY);
+  }, [geminiAccounts, geminiCurrentId]);
 
   React.useEffect(() => {
     if (!githubCopilotCurrentId) return;
@@ -803,6 +901,38 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
       return candidateScore.freshness > bestScore.freshness ? candidate : best;
     });
   }, [cursorAccounts, cursorCurrent?.id]);
+
+  const geminiRecommended = useMemo(() => {
+    if (geminiAccounts.length <= 1) return null;
+    const currentId = geminiCurrent?.id;
+    const others = geminiAccounts.filter((a) => a.id !== currentId);
+    if (others.length === 0) return null;
+
+    const getScore = (account: GeminiAccount) => {
+      const tiers = getGeminiTierQuotaSummary(account);
+      const remainingValues = [tiers.pro.remainingPercent, tiers.flash.remainingPercent].filter(
+        (value): value is number => typeof value === 'number' && Number.isFinite(value),
+      );
+      const totalUsed = remainingValues.length > 0
+        ? 100 - Math.min(...remainingValues)
+        : null;
+      return {
+        remainingPercent: totalUsed == null ? -1 : 100 - totalUsed,
+        freshness: account.last_used || account.created_at || 0,
+      };
+    };
+
+    return others.reduce((best, candidate) => {
+      const bestScore = getScore(best);
+      const candidateScore = getScore(candidate);
+      if (candidateScore.remainingPercent !== bestScore.remainingPercent) {
+        return candidateScore.remainingPercent > bestScore.remainingPercent
+          ? candidate
+          : best;
+      }
+      return candidateScore.freshness > bestScore.freshness ? candidate : best;
+    });
+  }, [geminiAccounts, geminiCurrent?.id]);
 
   // Render Helpers
   const renderAgAccountContent = (account: Account | null) => {
@@ -1291,6 +1421,141 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     );
   };
 
+  const renderGeminiAccountContent = (account: GeminiAccount | null) => {
+    if (!account) return <div className="empty-slot">{t('dashboard.noAccount', '无账号')}</div>;
+
+    const tierSummary = getGeminiTierQuotaSummary(account);
+    const planLabel = getGeminiPlanDisplayName(account);
+    const planClass = getGeminiPlanBadgeClass(undefined, account);
+    const isRefreshing = refreshing.has(account.id);
+    const isSwitching = switching.has(account.id);
+
+    const formatRelativeDuration = (seconds: number) => {
+      const safe = Math.max(0, Math.floor(seconds));
+      const totalMinutes = Math.floor(safe / 60);
+      if (totalMinutes < 1) {
+        return t('common.shared.time.lessThanMinute', '<1分钟');
+      }
+      const days = Math.floor(totalMinutes / (60 * 24));
+      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+      const minutes = totalMinutes % 60;
+      if (days > 0 && hours > 0) {
+        return t('common.shared.time.relativeDaysHours', '{{days}}天{{hours}}小时', { days, hours });
+      }
+      if (days > 0) {
+        return t('common.shared.time.relativeDays', '{{days}}天', { days });
+      }
+      if (hours > 0 && minutes > 0) {
+        return t('common.shared.time.relativeHoursMinutes', '{{hours}}小时{{minutes}}分钟', { hours, minutes });
+      }
+      if (hours > 0) {
+        return t('common.shared.time.relativeHours', '{{hours}}小时', { hours });
+      }
+      return t('common.shared.time.relativeMinutes', '{{minutes}}分钟', { minutes });
+    };
+
+    const updatedAt = account.last_used || account.created_at || 0;
+    const updatedDiffSeconds = Math.floor(Date.now() / 1000) - updatedAt;
+    const updatedText = t('gemini.updated.label', 'Updated {{relative}} ago', {
+      relative: formatRelativeDuration(updatedDiffSeconds),
+    });
+
+    const buildTierMetric = (
+      key: 'pro' | 'flash',
+      remainingPercent: number | null,
+      resetAt: number | null,
+    ) => {
+      const hasRemaining = typeof remainingPercent === 'number' && Number.isFinite(remainingPercent);
+      const safeRemaining = hasRemaining ? Math.max(0, Math.min(100, Math.round(remainingPercent))) : 0;
+      const usedPercent = 100 - safeRemaining;
+      const quotaClass = usedPercent >= 90 ? 'low' : usedPercent >= 70 ? 'medium' : 'high';
+      const leftText = hasRemaining
+        ? t('gemini.quota.left', '{{value}}% left', { value: safeRemaining })
+        : '--';
+      const resetText =
+        typeof resetAt === 'number' && Number.isFinite(resetAt)
+          ? (() => {
+              const diffSeconds = Math.floor(resetAt - Date.now() / 1000);
+              if (diffSeconds <= 0) {
+                return t('gemini.quota.resetsSoon', 'Resets soon');
+              }
+              return t('gemini.quota.resetsIn', 'Resets in {{relative}}', {
+                relative: formatRelativeDuration(diffSeconds),
+              });
+            })()
+          : t('gemini.quota.resetsUnknown', 'Reset time unknown');
+
+      return {
+        key,
+        label: t(`gemini.quota.${key}`, key === 'pro' ? 'Pro' : 'Flash'),
+        percentage: safeRemaining,
+        quotaClass,
+        leftText,
+        resetText,
+      };
+    };
+
+    const tierMetrics = [
+      buildTierMetric('pro', tierSummary.pro.remainingPercent, tierSummary.pro.resetAt),
+      buildTierMetric('flash', tierSummary.flash.remainingPercent, tierSummary.flash.resetAt),
+    ];
+
+    return (
+      <div className="account-mini-card gemini-mini-card">
+        <div className="account-mini-header">
+          <div className="account-info-row">
+            <span className="account-email" title={maskAccountText(account.email || account.id)}>
+              {maskAccountText(account.email || account.id)}
+            </span>
+            {planLabel && planLabel !== 'UNKNOWN' && (
+              <span className={`tier-tag ${planClass} raw-value`}>{planLabel}</span>
+            )}
+          </div>
+        </div>
+        <div className="account-mini-subline">{updatedText}</div>
+
+        <div className="account-mini-quotas">
+          {tierMetrics.map((metric) => (
+            <div className="mini-quota-row-stacked" key={metric.key}>
+              <div className="mini-quota-header">
+                <span className="model-name">{metric.label}</span>
+              </div>
+              <div className="mini-progress-track">
+                <div
+                  className={`mini-progress-bar ${metric.quotaClass || ''}`}
+                  style={{ width: `${metric.percentage ?? 0}%` }}
+                />
+              </div>
+              <div className="mini-quota-meta-row">
+                <span className={`mini-left-text ${metric.quotaClass}`}>{metric.leftText}</span>
+                <span className="mini-reset-time-inline">{metric.resetText}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="account-mini-actions icon-only-row">
+          <button
+            className="mini-icon-btn"
+            onClick={() => handleRefreshGemini(account.id)}
+            title={t('common.refresh', '刷新')}
+            disabled={isRefreshing || isSwitching}
+          >
+            <RotateCw size={14} className={isRefreshing ? 'loading-spinner' : ''} />
+          </button>
+          <button
+            className="mini-icon-btn"
+            onClick={() => handleSwitchGemini(account.id)}
+            title={t('dashboard.switch', '切换')}
+            disabled={isSwitching}
+          >
+            {isSwitching ? <RotateCw size={14} className="loading-spinner" /> : <Play size={14} />}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const platformCounts: Record<PlatformId, number> = {
     antigravity: stats.antigravity,
     codex: stats.codex,
@@ -1298,6 +1563,7 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
     windsurf: stats.windsurf,
     kiro: stats.kiro,
     cursor: stats.cursor,
+    gemini: stats.gemini,
   };
 
   const visibleCardPlatformIds = visiblePlatformOrder;
@@ -1575,6 +1841,50 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
       );
     }
 
+    if (platformId === 'gemini') {
+      return (
+        <div className="main-card windsurf-card" key={platformId}>
+          <div className="main-card-header">
+            <div className="header-title">
+              <GeminiIcon style={{ width: 18, height: 18 }} />
+              <h3>{t('nav.gemini', 'Gemini')}</h3>
+            </div>
+            <button
+              className="header-action-btn"
+              onClick={handleRefreshGeminiCard}
+              disabled={cardRefreshing.gemini}
+              title={t('common.refresh', '刷新')}
+            >
+              <RotateCw size={14} className={cardRefreshing.gemini ? 'loading-spinner' : ''} />
+              <span>{t('common.refresh', '刷新')}</span>
+            </button>
+          </div>
+
+          <div className="split-content">
+            <div className="split-half current-half">
+              <span className="half-label"><CheckCircle2 size={12} /> {t('dashboard.current', '当前账户')}</span>
+              {renderGeminiAccountContent(geminiCurrent)}
+            </div>
+
+            <div className="split-divider"></div>
+
+            <div className="split-half recommend-half">
+              <span className="half-label"><Sparkles size={12} /> {t('dashboard.recommended', '推荐账号')}</span>
+              {geminiRecommended ? (
+                renderGeminiAccountContent(geminiRecommended)
+              ) : (
+                <div className="empty-slot-text">{t('dashboard.noRecommendation', '暂无更好推荐')}</div>
+              )}
+            </div>
+          </div>
+
+          <button className="card-footer-action" onClick={() => onNavigate('gemini')}>
+            {t('dashboard.viewAllAccounts', '查看所有账号')}
+          </button>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -1621,6 +1931,8 @@ export function DashboardPage({ onNavigate, onOpenPlatformLayout, onEasterEggTri
               : platformId === 'kiro'
                 ? 'github'
               : platformId === 'cursor'
+                ? 'info'
+              : platformId === 'gemini'
                 ? 'info'
               : 'windsurf';
           return (

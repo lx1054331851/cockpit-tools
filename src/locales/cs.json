@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "Potvrdit",
     "cancel": "Zrušit",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "Aktualizovat",
       "restart": "Restartovat"
-    }
+    },
+    "gemini": "Účty Gemini"
   },
   "platformLayout": {
     "title": "Rozložení platforem",
@@ -455,7 +456,10 @@
       "autoUpdate": "Automatické aktualizace na pozadí",
       "autoUpdateDesc": "Při zjištění nové verze proběhne tichá aktualizace na pozadí a po dokončení budete vyzváni k restartu.",
       "autoUpdateOff": "Vypnuto (ruční aktualizace)",
-      "autoUpdateOn": "Zapnuto (tichá aktualizace)"
+      "autoUpdateOn": "Zapnuto (tichá aktualizace)",
+      "opencodeAuthOverwrite": "Při přepnutí Codexu přepsat přihlášení OpenCode",
+      "opencodeAuthOverwriteDesc": "Pokud je vypnuto, přepne se pouze Codex a OpenCode zůstane v aktuálním přihlášení",
+      "opencodeRestartRequiresOverwrite": "Nejprve zapněte „Při přepnutí Codexu přepsat přihlášení OpenCode“"
     },
     "network": {
       "apiTitle": "Antigravity Cockpit API",
@@ -628,9 +632,9 @@
       "importSuccess": "Importováno {{count}} účtů",
       "importPartial": "Importováno {{success}} účtů, {{fail}} neúspěšných",
       "importFailed": "Import selhal, zkontrolujte refresh_token",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} selhalo: {{failList}}",
+      "refreshingQuota": "Obnovuji kvótu {{done}}/{{total}} (toto okno můžete zavřít)",
+      "quotaRefreshDone": "Obnovení kvóty dokončeno"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "Otisk:",
       "generateFailed": "Vytvoření se nezdařilo",
       "importFailed": "Import se nezdařil",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} selhalo: {{failList}}",
+      "refreshingQuota": "Obnovuji kvótu {{done}}/{{total}} (toto okno můžete zavřít)",
+      "quotaRefreshDone": "Obnovení kvóty dokončeno",
       "importing": "Probíhá import...",
       "loadFailed": "Nepodařilo se načíst seznam otisků",
       "processing": "Zpracování...",
@@ -815,9 +819,9 @@
     "importSuccess": "Úspěšně importováno {{count}} účtů",
     "importLocalSuccess": "Úspěšně importován účet: {{email}}",
     "importFailed": "Import selhal: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} selhalo: {{failList}}",
+    "refreshingQuota": "Obnovuji kvótu {{done}}/{{total}} (toto okno můžete zavřít)",
+    "quotaRefreshDone": "Obnovení kvóty dokončeno",
     "exportFailed": "Export selhal: {{error}}",
     "bindFailed": "Vázání selhalo: {{error}}",
     "jsonRequired": "Zadejte nebo vložte obsah JSON",
@@ -1334,7 +1338,12 @@
       "title": "Nastavení Cursor",
       "appPath": "Cesta k Cursor"
     },
-    "cursorRefreshInterval": "Automatická obnova kvóty"
+    "cursorRefreshInterval": "Automatická obnova kvóty",
+    "gemini": {
+      "title": "Nastavení Gemini",
+      "appPath": "Cesta k Gemini"
+    },
+    "geminiRefreshInterval": "Automatická obnova kvóty"
   },
   "quotaAlert": {
     "bannerText": "Upozornění na kvótu pro {{email}} (práh {{threshold}} %, minimum {{lowest}} %, modely: {{models}})",
@@ -1835,6 +1844,58 @@
       },
       "summary": "Tato sekce vysvětluje, jak používat Wakeup úlohy a ověření v běžném workflow.",
       "title": "Wakeup úlohy a ověření"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "Přepnout na Gemini",
+    "updated": {
+      "label": "Aktualizováno před {{relative}}"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "{{value}} % zbývá",
+      "resetsIn": "Obnoví se za {{relative}}",
+      "resetsSoon": "Brzy se obnoví",
+      "resetsUnknown": "Čas obnovení není znám",
+      "onDemand": "Na vyžádání"
+    },
+    "title": "Správa účtů Gemini",
+    "instances": {
+      "unsupported": "Správa více instancí Gemini zatím není podporována.",
+      "unsupportedDescPlatform": "Více instancí Gemini je podporováno pouze na macOS, Windows a Linuxu.",
+      "launchDialogTitle": "Spustit instanci",
+      "launchHint": "Zkopírujte příkaz a spusťte jej ručně, nebo jej spusťte přímo v terminálu.",
+      "runInTerminal": "Spustit v terminálu"
+    },
+    "switch": {
+      "success": "Účet byl úspěšně přepnut"
+    },
+    "empty": {
+      "description": "Klikněte na „Přidat účet“ a začněte spravovat své účty Gemini"
+    },
+    "addModal": {
+      "title": "Přidat účet Gemini"
+    },
+    "oauth": {
+      "desc": "Klikněte na tlačítko níže a dokončete autorizaci Gemini v prohlížeči."
+    },
+    "token": {
+      "desc": "Vložte svůj přístupový token Gemini (JWT) nebo exportovaná JSON data.",
+      "formatHint": "Povinná pole a příklady (klikněte pro rozbalení)",
+      "formatRequired": "Jeden token: vložte JWT přímo; hromadný import: použijte formát JSON pole",
+      "singleExample": "Příklad jednoho tokenu (JWT)",
+      "batchExample": "Příklad hromadného importu (JSON)"
+    },
+    "import": {
+      "localDesc": "Importujte data účtu z místního klienta Gemini nebo souboru JSON.",
+      "localClient": "Import z místního Gemini"
+    },
+    "flowNotice": {
+      "title": "Průvodce účtem Gemini (klikněte pro rozbalení/sbalení)",
+      "desc": "Spravujte účty Gemini importem z místní instalace Gemini nebo vložením tokenů JWT. Data jsou zpracovávána pouze lokálně.",
+      "reason": "Rozsah oprávnění: čtení a zápis oauth_creds.json, google_accounts.json a settings.json v výchozím ~/.gemini nebo v cestě instance (GEMINI_CLI_HOME/.gemini) pro import účtů a lokální injekci přihlašovacích údajů (přepnutí účtu).",
+      "storage": "Síťový rozsah: OAuth a obnovení kvóty volají oficiální API Google/Gemini (např. oauth2.googleapis.com a googleapis.com). Odesílají se jen nutná pole pro autentizaci/kvótu; lokální soubory se na servery třetích stran nenahrávají."
     }
   }
 }

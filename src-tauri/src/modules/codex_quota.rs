@@ -260,7 +260,9 @@ fn sync_plan_type_from_token(account: &mut CodexAccount, plan_type: Option<Strin
             ));
             account.plan_type = plan_type;
             // 同步更新索引中的 plan_type
-            if let Err(e) = codex_account::update_account_plan_type_in_index(&account.id, &account.plan_type) {
+            if let Err(e) =
+                codex_account::update_account_plan_type_in_index(&account.id, &account.plan_type)
+            {
                 logger::log_warn(&format!("更新索引 plan_type 失败: {}", e));
             }
         }

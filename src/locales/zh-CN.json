@@ -153,6 +153,7 @@
     "codex": "Codex 账号",
     "githubCopilot": "GitHub Copilot",
     "windsurf": "Windsurf",
+    "gemini": "Gemini",
     "dashboard": "仪表盘",
     "morePlatforms": "更多平台",
     "instances": "多开实例",
@@ -406,8 +407,11 @@
       "fpDir": "Antigravity存储目录",
       "fpDirDesc": "Antigravity数据文件的存储位置。",
       "opencodeTitle": "OpenCode 联动",
+      "opencodeAuthOverwrite": "切换 Codex 时覆盖 OpenCode 登录信息",
+      "opencodeAuthOverwriteDesc": "关闭后仅切换 Codex，不会改写 OpenCode 当前登录态",
       "opencodeRestart": "切换 Codex 时自动重启 OpenCode",
-      "opencodeRestartDesc": "同步切换OpenCode里codex账户信息",
+      "opencodeRestartDesc": "覆盖 OpenCode 登录信息后自动重启 OpenCode，使登录态立即生效",
+      "opencodeRestartRequiresOverwrite": "需先开启“切换 Codex 时覆盖 OpenCode 登录信息”",
       "opencodeAppPath": "OpenCode 启动路径",
       "opencodeAppPathDesc": "留空则使用默认路径",
       "opencodeAppPathPlaceholder": "默认路径",
@@ -627,7 +631,10 @@
       "importProgress": "导入中 {{current}}/{{total}}...",
       "importSuccess": "导入成功 {{count}} 个账号",
       "importPartial": "导入成功 {{success}} 个，失败 {{fail}} 个",
-      "importFailed": "导入失败，请检查 refresh_token"
+      "importFailed": "导入失败，请检查 refresh_token",
+      "importPartialFailed": "{{failCount}} 个失败: {{failList}}",
+      "refreshingQuota": "刷新配额中 {{done}}/{{total}}（可关闭此弹窗，后台继续刷新）",
+      "quotaRefreshDone": "配额刷新完成"
     }
   },
   "overview": {
@@ -734,7 +741,10 @@
       "loadFailed": "加载指纹列表失败",
       "processing": "处理中...",
       "renameFailed": "重命名失败",
-      "serviceMachineIdEmpty": "空"
+      "serviceMachineIdEmpty": "空",
+      "importPartialFailed": "{{failCount}} 个失败: {{failList}}",
+      "refreshingQuota": "刷新配额中 {{done}}/{{total}}（可关闭此弹窗，后台继续刷新）",
+      "quotaRefreshDone": "配额刷新完成"
     }
   },
   "modals": {
@@ -1328,7 +1338,12 @@
       "title": "Cursor 设置",
       "appPath": "Cursor 路径"
     },
-    "cursorRefreshInterval": "配额自动刷新"
+    "cursorRefreshInterval": "配额自动刷新",
+    "gemini": {
+      "title": "Gemini 设置",
+      "appPath": "Gemini CLI 路径"
+    },
+    "geminiRefreshInterval": "配额自动刷新"
   },
   "quotaAlert": {
     "bannerText": "账号 {{email}} 触发配额预警（阈值 {{threshold}}%，最低 {{lowest}}%，模型：{{models}}）",
@@ -1508,6 +1523,58 @@
       "desc": "支持从本地 Cursor 安装导入、粘贴 JWT 令牌或 OAuth 授权登录来管理 Cursor 账号。",
       "reason": "权限范围：读取并写入 Cursor 本地认证存储（state.vscdb），用于账号导入与令牌注入（切号）。",
       "storage": "网络请求范围：刷新配额时携带 JWT 向 cursor.com 官方接口请求使用量、用户信息及订阅信息；不向任何第三方服务器上传数据。"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "切换到 Gemini",
+    "updated": {
+      "label": "更新于 {{relative}}前"
+    },
+    "quota": {
+      "pro": "Pro",
+      "flash": "Flash",
+      "left": "{{value}}% 剩余",
+      "resetsIn": "{{relative}} 后重置",
+      "resetsSoon": "即将重置",
+      "resetsUnknown": "重置时间未知",
+      "onDemand": "按需使用"
+    },
+    "title": "Gemini 账号管理",
+    "instances": {
+      "unsupported": "Gemini 暂不支持多开实例管理。",
+      "unsupportedDescPlatform": "Gemini 多开实例仅支持 macOS、Windows 和 Linux。",
+      "launchDialogTitle": "启动实例",
+      "launchHint": "可复制命令手动执行，或点击下方按钮直接在终端执行。",
+      "runInTerminal": "终端执行"
+    },
+    "switch": {
+      "success": "切号成功"
+    },
+    "empty": {
+      "description": "点击\"添加账号\"开始管理您的 Gemini 账号"
+    },
+    "addModal": {
+      "title": "添加 Gemini 账号"
+    },
+    "oauth": {
+      "desc": "点击下方按钮，在浏览器中完成 Gemini OAuth 授权登录。"
+    },
+    "token": {
+      "desc": "粘贴您的 Gemini Access Token（JWT）或导出的 JSON 数据。",
+      "formatHint": "必填字段与示例（点击展开）",
+      "formatRequired": "单条 Token 直接粘贴 JWT；批量导入使用 JSON 数组格式",
+      "singleExample": "单条示例（JWT）",
+      "batchExample": "批量示例（JSON）"
+    },
+    "import": {
+      "localDesc": "支持从本机 Gemini 配置目录（~/.gemini）或 JSON 文件导入账号数据。",
+      "localClient": "从本机 Gemini 导入"
+    },
+    "flowNotice": {
+      "title": "Gemini 账号管理说明（点击展开/收起）",
+      "desc": "支持从本机 Gemini 配置目录导入、粘贴 JWT 令牌或 OAuth 授权登录来管理 Gemini 账号。",
+      "reason": "权限范围：读取并写入默认 ~/.gemini 或实例目录（GEMINI_CLI_HOME/.gemini）下的 oauth_creds.json、google_accounts.json、settings.json，用于账号导入与本地凭证注入（切号）。",
+      "storage": "网络请求范围：OAuth 与刷新会调用 Google/Gemini 官方接口（如 oauth2.googleapis.com、googleapis.com）；仅发送认证与配额所需字段，不向第三方服务器上传账号文件。"
     }
   },
   "breakout": {

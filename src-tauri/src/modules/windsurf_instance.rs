@@ -1083,11 +1083,16 @@ fn collect_running_process_exe_by_pid() -> HashMap<u32, String> {
     #[cfg(target_os = "macos")]
     {
         // Use ps to avoid sysinfo TCC dialogs on macOS
-        if let Ok(output) = Command::new("ps").args(["-axww", "-o", "pid=,command="]).output() {
+        if let Ok(output) = Command::new("ps")
+            .args(["-axww", "-o", "pid=,command="])
+            .output()
+        {
             let stdout = String::from_utf8_lossy(&output.stdout);
             for line in stdout.lines() {
                 let line = line.trim();
-                if line.is_empty() { continue; }
+                if line.is_empty() {
+                    continue;
+                }
                 let mut parts = line.splitn(2, |ch: char| ch.is_whitespace());
                 let pid_str = parts.next().unwrap_or("").trim();
                 let cmdline = parts.next().unwrap_or("").trim();

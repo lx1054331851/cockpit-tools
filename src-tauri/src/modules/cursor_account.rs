@@ -151,9 +151,7 @@ fn load_account_index() -> CursorAccountIndex {
     }
 
     match fs::read_to_string(path) {
-        Ok(content) => {
-            serde_json::from_str(&content).unwrap_or_else(|_| CursorAccountIndex::new())
-        }
+        Ok(content) => serde_json::from_str(&content).unwrap_or_else(|_| CursorAccountIndex::new()),
         Err(_) => CursorAccountIndex::new(),
     }
 }
@@ -262,9 +260,7 @@ fn resolve_account_auth_id(account: &CursorAccount) -> Option<String> {
         .or_else(|| extract_auth_id_from_access_token(account.access_token.as_str()))
 }
 
-fn cursor_auth_raw_object_mut(
-    account: &mut CursorAccount,
-) -> &mut serde_json::Map<String, Value> {
+fn cursor_auth_raw_object_mut(account: &mut CursorAccount) -> &mut serde_json::Map<String, Value> {
     if !matches!(account.cursor_auth_raw, Some(Value::Object(_))) {
         account.cursor_auth_raw = Some(Value::Object(serde_json::Map::new()));
     }
@@ -275,28 +271,18 @@ fn cursor_auth_raw_object_mut(
     }
 }
 
-fn upsert_cursor_auth_raw_string(
-    account: &mut CursorAccount,
-    key: &str,
-    value: Option<String>,
-) {
+fn upsert_cursor_auth_raw_string(account: &mut CursorAccount, key: &str, value: Option<String>) {
     let Some(text) = normalize_non_empty(value.as_deref()) else {
         return;
     };
-    cursor_auth_raw_object_mut(account)
-        .insert(key.to_string(), Value::String(text));
+    cursor_auth_raw_object_mut(account).insert(key.to_string(), Value::String(text));
 }
 
-fn upsert_cursor_auth_raw_bool(
-    account: &mut CursorAccount,
-    key: &str,
-    value: Option<bool>,
-) {
+fn upsert_cursor_auth_raw_bool(account: &mut CursorAccount, key: &str, value: Option<bool>) {
     let Some(flag) = value else {
         return;
     };
-    cursor_auth_raw_object_mut(account)
-        .insert(key.to_string(), Value::Bool(flag));
+    cursor_auth_raw_object_mut(account).insert(key.to_string(), Value::Bool(flag));
 }
 
 fn normalize_cursor_sign_up_type(value: Option<&str>) -> Option<String> {
@@ -623,8 +609,7 @@ pub fn upsert_account(payload: CursorImportPayload) -> Result<CursorAccount, Str
             }
 
             let existing_email = normalize_email_identity(Some(account.email.as_str()));
-            let existing_token =
-                normalize_token_identity(Some(account.access_token.as_str()));
+            let existing_token = normalize_token_identity(Some(account.access_token.as_str()));
             if let (Some(ex), Some(inc)) = (existing_email.as_ref(), incoming_email.as_ref()) {
                 if ex == inc {
                     return true;
@@ -748,7 +733,12 @@ fn payload_from_import_value(raw: Value) -> Result<CursorImportPayload, String> 
         .ok_or_else(|| "缺少 email 字段".to_string())?;
     let access_token = extract_string(
         obj,
-        &["access_token", "accessToken", "token", "cursor_access_token"],
+        &[
+            "access_token",
+            "accessToken",
+            "token",
+            "cursor_access_token",
+        ],
     )
     .ok_or_else(|| "缺少 access_token 字段".to_string())?;
 
@@ -774,10 +764,7 @@ fn payload_from_import_value(raw: Value) -> Result<CursorImportPayload, String> 
             "stripeSubscriptionStatus",
         ],
     );
-    let sign_up_type = extract_string(
-        obj,
-        &["sign_up_type", "signUpType", "cachedSignUpType"],
-    );
+    let sign_up_type = extract_string(obj, &["sign_up_type", "signUpType", "cachedSignUpType"]);
     let status = extract_string(obj, &["status"]);
     let status_reason = extract_string(obj, &["status_reason", "statusReason"]);
 
@@ -921,11 +908,9 @@ pub fn get_default_cursor_state_db_path() -> Result<PathBuf, String> {
 }
 
 fn read_vscdb_item(conn: &Connection, key: &str) -> Option<String> {
-    conn.query_row(
-        "SELECT value FROM ItemTable WHERE key = ?1",
-        [key],
-        |row| row.get::<_, String>(0),
-    )
+    conn.query_row("SELECT value FROM ItemTable WHERE key = ?1", [key], |row| {
+        row.get::<_, String>(0)
+    })
     .optional()
     .ok()
     .flatten()
@@ -953,8 +938,7 @@ pub fn read_local_cursor_auth() -> Result<Option<CursorImportPayload>, String> {
         None => return Ok(None),
     };
 
-    let email = read_vscdb_item(&conn, "cursorAuth/cachedEmail")
-        .unwrap_or_default();
+    let email = read_vscdb_item(&conn, "cursorAuth/cachedEmail").unwrap_or_default();
     if email.is_empty() {
         return Ok(None);
     }
@@ -991,10 +975,7 @@ pub fn read_local_cursor_auth() -> Result<Option<CursorImportPayload>, String> {
         );
     }
     if let Some(ref st) = sign_up_type {
-        auth_raw.insert(
-            "cachedSignUpType".to_string(),
-            Value::String(st.clone()),
-        );
+        auth_raw.insert("cachedSignUpType".to_string(), Value::String(st.clone()));
     }
 
     Ok(Some(CursorImportPayload {
@@ -1040,18 +1021,15 @@ fn upsert_vscdb_item(conn: &Connection, key: &str, value: &str) -> Result<(), St
 }
 
 pub fn inject_to_cursor(account_id: &str) -> Result<(), String> {
-    let account = load_account(account_id)
-        .ok_or_else(|| format!("Cursor 账号不存在: {}", account_id))?;
+    let account =
+        load_account(account_id).ok_or_else(|| format!("Cursor 账号不存在: {}", account_id))?;
     let db_path = get_default_cursor_state_db_path()?;
     if !db_path.exists() {
-        return Err(format!(
-            "Cursor state.vscdb 不存在: {}",
-            db_path.display()
-        ));
+        return Err(format!("Cursor state.vscdb 不存在: {}", db_path.display()));
     }
 
-    let conn = Connection::open(&db_path)
-        .map_err(|e| format!("打开 Cursor 本地数据库失败: {}", e))?;
+    let conn =
+        Connection::open(&db_path).map_err(|e| format!("打开 Cursor 本地数据库失败: {}", e))?;
 
     upsert_vscdb_item(&conn, "cursorAuth/accessToken", &account.access_token)?;
     if let Some(ref rt) = account.refresh_token {
@@ -1076,17 +1054,14 @@ pub fn inject_to_cursor(account_id: &str) -> Result<(), String> {
 }
 
 pub fn inject_to_cursor_at_path(db_path: &std::path::Path, account_id: &str) -> Result<(), String> {
-    let account = load_account(account_id)
-        .ok_or_else(|| format!("Cursor 账号不存在: {}", account_id))?;
+    let account =
+        load_account(account_id).ok_or_else(|| format!("Cursor 账号不存在: {}", account_id))?;
     if !db_path.exists() {
-        return Err(format!(
-            "Cursor state.vscdb 不存在: {}",
-            db_path.display()
-        ));
+        return Err(format!("Cursor state.vscdb 不存在: {}", db_path.display()));
     }
 
-    let conn = Connection::open(db_path)
-        .map_err(|e| format!("打开 Cursor 本地数据库失败: {}", e))?;
+    let conn =
+        Connection::open(db_path).map_err(|e| format!("打开 Cursor 本地数据库失败: {}", e))?;
 
     upsert_vscdb_item(&conn, "cursorAuth/accessToken", &account.access_token)?;
     if let Some(ref rt) = account.refresh_token {
@@ -1105,7 +1080,9 @@ pub fn inject_to_cursor_at_path(db_path: &std::path::Path, account_id: &str) -> 
 
     logger::log_info(&format!(
         "[Cursor Account] 注入成功(自定义路径): id={}, email={}, path={}",
-        account.id, account.email, db_path.display()
+        account.id,
+        account.email,
+        db_path.display()
     ));
     Ok(())
 }
@@ -1115,12 +1092,9 @@ pub fn inject_to_cursor_at_path(db_path: &std::path::Path, account_id: &str) -> 
 // ---------------------------------------------------------------------------
 
 const CURSOR_USAGE_SUMMARY_URL: &str = "https://cursor.com/api/usage-summary";
-const CURSOR_GET_USER_META_URL: &str =
-    "https://api2.cursor.sh/aiserver.v1.AuthService/GetUserMeta";
-const CURSOR_FULL_STRIPE_PROFILE_URL: &str =
-    "https://api2.cursor.sh/auth/full_stripe_profile";
-const CURSOR_STRIPE_PROFILE_URL: &str =
-    "https://api2.cursor.sh/auth/stripe_profile";
+const CURSOR_GET_USER_META_URL: &str = "https://api2.cursor.sh/aiserver.v1.AuthService/GetUserMeta";
+const CURSOR_FULL_STRIPE_PROFILE_URL: &str = "https://api2.cursor.sh/auth/full_stripe_profile";
+const CURSOR_STRIPE_PROFILE_URL: &str = "https://api2.cursor.sh/auth/stripe_profile";
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1180,13 +1154,9 @@ fn build_session_cookie(access_token: &str) -> Option<String> {
     ))
 }
 
-fn resolve_membership_from_stripe_profile(
-    profile: &CursorStripeProfileResponse,
-) -> Option<String> {
+fn resolve_membership_from_stripe_profile(profile: &CursorStripeProfileResponse) -> Option<String> {
     let membership = normalize_non_empty(profile.membership_type.as_deref());
-    let individual = normalize_non_empty(
-        profile.individual_membership_type.as_deref(),
-    );
+    let individual = normalize_non_empty(profile.individual_membership_type.as_deref());
 
     if let Some(individual_value) = individual.as_ref() {
         if !individual_value.eq_ignore_ascii_case("free")
@@ -1221,10 +1191,7 @@ async fn fetch_user_meta_with_client(
         return Err("Cursor 会话已过期或未认证，请重新导入账号".to_string());
     }
     if status != 200 {
-        return Err(format!(
-            "Cursor user meta API 返回异常状态码: {}",
-            status
-        ));
+        return Err(format!("Cursor user meta API 返回异常状态码: {}", status));
     }
 
     let body = response
@@ -1258,9 +1225,7 @@ async fn fetch_stripe_profile_with_client(
             .await
             .map_err(|e| format!("读取 Cursor full stripe profile 响应失败: {}", e))?;
         let profile = serde_json::from_str::<CursorStripeProfileResponse>(&body)
-            .map_err(|e| {
-                format!("解析 Cursor full stripe profile JSON 失败: {}", e)
-            })?;
+            .map_err(|e| format!("解析 Cursor full stripe profile JSON 失败: {}", e))?;
         return Ok(Some(profile));
     }
 
@@ -1289,11 +1254,9 @@ async fn fetch_stripe_profile_with_client(
         .map_err(|e| format!("解析 Cursor stripe profile JSON 失败: {}", e))?;
 
     match parsed {
-        Value::Object(_) => serde_json::from_value::<CursorStripeProfileResponse>(
-            parsed,
-        )
-        .map(Some)
-        .map_err(|e| format!("解析 Cursor stripe profile 对象失败: {}", e)),
+        Value::Object(_) => serde_json::from_value::<CursorStripeProfileResponse>(parsed)
+            .map(Some)
+            .map_err(|e| format!("解析 Cursor stripe profile 对象失败: {}", e)),
         Value::String(text) => {
             if text.trim().is_empty() {
                 Ok(None)
@@ -1348,9 +1311,7 @@ async fn fetch_usage_summary_with_client(
         .map_err(|e| format!("解析 Cursor usage JSON 失败: {}", e))
 }
 
-pub async fn fetch_usage_summary(
-    access_token: &str,
-) -> Result<serde_json::Value, String> {
+pub async fn fetch_usage_summary(access_token: &str) -> Result<serde_json::Value, String> {
     let client = build_cursor_http_client()?;
     fetch_usage_summary_with_client(&client, access_token).await
 }
@@ -1373,29 +1334,16 @@ pub async fn refresh_account_async(account_id: &str) -> Result<CursorAccount, St
         Ok(meta) => {
             if let Some(email) = normalize_email_identity(meta.email.as_deref()) {
                 account.email = email.clone();
-                upsert_cursor_auth_raw_string(
-                    &mut account,
-                    "cachedEmail",
-                    Some(email),
-                );
+                upsert_cursor_auth_raw_string(&mut account, "cachedEmail", Some(email));
             }
 
-            if let Some(sign_up_type) =
-                normalize_cursor_sign_up_type(meta.sign_up_type.as_deref())
+            if let Some(sign_up_type) = normalize_cursor_sign_up_type(meta.sign_up_type.as_deref())
             {
                 account.sign_up_type = Some(sign_up_type.clone());
-                upsert_cursor_auth_raw_string(
-                    &mut account,
-                    "cachedSignUpType",
-                    Some(sign_up_type),
-                );
+                upsert_cursor_auth_raw_string(&mut account, "cachedSignUpType", Some(sign_up_type));
             }
 
-            upsert_cursor_auth_raw_string(
-                &mut account,
-                "workosId",
-                meta.workos_id.clone(),
-            );
+            upsert_cursor_auth_raw_string(&mut account, "workosId", meta.workos_id.clone());
             if account.auth_id.is_none() {
                 account.auth_id = normalize_non_empty(meta.workos_id.as_deref());
             }
@@ -1429,9 +1377,7 @@ pub async fn refresh_account_async(account_id: &str) -> Result<CursorAccount, St
 
     match fetch_stripe_profile_with_client(&client, &account.access_token).await {
         Ok(Some(profile)) => {
-            if let Some(membership_type) =
-                resolve_membership_from_stripe_profile(&profile)
-            {
+            if let Some(membership_type) = resolve_membership_from_stripe_profile(&profile) {
                 account.membership_type = Some(membership_type.clone());
                 upsert_cursor_auth_raw_string(
                     &mut account,
@@ -1440,8 +1386,7 @@ pub async fn refresh_account_async(account_id: &str) -> Result<CursorAccount, St
                 );
             }
 
-            let subscription_status =
-                normalize_non_empty(profile.subscription_status.as_deref());
+            let subscription_status = normalize_non_empty(profile.subscription_status.as_deref());
             if let Some(status) = subscription_status.clone() {
                 account.subscription_status = Some(status);
             }
@@ -1455,16 +1400,8 @@ pub async fn refresh_account_async(account_id: &str) -> Result<CursorAccount, St
                 "teamMembershipType",
                 normalize_non_empty(profile.team_membership_type.as_deref()),
             );
-            upsert_cursor_auth_raw_bool(
-                &mut account,
-                "isTeamMember",
-                profile.is_team_member,
-            );
-            upsert_cursor_auth_raw_bool(
-                &mut account,
-                "isEnterprise",
-                profile.is_enterprise,
-            );
+            upsert_cursor_auth_raw_bool(&mut account, "isTeamMember", profile.is_team_member);
+            upsert_cursor_auth_raw_bool(&mut account, "isEnterprise", profile.is_enterprise);
 
             logger::log_info(&format!(
                 "[Cursor Refresh] 订阅信息拉取成功: id={}",
@@ -1521,11 +1458,9 @@ pub fn refresh_account(account_id: &str) -> Result<CursorAccount, String> {
     match rt {
         Ok(handle) => {
             let id = account_id.to_string();
-            std::thread::spawn(move || {
-                handle.block_on(refresh_account_async(&id))
-            })
-            .join()
-            .map_err(|_| "刷新线程 panic".to_string())?
+            std::thread::spawn(move || handle.block_on(refresh_account_async(&id)))
+                .join()
+                .map_err(|_| "刷新线程 panic".to_string())?
         }
         Err(_) => {
             let rt = tokio::runtime::Runtime::new()
@@ -1629,7 +1564,9 @@ fn read_usage_percent(account: &CursorAccount) -> CursorUsagePercent {
     let used = pick_number(plan_value, &["used", "totalSpend", "total_spend"]);
     let limit = pick_number(plan_value, &["limit"]);
     let total_ratio = match (used, limit) {
-        (Some(used_val), Some(limit_val)) if limit_val > 0.0 => Some((used_val / limit_val) * 100.0),
+        (Some(used_val), Some(limit_val)) if limit_val > 0.0 => {
+            Some((used_val / limit_val) * 100.0)
+        }
         _ => None,
     };
 

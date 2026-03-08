@@ -42,19 +42,23 @@ pub async fn switch_codex_account(
         ));
     }
 
+    let user_config = config::get_user_config();
     let mut opencode_updated = false;
-    match opencode_auth::replace_openai_entry_from_codex(&account) {
-        Ok(()) => {
-            opencode_updated = true;
+    if user_config.opencode_auth_overwrite_on_switch {
+        match opencode_auth::replace_openai_entry_from_codex(&account) {
+            Ok(()) => {
+                opencode_updated = true;
+            }
+            Err(e) => {
+                logger::log_warn(&format!("OpenCode auth.json 更新跳过: {}", e));
+            }
         }
-        Err(e) => {
-            logger::log_warn(&format!("OpenCode auth.json 更新跳过: {}", e));
-        }
+    } else {
+        logger::log_info("已关闭切换 Codex 时覆盖 OpenCode 登录信息");
     }
 
-    let user_config = config::get_user_config();
     if user_config.opencode_sync_on_switch {
-        if opencode_updated {
+        if user_config.opencode_auth_overwrite_on_switch && opencode_updated {
             if process::is_opencode_running() {
                 if let Err(e) = process::close_opencode(20) {
                     logger::log_warn(&format!("OpenCode 关闭失败: {}", e));
@@ -66,6 +70,8 @@ pub async fn switch_codex_account(
             {
                 logger::log_warn(&format!("OpenCode 启动失败: {}", e));
             }
+        } else if !user_config.opencode_auth_overwrite_on_switch {
+            logger::log_info("OpenCode 登录覆盖已关闭，跳过自动重启");
         } else {
             logger::log_info("OpenCode 未更新 auth.json，跳过启动/重启");
         }
@@ -131,7 +137,9 @@ pub fn export_codex_accounts(account_ids: Vec<String>) -> Result<String, String>
 
 /// 从本地文件导入 Codex 账号
 #[tauri::command]
-pub fn import_codex_from_files(file_paths: Vec<String>) -> Result<codex_account::CodexFileImportResult, String> {
+pub fn import_codex_from_files(
+    file_paths: Vec<String>,
+) -> Result<codex_account::CodexFileImportResult, String> {
     codex_account::import_from_files(file_paths)
 }
 

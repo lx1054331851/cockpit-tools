@@ -26,10 +26,11 @@ enum PlatformId {
     Windsurf,
     Kiro,
     Cursor,
+    Gemini,
 }
 
 impl PlatformId {
-    fn default_order() -> [Self; 6] {
+    fn default_order() -> [Self; 7] {
         [
             Self::Antigravity,
             Self::Codex,
@@ -37,6 +38,7 @@ impl PlatformId {
             Self::Windsurf,
             Self::Kiro,
             Self::Cursor,
+            Self::Gemini,
         ]
     }
 
@@ -48,6 +50,7 @@ impl PlatformId {
             crate::modules::tray_layout::PLATFORM_WINDSURF => Some(Self::Windsurf),
             crate::modules::tray_layout::PLATFORM_KIRO => Some(Self::Kiro),
             crate::modules::tray_layout::PLATFORM_CURSOR => Some(Self::Cursor),
+            crate::modules::tray_layout::PLATFORM_GEMINI => Some(Self::Gemini),
             _ => None,
         }
     }
@@ -60,6 +63,7 @@ impl PlatformId {
             Self::Windsurf => crate::modules::tray_layout::PLATFORM_WINDSURF,
             Self::Kiro => crate::modules::tray_layout::PLATFORM_KIRO,
             Self::Cursor => crate::modules::tray_layout::PLATFORM_CURSOR,
+            Self::Gemini => crate::modules::tray_layout::PLATFORM_GEMINI,
         }
     }
 
@@ -71,6 +75,7 @@ impl PlatformId {
             Self::Windsurf => "Windsurf",
             Self::Kiro => "Kiro",
             Self::Cursor => "Cursor",
+            Self::Gemini => "Gemini",
         }
     }
 
@@ -82,9 +87,9 @@ impl PlatformId {
             Self::Windsurf => "windsurf",
             Self::Kiro => "kiro",
             Self::Cursor => "cursor",
+            Self::Gemini => "gemini",
         }
     }
-
 }
 
 /// 菜单项 ID
@@ -395,6 +400,7 @@ fn get_account_display_info(platform: PlatformId, lang: &str) -> AccountDisplayI
         PlatformId::Windsurf => build_windsurf_display_info(lang),
         PlatformId::Kiro => build_kiro_display_info(lang),
         PlatformId::Cursor => build_cursor_display_info(lang),
+        PlatformId::Gemini => build_gemini_display_info(lang),
     }
 }
 
@@ -782,6 +788,110 @@ fn build_cursor_display_info(lang: &str) -> AccountDisplayInfo {
     }
 }
 
+fn parse_gemini_remaining_percent(value: Option<&serde_json::Value>) -> Option<i32> {
+    let raw = value?;
+    if let Some(v) = raw.as_f64() {
+        if v.is_finite() {
+            return Some((v * 100.0).round().clamp(0.0, 100.0) as i32);
+        }
+    }
+    if let Some(text) = raw.as_str() {
+        if let Ok(v) = text.trim().parse::<f64>() {
+            if v.is_finite() {
+                return Some((v * 100.0).round().clamp(0.0, 100.0) as i32);
+            }
+        }
+    }
+    None
+}
+
+fn collect_gemini_model_remaining(
+    account: &crate::models::gemini::GeminiAccount,
+) -> Vec<(String, i32)> {
+    let Some(raw) = account.gemini_usage_raw.as_ref() else {
+        return Vec::new();
+    };
+    let Some(buckets) = raw.get("buckets").and_then(|item| item.as_array()) else {
+        return Vec::new();
+    };
+
+    let mut values = Vec::new();
+    for bucket in buckets {
+        let model_id = bucket
+            .get("modelId")
+            .and_then(|item| item.as_str())
+            .map(|item| item.trim())
+            .filter(|item| !item.is_empty())
+            .map(|item| item.to_string());
+        let remaining = parse_gemini_remaining_percent(bucket.get("remainingFraction"));
+        let (Some(model_id), Some(remaining)) = (model_id, remaining) else {
+            continue;
+        };
+        values.push((model_id, remaining));
+    }
+
+    values.sort_by(|a, b| a.0.cmp(&b.0));
+    values
+}
+
+fn resolve_gemini_current_account(
+    accounts: &[crate::models::gemini::GeminiAccount],
+) -> Option<crate::models::gemini::GeminiAccount> {
+    if let Some(active_email) = crate::modules::gemini_account::get_local_active_email() {
+        if let Some(found) = accounts
+            .iter()
+            .find(|account| account.email.eq_ignore_ascii_case(&active_email))
+        {
+            return Some(found.clone());
+        }
+    }
+
+    accounts
+        .iter()
+        .max_by_key(|account| account.last_used.max(account.created_at))
+        .cloned()
+}
+
+fn build_gemini_display_info(lang: &str) -> AccountDisplayInfo {
+    let accounts = crate::modules::gemini_account::list_accounts();
+    let Some(account) = resolve_gemini_current_account(&accounts) else {
+        return AccountDisplayInfo {
+            account: format!("📧 {}", get_text("not_logged_in", lang)),
+            quota_lines: vec!["—".to_string()],
+        };
+    };
+
+    let mut quota_lines = Vec::new();
+
+    if let Some(plan) = first_non_empty(&[account.plan_name.as_deref(), account.tier_id.as_deref()])
+    {
+        quota_lines.push(format!("Plan: {}", plan));
+    }
+
+    let model_remaining = collect_gemini_model_remaining(&account);
+    for (model, remaining) in model_remaining.iter().take(3) {
+        quota_lines.push(format_quota_line(
+            lang,
+            model,
+            &format_percent_text(*remaining),
+            None,
+        ));
+    }
+
+    if quota_lines.is_empty() {
+        quota_lines.push(get_text("loading", lang));
+    }
+
+    AccountDisplayInfo {
+        account: format!(
+            "📧 {}",
+            first_non_empty(&[Some(account.email.as_str()), Some(account.id.as_str())])
+                .unwrap_or("—")
+        ),
+        quota_lines,
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 struct CursorTrayUsage {
     total_used_percent: Option<i32>,
@@ -954,8 +1064,10 @@ fn read_cursor_tray_usage(account: &crate::models::cursor::CursorAccount) -> Cur
         on_demand_used.unwrap_or(0.0)
     };
 
-    let has_on_demand_hint =
-        on_demand_obj.is_some() || on_demand_enabled.is_some() || is_team_limit || on_demand_limit.is_some();
+    let has_on_demand_hint = on_demand_obj.is_some()
+        || on_demand_enabled.is_some()
+        || is_team_limit
+        || on_demand_limit.is_some();
     let on_demand_text = if !has_on_demand_hint {
         None
     } else if let Some(limit) = on_demand_limit {

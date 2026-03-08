@@ -5,9 +5,10 @@ import { CodexIcon } from '../icons/CodexIcon';
 import { WindsurfIcon } from '../icons/WindsurfIcon';
 import { KiroIcon } from '../icons/KiroIcon';
 import { CursorIcon } from '../icons/CursorIcon';
+import { GeminiIcon } from '../icons/GeminiIcon';
 
 export type PlatformOverviewTab = 'overview' | 'instances';
-export type PlatformOverviewHeaderId = 'codex' | 'github-copilot' | 'windsurf' | 'kiro' | 'cursor';
+export type PlatformOverviewHeaderId = 'codex' | 'github-copilot' | 'windsurf' | 'kiro' | 'cursor' | 'gemini';
 
 interface PlatformOverviewTabsHeaderProps {
   platform: PlatformOverviewHeaderId;
@@ -52,6 +53,11 @@ const CONFIGS: Record<PlatformOverviewHeaderId, PlatformOverviewConfig> = {
     titleKey: 'cursor.title',
     titleDefault: 'Cursor 账号管理',
     overviewIcon: <CursorIcon className="tab-icon" />,
+  },
+  gemini: {
+    titleKey: 'gemini.title',
+    titleDefault: 'Gemini 账号管理',
+    overviewIcon: <GeminiIcon className="tab-icon" />,
   },
 };
 

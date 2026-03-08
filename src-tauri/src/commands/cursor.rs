@@ -159,10 +159,7 @@ pub async fn cursor_oauth_login_complete(
     match cursor_account::refresh_account_async(&account.id).await {
         Ok(refreshed) => account = refreshed,
         Err(e) => {
-            logger::log_warn(&format!(
-                "[Cursor OAuth] 登录后自动刷新配额失败: {}",
-                e
-            ));
+            logger::log_warn(&format!("[Cursor OAuth] 登录后自动刷新配额失败: {}", e));
         }
     }
 

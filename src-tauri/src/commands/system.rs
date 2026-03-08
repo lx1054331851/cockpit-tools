@@ -39,6 +39,8 @@ pub struct GeneralConfig {
     pub kiro_auto_refresh_minutes: i32,
     /// Cursor 自动刷新间隔（分钟），-1 表示禁用
     pub cursor_auto_refresh_minutes: i32,
+    /// Gemini 自动刷新间隔（分钟），-1 表示禁用
+    pub gemini_auto_refresh_minutes: i32,
     /// 窗口关闭行为: "ask", "minimize", "quit"
     pub close_behavior: String,
     /// 窗口最小化行为（macOS）: "dock_and_tray", "tray_only"
@@ -61,6 +63,8 @@ pub struct GeneralConfig {
     pub cursor_app_path: String,
     /// 切换 Codex 时是否自动重启 OpenCode
     pub opencode_sync_on_switch: bool,
+    /// 切换 Codex 时是否覆盖 OpenCode 登录信息
+    pub opencode_auth_overwrite_on_switch: bool,
     /// 切换 Codex 时是否自动启动/重启 Codex App
     pub codex_launch_on_switch: bool,
     /// 是否启用自动切号
@@ -91,6 +95,10 @@ pub struct GeneralConfig {
     pub cursor_quota_alert_enabled: bool,
     /// Cursor 配额预警阈值（百分比）
     pub cursor_quota_alert_threshold: i32,
+    /// 是否启用 Gemini 配额预警通知
+    pub gemini_quota_alert_enabled: bool,
+    /// Gemini 配额预警阈值（百分比）
+    pub gemini_quota_alert_threshold: i32,
 }
 
 #[tauri::command]
@@ -174,6 +182,7 @@ pub fn save_network_config(ws_enabled: bool, ws_port: u16) -> Result<bool, Strin
         windsurf_auto_refresh_minutes: current.windsurf_auto_refresh_minutes,
         kiro_auto_refresh_minutes: current.kiro_auto_refresh_minutes,
         cursor_auto_refresh_minutes: current.cursor_auto_refresh_minutes,
+        gemini_auto_refresh_minutes: current.gemini_auto_refresh_minutes,
         close_behavior: current.close_behavior,
         minimize_behavior: current.minimize_behavior,
         hide_dock_icon: current.hide_dock_icon,
@@ -185,6 +194,7 @@ pub fn save_network_config(ws_enabled: bool, ws_port: u16) -> Result<bool, Strin
         kiro_app_path: current.kiro_app_path,
         cursor_app_path: current.cursor_app_path,
         opencode_sync_on_switch: current.opencode_sync_on_switch,
+        opencode_auth_overwrite_on_switch: current.opencode_auth_overwrite_on_switch,
         codex_launch_on_switch: current.codex_launch_on_switch,
         auto_switch_enabled: current.auto_switch_enabled,
         auto_switch_threshold: current.auto_switch_threshold,
@@ -200,6 +210,8 @@ pub fn save_network_config(ws_enabled: bool, ws_port: u16) -> Result<bool, Strin
         kiro_quota_alert_threshold: current.kiro_quota_alert_threshold,
         cursor_quota_alert_enabled: current.cursor_quota_alert_enabled,
         cursor_quota_alert_threshold: current.cursor_quota_alert_threshold,
+        gemini_quota_alert_enabled: current.gemini_quota_alert_enabled,
+        gemini_quota_alert_threshold: current.gemini_quota_alert_threshold,
     };
 
     config::save_user_config(&new_config)?;
@@ -231,6 +243,7 @@ pub fn get_general_config() -> Result<GeneralConfig, String> {
         windsurf_auto_refresh_minutes: user_config.windsurf_auto_refresh_minutes,
         kiro_auto_refresh_minutes: user_config.kiro_auto_refresh_minutes,
         cursor_auto_refresh_minutes: user_config.cursor_auto_refresh_minutes,
+        gemini_auto_refresh_minutes: user_config.gemini_auto_refresh_minutes,
         close_behavior: close_behavior_str.to_string(),
         minimize_behavior: minimize_behavior_str.to_string(),
         hide_dock_icon: user_config.hide_dock_icon,
@@ -242,6 +255,7 @@ pub fn get_general_config() -> Result<GeneralConfig, String> {
         kiro_app_path: user_config.kiro_app_path,
         cursor_app_path: user_config.cursor_app_path,
         opencode_sync_on_switch: user_config.opencode_sync_on_switch,
+        opencode_auth_overwrite_on_switch: user_config.opencode_auth_overwrite_on_switch,
         codex_launch_on_switch: user_config.codex_launch_on_switch,
         auto_switch_enabled: user_config.auto_switch_enabled,
         auto_switch_threshold: user_config.auto_switch_threshold,
@@ -257,6 +271,8 @@ pub fn get_general_config() -> Result<GeneralConfig, String> {
         kiro_quota_alert_threshold: user_config.kiro_quota_alert_threshold,
         cursor_quota_alert_enabled: user_config.cursor_quota_alert_enabled,
         cursor_quota_alert_threshold: user_config.cursor_quota_alert_threshold,
+        gemini_quota_alert_enabled: user_config.gemini_quota_alert_enabled,
+        gemini_quota_alert_threshold: user_config.gemini_quota_alert_threshold,
     })
 }
 
@@ -272,6 +288,7 @@ pub fn save_general_config(
     windsurf_auto_refresh_minutes: Option<i32>,
     kiro_auto_refresh_minutes: Option<i32>,
     cursor_auto_refresh_minutes: Option<i32>,
+    gemini_auto_refresh_minutes: Option<i32>,
     close_behavior: String,
     minimize_behavior: Option<String>,
     hide_dock_icon: Option<bool>,
@@ -283,6 +300,7 @@ pub fn save_general_config(
     kiro_app_path: Option<String>,
     cursor_app_path: Option<String>,
     opencode_sync_on_switch: bool,
+    opencode_auth_overwrite_on_switch: Option<bool>,
     codex_launch_on_switch: bool,
     auto_switch_enabled: Option<bool>,
     auto_switch_threshold: Option<i32>,
@@ -298,6 +316,8 @@ pub fn save_general_config(
     kiro_quota_alert_threshold: Option<i32>,
     cursor_quota_alert_enabled: Option<bool>,
     cursor_quota_alert_threshold: Option<i32>,
+    gemini_quota_alert_enabled: Option<bool>,
+    gemini_quota_alert_threshold: Option<i32>,
 ) -> Result<(), String> {
     let current = config::get_user_config();
     let normalized_opencode_path = opencode_app_path.trim().to_string();
@@ -349,6 +369,8 @@ pub fn save_general_config(
             .unwrap_or(current.kiro_auto_refresh_minutes),
         cursor_auto_refresh_minutes: cursor_auto_refresh_minutes
             .unwrap_or(current.cursor_auto_refresh_minutes),
+        gemini_auto_refresh_minutes: gemini_auto_refresh_minutes
+            .unwrap_or(current.gemini_auto_refresh_minutes),
         close_behavior: close_behavior_enum,
         minimize_behavior: minimize_behavior_enum,
         hide_dock_icon: hide_dock_icon_value,
@@ -360,6 +382,8 @@ pub fn save_general_config(
         kiro_app_path: normalized_kiro_path,
         cursor_app_path: normalized_cursor_path,
         opencode_sync_on_switch,
+        opencode_auth_overwrite_on_switch: opencode_auth_overwrite_on_switch
+            .unwrap_or(current.opencode_auth_overwrite_on_switch),
         codex_launch_on_switch,
         auto_switch_enabled: auto_switch_enabled.unwrap_or(current.auto_switch_enabled),
         auto_switch_threshold: auto_switch_threshold.unwrap_or(current.auto_switch_threshold),
@@ -385,6 +409,10 @@ pub fn save_general_config(
             .unwrap_or(current.cursor_quota_alert_enabled),
         cursor_quota_alert_threshold: cursor_quota_alert_threshold
             .unwrap_or(current.cursor_quota_alert_threshold),
+        gemini_quota_alert_enabled: gemini_quota_alert_enabled
+            .unwrap_or(current.gemini_quota_alert_enabled),
+        gemini_quota_alert_threshold: gemini_quota_alert_threshold
+            .unwrap_or(current.gemini_quota_alert_threshold),
     };
 
     config::save_user_config(&new_config)?;

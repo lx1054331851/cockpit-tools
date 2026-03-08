@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "confirm": "Xác nhận",
     "cancel": "Hủy",
@@ -160,7 +160,8 @@
     "quickUpdate": {
       "update": "Cập nhật",
       "restart": "Khởi động lại"
-    }
+    },
+    "gemini": "Song Tử"
   },
   "platformLayout": {
     "title": "Bố cục nền tảng",
@@ -455,7 +456,10 @@
       "autoUpdate": "Tự động cập nhật nền",
       "autoUpdateDesc": "Khi phát hiện phiên bản mới, ứng dụng sẽ cập nhật ngầm ở nền và nhắc khởi động lại sau khi hoàn tất.",
       "autoUpdateOff": "Tắt (cập nhật thủ công)",
-      "autoUpdateOn": "Bật (cập nhật im lặng)"
+      "autoUpdateOn": "Bật (cập nhật im lặng)",
+      "opencodeAuthOverwrite": "Ghi đè đăng nhập OpenCode khi chuyển đổi Codex",
+      "opencodeAuthOverwriteDesc": "Khi tắt, chỉ Codex được chuyển đổi và OpenCode giữ trạng thái đăng nhập hiện tại",
+      "opencodeRestartRequiresOverwrite": "Trước tiên hãy bật \"Ghi đè đăng nhập OpenCode khi chuyển đổi Codex\""
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -628,9 +632,9 @@
       "importSuccess": "Đã nhập {{count}} tài khoản",
       "importPartial": "Đã nhập thành công {{success}} tài khoản, thất bại {{fail}}",
       "importFailed": "Nhập thất bại, vui lòng kiểm tra refresh_token",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete"
+      "importPartialFailed": "{{failCount}} thất bại: {{failList}}",
+      "refreshingQuota": "Đang làm mới hạn ngạch {{done}}/{{total}} (bạn có thể đóng hộp thoại này)",
+      "quotaRefreshDone": "Làm mới hạn ngạch hoàn tất"
     }
   },
   "overview": {
@@ -730,9 +734,9 @@
       "fpLabel": "Dấu vân tay:",
       "generateFailed": "Tạo thất bại",
       "importFailed": "Nhập thất bại",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+      "importPartialFailed": "{{failCount}} thất bại: {{failList}}",
+      "refreshingQuota": "Đang làm mới hạn ngạch {{done}}/{{total}} (bạn có thể đóng hộp thoại này)",
+      "quotaRefreshDone": "Làm mới hạn ngạch hoàn tất",
       "importing": "Đang nhập...",
       "loadFailed": "Không thể tải danh sách vân tay",
       "processing": "Đang xử lý...",
@@ -815,9 +819,9 @@
     "importSuccess": "Nhập thành công {{count}} tài khoản",
     "importLocalSuccess": "Nhập thành công tài khoản: {{email}}",
     "importFailed": "Nhập thất bại: {{error}}",
-    "importPartialFailed": "{{failCount}} failed: {{failList}}",
-    "refreshingQuota": "Refreshing quota {{done}}/{{total}} (you may close this dialog)",
-    "quotaRefreshDone": "Quota refresh complete",
+    "importPartialFailed": "{{failCount}} thất bại: {{failList}}",
+    "refreshingQuota": "Đang làm mới hạn ngạch {{done}}/{{total}} (bạn có thể đóng hộp thoại này)",
+    "quotaRefreshDone": "Làm mới hạn ngạch hoàn tất",
     "exportFailed": "Xuất thất bại: {{error}}",
     "bindFailed": "Liên kết thất bại: {{error}}",
     "jsonRequired": "Vui lòng nhập hoặc dán nội dung JSON",
@@ -1334,7 +1338,12 @@
       "title": "Cài đặt Cursor",
       "appPath": "Đường dẫn Cursor"
     },
-    "cursorRefreshInterval": "Tự động làm mới hạn mức"
+    "cursorRefreshInterval": "Tự động làm mới hạn mức",
+    "gemini": {
+      "title": "Cài đặt Song Tử",
+      "appPath": "Đường dẫn CLI của Song Tử"
+    },
+    "geminiRefreshInterval": "Tự động làm mới hạn ngạch"
   },
   "quotaAlert": {
     "bannerText": "Cảnh báo hạn mức cho {{email}} (ngưỡng {{threshold}}%, thấp nhất {{lowest}}%, mô hình: {{models}})",
@@ -1835,6 +1844,58 @@
       },
       "summary": "Mục này giải thích cách dùng Tác vụ wakeup và xác minh trong quy trình hàng ngày.",
       "title": "Tác vụ wakeup và xác minh"
+    }
+  },
+  "gemini": {
+    "injectToGemini": "Chuyển sang cung Song Tử",
+    "title": "Quản lý tài khoản Song Tử",
+    "empty": {
+      "description": "Nhấp vào \"Thêm tài khoản\" để bắt đầu quản lý tài khoản Gemini của bạn"
+    },
+    "addModal": {
+      "title": "Thêm tài khoản Song Tử"
+    },
+    "oauth": {
+      "desc": "Nhấp vào nút bên dưới và hoàn tất ủy quyền Gemini OAuth trong trình duyệt của bạn."
+    },
+    "token": {
+      "desc": "Dán Mã thông báo truy cập Gemini (JWT) hoặc dữ liệu JSON đã xuất của bạn.",
+      "formatHint": "Các trường và ví dụ bắt buộc (bấm vào để mở rộng)",
+      "formatRequired": "Mã thông báo đơn: dán JWT trực tiếp; nhập hàng loạt: sử dụng định dạng mảng JSON",
+      "singleExample": "Ví dụ đơn (JWT)",
+      "batchExample": "Ví dụ về lô (JSON)"
+    },
+    "import": {
+      "localDesc": "Nhập dữ liệu tài khoản Gemini từ thư mục cấu hình Gemini cục bộ (~/.gemini) hoặc tệp JSON.",
+      "localClient": "Nhập khẩu từ Gemini địa phương"
+    },
+    "flowNotice": {
+      "title": "Hướng dẫn tài khoản Gemini (bấm vào để mở rộng/thu gọn)",
+      "desc": "Quản lý tài khoản Gemini bằng cách nhập từ cấu hình Gemini cục bộ, dán mã thông báo JWT hoặc đăng nhập qua OAuth.",
+      "reason": "Phạm vi quyền: đọc và ghi oauth_creds.json, google_accounts.json và settings.json theo mặc định ~/.gemini hoặc đường dẫn phiên bản (GEMINI_CLI_HOME/.gemini) để nhập tài khoản và chèn thông tin xác thực cục bộ (chuyển đổi tài khoản).",
+      "storage": "Phạm vi mạng: OAuth và làm mới cuộc gọi API Google/Gemini chính thức (chẳng hạn như oauth2.googleapis.com và googleapis.com). Chỉ các trường xác thực/hạn ngạch bắt buộc mới được gửi; các tệp tài khoản cục bộ không được tải lên máy chủ của bên thứ ba."
+    },
+    "updated": {
+      "label": "Đã cập nhật {{relative}} trước"
+    },
+    "quota": {
+      "pro": "PRO",
+      "flash": "FLASH",
+      "left": "{{value}}% còn lại",
+      "resetsIn": "Đặt lại sau {{relative}}",
+      "resetsSoon": "Đặt lại sớm",
+      "resetsUnknown": "Đặt lại thời gian không xác định",
+      "onDemand": "Theo yêu cầu"
+    },
+    "instances": {
+      "unsupported": "Quản lý đa phiên bản Gemini chưa được hỗ trợ.",
+      "unsupportedDescPlatform": "Phiên bản đa phiên bản Gemini chỉ được hỗ trợ trên macOS, Windows và Linux.",
+      "launchDialogTitle": "Khởi chạy phiên bản",
+      "launchHint": "Sao chép lệnh và chạy thủ công hoặc thực thi trực tiếp trong terminal.",
+      "runInTerminal": "Chạy trong Terminal"
+    },
+    "switch": {
+      "success": "Chuyển đổi tài khoản thành công"
     }
   }
 }

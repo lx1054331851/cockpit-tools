@@ -13,14 +13,16 @@ pub const PLATFORM_GITHUB_COPILOT: &str = "github-copilot";
 pub const PLATFORM_WINDSURF: &str = "windsurf";
 pub const PLATFORM_KIRO: &str = "kiro";
 pub const PLATFORM_CURSOR: &str = "cursor";
+pub const PLATFORM_GEMINI: &str = "gemini";
 
-pub const SUPPORTED_PLATFORM_IDS: [&str; 6] = [
+pub const SUPPORTED_PLATFORM_IDS: [&str; 7] = [
     PLATFORM_ANTIGRAVITY,
     PLATFORM_CODEX,
     PLATFORM_GITHUB_COPILOT,
     PLATFORM_WINDSURF,
     PLATFORM_KIRO,
     PLATFORM_CURSOR,
+    PLATFORM_GEMINI,
 ];
 
 pub const SORT_MODE_AUTO: &str = "auto";
@@ -107,10 +109,10 @@ fn normalize_tray_platforms(ids: &[String], raw_order_has_new: &[&str]) -> Vec<S
         && contains_platform(&sanitized, PLATFORM_GITHUB_COPILOT)
         && contains_platform(&sanitized, PLATFORM_WINDSURF);
 
-    for &new_platform in &[PLATFORM_KIRO, PLATFORM_CURSOR] {
+    for &new_platform in &[PLATFORM_KIRO, PLATFORM_CURSOR, PLATFORM_GEMINI] {
         let already_present = contains_platform(&sanitized, new_platform);
         let was_in_raw_order = raw_order_has_new.contains(&new_platform);
-        let looks_like_old_default = !already_present && has_legacy_all && sanitized.len() <= 5;
+        let looks_like_old_default = !already_present && has_legacy_all && sanitized.len() <= 6;
 
         if !was_in_raw_order && !already_present && looks_like_old_default {
             sanitized.push(new_platform.to_string());
@@ -128,7 +130,7 @@ fn normalize_sort_mode(raw: &str) -> String {
 }
 
 fn normalize_config(config: TrayLayoutConfig) -> TrayLayoutConfig {
-    let raw_order_new_platforms: Vec<&str> = [PLATFORM_KIRO, PLATFORM_CURSOR]
+    let raw_order_new_platforms: Vec<&str> = [PLATFORM_KIRO, PLATFORM_CURSOR, PLATFORM_GEMINI]
         .iter()
         .filter(|&&p| config.ordered_platform_ids.iter().any(|id| id.trim() == p))
         .copied()
