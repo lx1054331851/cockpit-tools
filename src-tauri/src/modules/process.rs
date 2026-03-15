@@ -3522,6 +3522,7 @@ pub fn collect_antigravity_process_entries() -> Vec<(u32, Option<String>)> {
         if !entries.is_empty() {
             return filter_entries_by_expected_launch_path("AG", entries, expected_launch.clone());
         }
+        return Vec::new();
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
@@ -4619,46 +4620,6 @@ pub fn collect_codebuddy_process_entries() -> Vec<(u32, Option<String>)> {
         return entries;
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        let mut entries = Vec::new();
-        if let Ok(proc_entries) = std::fs::read_dir("/proc") {
-            for entry in proc_entries.flatten() {
-                let file_name = entry.file_name();
-                let pid_str = file_name.to_string_lossy();
-                if !pid_str.chars().all(|ch| ch.is_ascii_digit()) {
-                    continue;
-                }
-                let pid = match pid_str.parse::<u32>() {
-                    Ok(value) => value,
-                    Err(_) => continue,
-                };
-                let cmdline_path = format!("/proc/{}/cmdline", pid);
-                let cmdline = match std::fs::read(&cmdline_path) {
-                    Ok(value) => value,
-                    Err(_) => continue,
-                };
-                if cmdline.is_empty() {
-                    continue;
-                }
-                let cmdline_str = String::from_utf8_lossy(&cmdline).replace('\0', " ");
-                let cmd_lower = cmdline_str.to_lowercase();
-                let exe_path = std::fs::read_link(format!("/proc/{}/exe", pid))
-                    .ok()
-                    .and_then(|p| p.to_str().map(|s| s.to_lowercase()))
-                    .unwrap_or_default();
-                if !cmd_lower.contains("codebuddy") && !exe_path.contains("/codebuddy") {
-                    continue;
-                }
-                if is_helper_command_line(&cmd_lower) {
-                    continue;
-                }
-                let dir = extract_user_data_dir_from_command_line(&cmdline_str);
-                entries.push((pid, dir));
-            }
-        }
-        return entries;
-    }
 }
 
 pub fn collect_codebuddy_cn_process_entries() -> Vec<(u32, Option<String>)> {
