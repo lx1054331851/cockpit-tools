@@ -6,6 +6,7 @@ import {
   Check,
   CircleAlert,
   Copy,
+  Eye,
   Pencil,
   Play,
   Plus,
@@ -81,6 +82,7 @@ interface ExecutionRecordState {
 
 interface ExecutionSessionState {
   runId: string;
+  taskId?: string;
   triggerType: string;
   title: string;
   runtime: CodexWakeupBatchResult['runtime'] | null;
@@ -92,6 +94,7 @@ interface ExecutionSessionState {
   failureCount: number;
   taskName?: string;
   running: boolean;
+  preview: boolean;
   errorText?: string;
   records: ExecutionRecordState[];
 }
@@ -99,6 +102,7 @@ interface ExecutionSessionState {
 interface HistoryBatchSummary {
   runId: string;
   triggerType: string;
+  taskId?: string;
   taskName?: string;
   timestamp: number;
   total: number;
@@ -553,6 +557,7 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
         return {
           runId,
           triggerType: latest?.trigger_type || 'test',
+          taskId: latest?.task_id,
           taskName: latest?.task_name,
           timestamp: latest?.timestamp || 0,
           total: sorted.length,
@@ -572,9 +577,11 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
       triggerType: string,
       accountIds: string[],
       prompt?: string,
+      taskId?: string,
       taskName?: string,
     ): ExecutionSessionState => ({
       runId,
+      taskId,
       triggerType,
       title:
         triggerType === 'test'
@@ -589,6 +596,7 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
       failureCount: 0,
       taskName,
       running: true,
+      preview: false,
       errorText: undefined,
       records: accountIds.map((accountId, index) => {
         const account = accountMap.get(accountId);
@@ -610,6 +618,7 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
   const buildExecutionSessionFromHistory = useCallback(
     (batch: HistoryBatchSummary): ExecutionSessionState => ({
       runId: batch.runId,
+      taskId: batch.taskId,
       triggerType: batch.triggerType,
       title:
         batch.taskName ||
@@ -632,6 +641,7 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
       failureCount: batch.failureCount,
       taskName: batch.taskName,
       running: false,
+      preview: false,
       errorText: undefined,
       records: batch.records.map((item) => ({
         id: item.id,
@@ -650,13 +660,68 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
     [runtime, t],
   );
 
+  const buildTaskPreviewSession = useCallback(
+    (task: CodexWakeupTask): ExecutionSessionState => ({
+      runId: `preview:${task.id}`,
+      taskId: task.id,
+      triggerType: 'scheduled',
+      title: task.name,
+      runtime: runtime,
+      startedAt: 0,
+      durationMs: undefined,
+      total: task.account_ids.length,
+      completed: 0,
+      successCount: 0,
+      failureCount: 0,
+      taskName: task.name,
+      running: false,
+      preview: true,
+      errorText: undefined,
+      records: task.account_ids.map((accountId, index) => {
+        const account = accountMap.get(accountId);
+        const meta = wakeupAccountMetaMap.get(accountId);
+        return {
+          id: `preview:${task.id}:${accountId}:${index}`,
+          accountId,
+          accountEmail: meta?.email || (account?.email || accountId),
+          accountContextText:
+            meta?.contextText || (account ? resolveAccountContextText(account, t) : undefined),
+          triggerType: 'scheduled',
+          status: 'pending' as const,
+          prompt: task.prompt,
+        };
+      }),
+    }),
+    [accountMap, runtime, t, wakeupAccountMetaMap],
+  );
+
+  const openTaskExecutionDetails = useCallback(
+    (task: CodexWakeupTask) => {
+      setExecutionSession((current) => {
+        if (current?.taskId === task.id) {
+          return current;
+        }
+        return buildTaskPreviewSession(task);
+      });
+    },
+    [buildTaskPreviewSession],
+  );
+
   useEffect(() => {
     setExecutionFilter('all');
   }, [executionSession?.runId]);
 
   const applyProgressPayload = useCallback((payload: CodexWakeupProgressPayload) => {
     setExecutionSession((current) => {
-      if (!current || current.runId !== payload.run_id) {
+      if (!current) {
+        return current;
+      }
+
+      const sameRun = current.runId === payload.run_id;
+      const attachPreview =
+        current.preview && !!payload.task_id && !!current.taskId && current.taskId === payload.task_id;
+
+      if (!sameRun && !attachPreview) {
         return current;
       }
 
@@ -690,13 +755,16 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
 
       return {
         ...current,
+        runId: payload.run_id,
         triggerType: payload.trigger_type || current.triggerType,
+        taskId: payload.task_id || current.taskId,
         taskName: payload.task_name || current.taskName,
         total: payload.total,
         completed: payload.completed,
         successCount: payload.success_count,
         failureCount: payload.failure_count,
         running: payload.running,
+        preview: false,
         records: nextRecords,
       };
     });
@@ -1142,9 +1210,25 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
 
   const handleRunTask = useCallback(
     async (task: CodexWakeupTask) => {
+      const confirmed = await confirmDialog(
+        t('codex.wakeup.manualRunConfirm', {
+          name: task.name,
+          count: task.account_ids.length,
+        }),
+        {
+          title: t('common.confirm', '确认'),
+          kind: 'warning',
+          okLabel: t('common.confirm', '确认'),
+          cancelLabel: t('common.cancel', '取消'),
+        },
+      );
+      if (!confirmed) {
+        return;
+      }
+
       const runId = crypto.randomUUID();
       setExecutionSession(
-        buildExecutionSession(runId, 'manual_task', task.account_ids, task.prompt, task.name),
+        buildExecutionSession(runId, 'manual_task', task.account_ids, task.prompt, task.id, task.name),
       );
       try {
         const result = await runTask(task.id, runId);
@@ -1316,7 +1400,9 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
             {t('codex.wakeup.testNow')}
           </button>
           <button className="btn btn-secondary" onClick={() => setShowHistoryModal(true)}>
-            {history.length > 0 ? `${t('codex.wakeup.historyTitle')} (${history.length})` : t('codex.wakeup.historyTitle')}
+            {historyBatches.length > 0
+              ? `${t('codex.wakeup.historyTitle')} (${historyBatches.length})`
+              : t('codex.wakeup.historyTitle')}
           </button>
           <button className="btn btn-secondary" onClick={() => void refreshRuntime()}>
             <RefreshCw size={16} /> {t('codex.wakeup.refreshRuntime')}
@@ -1354,6 +1440,14 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
                     </span>
                   </div>
                   <div className="wakeup-task-actions">
+                    <button
+                      className="btn btn-secondary icon-only"
+                      onClick={() => openTaskExecutionDetails(task)}
+                      title={t('common.detail')}
+                      aria-label={t('common.detail')}
+                    >
+                      <Eye size={14} />
+                    </button>
                     <button
                       className="btn btn-secondary icon-only"
                       onClick={() => void handleRunTask(task)}
@@ -1869,11 +1963,15 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
                   </div>
                   <div className="codex-wakeup-results-summary-meta">
                     <span>
-                      {executionSession.running
+                      {executionSession.preview
+                        ? t('codex.wakeup.executionStatusPending')
+                        : executionSession.running
                         ? t('codex.wakeup.executionStatusRunning')
                         : formatHistoryTimestamp(executionSession.startedAt)}
                     </span>
-                    {!executionSession.running && executionDuration !== undefined && (
+                    {!executionSession.running &&
+                      !executionSession.preview &&
+                      executionDuration !== undefined && (
                       <span>{formatDuration(executionDuration)}</span>
                     )}
                     <span>{t('accounts.groups.accountCount', { count: executionSession.total })}</span>
@@ -1884,7 +1982,9 @@ export function CodexWakeupContent({ accounts, onRefreshAccounts }: CodexWakeupC
                     {executionSession.completed}/{executionSession.total}
                   </strong>
                   <span>
-                    {executionSession.running
+                    {executionSession.preview
+                      ? t('codex.wakeup.executionStatusPending')
+                      : executionSession.running
                       ? t('codex.wakeup.executionStatusRunning')
                       : t('codex.wakeup.executionStatusCompleted')}
                   </span>

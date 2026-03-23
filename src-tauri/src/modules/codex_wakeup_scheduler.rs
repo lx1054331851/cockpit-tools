@@ -156,7 +156,7 @@ pub async fn run_task_now(
     result
 }
 
-async fn run_scheduler_once() {
+async fn run_scheduler_once(app: &AppHandle) {
     let state = match codex_wakeup::load_state() {
         Ok(state) => state,
         Err(err) => {
@@ -179,8 +179,9 @@ async fn run_scheduler_once() {
         }
 
         let task_id = task.id.clone();
+        let app_handle = app.clone();
         tauri::async_runtime::spawn(async move {
-            let result = run_task_now(None, &task_id, "scheduled", None).await;
+            let result = run_task_now(Some(&app_handle), &task_id, "scheduled", None).await;
             if let Err(err) = result {
                 logger::log_warn(&format!("[CodexWakeup] 调度任务执行失败: task_id={}, error={}", task_id, err));
             }
@@ -188,7 +189,7 @@ async fn run_scheduler_once() {
     }
 }
 
-pub fn ensure_started() {
+pub fn ensure_started(app: AppHandle) {
     let mut started = started_flag().lock().expect("codex wakeup scheduler started lock");
     if *started {
         return;
@@ -197,7 +198,7 @@ pub fn ensure_started() {
 
     tauri::async_runtime::spawn(async move {
         loop {
-            run_scheduler_once().await;
+            run_scheduler_once(&app).await;
             sleep(Duration::from_secs(30)).await;
         }
     });

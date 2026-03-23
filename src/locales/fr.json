@@ -1461,6 +1461,7 @@
       "triggerTest": "Essai",
       "triggerManualTask": "Exécution manuelle",
       "triggerScheduled": "Planifiée",
+      "manualRunConfirm": "Exécuter la tâche « {{name}} » maintenant ? {{count}} compte(s) seront réveillés l'un après l'autre.",
       "noticeSavedEnabled": "Tâches enregistrées. Total : {{count}}.",
       "noticeSavedDisabled": "Configuration enregistrée. Toutes les tâches sont actuellement en pause.",
       "noticeTaskFinished": "Tâche terminée. {{count}} compte(s) réussi(s).",

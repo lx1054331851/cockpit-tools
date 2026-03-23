@@ -1461,6 +1461,7 @@
       "triggerTest": "テスト",
       "triggerManualTask": "手動実行",
       "triggerScheduled": "定期実行",
+      "manualRunConfirm": "タスク「{{name}}」を今すぐ実行しますか？ {{count}} 件のアカウントを順番に起動します。",
       "noticeSavedEnabled": "タスクを保存しました。合計 {{count}} 件です。",
       "noticeSavedDisabled": "タスク設定を保存しました。現在すべてのタスクは停止中です。",
       "noticeTaskFinished": "タスクが完了しました。{{count}} アカウントが成功しました。",

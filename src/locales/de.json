@@ -1461,6 +1461,7 @@
       "triggerTest": "Prüfung",
       "triggerManualTask": "Aufgabe manuell starten",
       "triggerScheduled": "Geplant",
+      "manualRunConfirm": "Aufgabe „{{name}}“ jetzt ausführen? {{count}} Konto/Konten werden nacheinander aufgeweckt.",
       "noticeSavedEnabled": "Aufgaben gespeichert. Gesamtzahl: {{count}}.",
       "noticeSavedDisabled": "Aufgabeneinstellungen gespeichert. Alle Aufgaben sind derzeit pausiert.",
       "noticeTaskFinished": "Aufgabe abgeschlossen. {{count}} Konto/Konten erfolgreich.",

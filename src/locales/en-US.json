@@ -1507,6 +1507,7 @@
       "triggerTest": "Test",
       "triggerManualTask": "Manual task run",
       "triggerScheduled": "Scheduled",
+      "manualRunConfirm": "Run task \"{{name}}\" now? {{count}} account(s) will be woken up in sequence.",
       "noticeSavedEnabled": "Tasks saved. Total tasks: {{count}}.",
       "noticeSavedDisabled": "Task settings saved. All tasks are currently paused.",
       "noticeTaskFinished": "Task finished. {{count}} account(s) succeeded.",

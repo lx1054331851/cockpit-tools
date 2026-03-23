@@ -1461,6 +1461,7 @@
       "triggerTest": "Kiểm thử",
       "triggerManualTask": "Chạy tác vụ thủ công",
       "triggerScheduled": "Theo lịch",
+      "manualRunConfirm": "Chạy tác vụ \"{{name}}\" ngay bây giờ? {{count}} tài khoản sẽ được đánh thức lần lượt.",
       "noticeSavedEnabled": "Đã lưu tác vụ. Tổng số tác vụ: {{count}}.",
       "noticeSavedDisabled": "Đã lưu cấu hình. Hiện tất cả tác vụ đang tạm dừng.",
       "noticeTaskFinished": "Tác vụ hoàn tất. {{count}} tài khoản thành công.",

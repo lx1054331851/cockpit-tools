@@ -1507,6 +1507,7 @@
       "triggerTest": "测试",
       "triggerManualTask": "手动执行任务",
       "triggerScheduled": "定时触发",
+      "manualRunConfirm": "确定立即执行任务“{{name}}”吗？将按顺序唤醒 {{count}} 个账号。",
       "noticeSavedEnabled": "任务已保存，共 {{count}} 个。",
       "noticeSavedDisabled": "任务配置已保存，当前已全局暂停。",
       "noticeTaskFinished": "任务执行完成，成功 {{count}} 个账号。",

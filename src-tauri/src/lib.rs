@@ -134,7 +134,7 @@ pub fn run() {
                 });
             }
 
-            modules::codex_wakeup_scheduler::ensure_started();
+            modules::codex_wakeup_scheduler::ensure_started(app.handle().clone());
 
             #[cfg(target_os = "macos")]
             apply_macos_activation_policy(&app.handle());

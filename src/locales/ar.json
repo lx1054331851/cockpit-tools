@@ -1507,6 +1507,7 @@
       "triggerTest": "اختبار",
       "triggerManualTask": "تشغيل يدوي للمهمة",
       "triggerScheduled": "مجدول",
+      "manualRunConfirm": "هل تريد تشغيل المهمة \"{{name}}\" الآن؟ سيتم إيقاظ {{count}} حسابًا بالتسلسل.",
       "noticeSavedEnabled": "تم حفظ المهام. إجمالي المهام: {{count}}.",
       "noticeSavedDisabled": "تم حفظ إعدادات المهام. جميع المهام متوقفة حالياً.",
       "noticeTaskFinished": "اكتملت المهمة. نجح {{count}} حساب/حسابات.",

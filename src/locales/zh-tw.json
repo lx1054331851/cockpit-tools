@@ -1461,6 +1461,7 @@
       "triggerTest": "測試",
       "triggerManualTask": "手動執行任務",
       "triggerScheduled": "定時觸發",
+      "manualRunConfirm": "確定立即執行任務「{{name}}」嗎？將依序喚醒 {{count}} 個帳號。",
       "noticeSavedEnabled": "任務已儲存，共 {{count}} 個。",
       "noticeSavedDisabled": "任務設定已儲存，目前所有任務皆為暫停狀態。",
       "noticeTaskFinished": "任務執行完成，成功 {{count}} 個帳號。",

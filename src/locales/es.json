@@ -1461,6 +1461,7 @@
       "triggerTest": "Prueba",
       "triggerManualTask": "Ejecución manual de tarea",
       "triggerScheduled": "Programada",
+      "manualRunConfirm": "¿Ejecutar ahora la tarea \"{{name}}\"? Se activarán {{count}} cuentas en secuencia.",
       "noticeSavedEnabled": "Tareas guardadas. Total de tareas: {{count}}.",
       "noticeSavedDisabled": "Se guardó la configuración. Todas las tareas están en pausa.",
       "noticeTaskFinished": "Tarea finalizada. {{count}} cuenta(s) correcta(s).",

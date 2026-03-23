@@ -7,6 +7,16 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.20.1] - 2026-03-23
+
+### Added
+- **Codex wakeup tasks now include an always-available execution details view**: each task card adds a dedicated details icon that opens the same execution-results dialog used by manual tests, so users can inspect queued accounts before a run starts and keep watching the same panel when a scheduled run begins.
+
+### Fixed
+- **Codex wakeup task cards now guard manual runs and count trigger history by task run instead of per-account records**: clicking the manual-run action now requires confirmation before immediately waking accounts, and the history badge reflects grouped task/test executions instead of inflated per-account totals.
+- **Release asset publishing now keeps updater bundles in a single GitHub release before merged metadata is rebuilt**: the release workflow now creates one draft release up front and uploads matrix artifacts by `releaseId`, preventing split draft releases from breaking merged `latest.json` and `SHA256SUMS.txt` generation across macOS, Windows, and Linux.
+
+---
 ## [0.20.0] - 2026-03-23
 
 ### Added

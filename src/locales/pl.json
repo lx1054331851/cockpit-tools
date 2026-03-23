@@ -1461,6 +1461,7 @@
       "triggerTest": "Próba",
       "triggerManualTask": "Ręczne uruchomienie zadania",
       "triggerScheduled": "Zaplanowane",
+      "manualRunConfirm": "Uruchomić zadanie „{{name}}” teraz? {{count}} kont zostanie wybudzonych kolejno.",
       "noticeSavedEnabled": "Zadania zapisane. Łącznie zadań: {{count}}.",
       "noticeSavedDisabled": "Ustawienia zapisane. Wszystkie zadania są obecnie wstrzymane.",
       "noticeTaskFinished": "Zadanie zakończone. Sukces dla {{count}} kont(a).",

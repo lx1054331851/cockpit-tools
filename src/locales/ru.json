@@ -1461,6 +1461,7 @@
       "triggerTest": "Тест",
       "triggerManualTask": "Ручной запуск задачи",
       "triggerScheduled": "По расписанию",
+      "manualRunConfirm": "Запустить задачу «{{name}}» сейчас? Будут последовательно пробуждены {{count}} аккаунтов.",
       "noticeSavedEnabled": "Задачи сохранены. Всего задач: {{count}}.",
       "noticeSavedDisabled": "Настройки сохранены. Сейчас все задачи приостановлены.",
       "noticeTaskFinished": "Задача завершена. Успешно для {{count}} аккаунтов.",
