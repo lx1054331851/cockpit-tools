@@ -1160,6 +1160,8 @@
       "accountRequired": "Выберите хотя бы один аккаунт",
       "modelRequired": "Выберите хотя бы одну модель",
       "crontabRequired": "Введите выражение crontab",
+      "crontabValid": "Выражение crontab корректно",
+      "crontabInvalid": "Выражение crontab некорректно",
       "taskSaved": "Задача \"{{name}}\" сохранена",
       "featureOff": "Пробуждение выключено",
       "featureOn": "Пробуждение включено",

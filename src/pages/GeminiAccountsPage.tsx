@@ -24,11 +24,9 @@ import {
   EyeOff,
   Lock,
   BookOpen,
-  Settings2,
 } from 'lucide-react';
 import { useGeminiAccountStore } from '../stores/useGeminiAccountStore';
 import * as geminiService from '../services/geminiService';
-import type { GeminiCloudProject } from '../services/geminiService';
 import * as geminiInstanceService from '../services/geminiInstanceService';
 import { TagEditModal } from '../components/TagEditModal';
 import { ExportJsonModal } from '../components/ExportJsonModal';
@@ -40,7 +38,6 @@ import {
   getGeminiPlanBadgeClass,
   getGeminiPlanDisplayName,
   getGeminiAccountDisplayEmail,
-  getGeminiTierQuotaSummary,
   isGeminiAccountBanned,
 } from '../types/gemini';
 import type { GeminiAccount } from '../types/gemini';
@@ -77,26 +74,9 @@ interface GeminiLaunchModalState {
   executeError: string | null;
 }
 
-interface GeminiProjectModalState {
-  accountId: string;
-  accountEmail: string;
-  loading: boolean;
-  saving: boolean;
-  selectedProjectId: string;
-  projects: GeminiCloudProject[];
-  error: string | null;
-}
-
-function getGeminiQuotaClass(percentage: number): string {
-  if (percentage >= 90) return 'critical';
-  if (percentage >= 70) return 'warning';
-  return 'high';
-}
-
 export function GeminiAccountsPage() {
   const [activeTab, setActiveTab] = useState<GeminiTab>('overview');
   const [launchModal, setLaunchModal] = useState<GeminiLaunchModalState | null>(null);
-  const [projectModal, setProjectModal] = useState<GeminiProjectModalState | null>(null);
   const [filterTypes, setFilterTypes] = useState<string[]>([]);
   const untaggedKey = '__untagged__';
 
@@ -262,105 +242,6 @@ export function GeminiAccountsPage() {
     }
   }, [launchModal]);
 
-  const closeProjectModal = useCallback(() => {
-    setProjectModal(null);
-  }, []);
-
-  const handleOpenProjectModal = useCallback(async (account: GeminiAccount) => {
-    const currentProjectId = (account.project_id || '').trim();
-    setProjectModal({
-      accountId: account.id,
-      accountEmail: getGeminiAccountDisplayEmail(account) || account.email || account.id,
-      loading: true,
-      saving: false,
-      selectedProjectId: currentProjectId,
-      projects: [],
-      error: null,
-    });
-
-    try {
-      const projects = await geminiService.listGeminiCloudProjects(account.id);
-      setProjectModal((prev) => {
-        if (!prev || prev.accountId !== account.id) return prev;
-        const hasCurrent =
-          !currentProjectId || projects.some((item) => item.projectId === currentProjectId);
-        return {
-          ...prev,
-          loading: false,
-          projects,
-          selectedProjectId: hasCurrent ? currentProjectId : prev.selectedProjectId,
-          error: null,
-        };
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setProjectModal((prev) =>
-        prev && prev.accountId === account.id
-          ? {
-              ...prev,
-              loading: false,
-              error: message,
-            }
-          : prev,
-      );
-    }
-  }, []);
-
-  const handleSaveProjectId = useCallback(async () => {
-    if (!projectModal || projectModal.loading || projectModal.saving) return;
-
-    const normalizedProjectId = projectModal.selectedProjectId.trim();
-    setProjectModal((prev) =>
-      prev
-        ? {
-            ...prev,
-            saving: true,
-            error: null,
-          }
-        : prev,
-    );
-
-    try {
-      const updated = await geminiService.setGeminiAccountProjectId(
-        projectModal.accountId,
-        normalizedProjectId || null,
-      );
-      await store.fetchAccounts();
-      setProjectModal(null);
-
-      if ((updated.status || '').toLowerCase() === 'error' && updated.status_reason) {
-        setMessage({
-          tone: 'error',
-          text: t(
-            'gemini.projectConfig.savedWithRefreshError',
-            '项目已保存，但刷新配额失败：{{error}}',
-            { error: updated.status_reason },
-          ),
-        });
-        return;
-      }
-
-      setMessage({
-        text: normalizedProjectId
-          ? t('gemini.projectConfig.saved', '项目已保存：{{projectId}}', {
-              projectId: normalizedProjectId,
-            })
-          : t('gemini.projectConfig.cleared', '已恢复为自动项目识别'),
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setProjectModal((prev) =>
-        prev
-          ? {
-              ...prev,
-              saving: false,
-              error: message,
-            }
-          : prev,
-      );
-    }
-  }, [projectModal, setMessage, store, t]);
-
   // ─── Platform-specific: Plan resolution ────────────────────────────
 
   const resolvePlanKey = useCallback(
@@ -387,82 +268,55 @@ export function GeminiAccountsPage() {
     [resolveDisplayEmail],
   );
 
-  // ─── Platform-specific: Quota ──────────────────────────────────────
+  const resolveAuthMethodText = useCallback((account: GeminiAccount) => {
+    const raw = (account.selected_auth_type || '').trim();
+    const email = (account.email || '').trim();
+    const normalized = raw.toLowerCase();
 
-  const formatRelativeDuration = useCallback(
-    (seconds: number) => {
-      const safe = Math.max(0, Math.floor(seconds));
-      const totalMinutes = Math.floor(safe / 60);
-      if (totalMinutes < 1) {
-        return t('common.shared.time.lessThanMinute', '<1分钟');
-      }
-      const days = Math.floor(totalMinutes / (60 * 24));
-      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-      const minutes = totalMinutes % 60;
-      if (days > 0 && hours > 0) {
-        return t('common.shared.time.relativeDaysHours', '{{days}}天{{hours}}小时', { days, hours });
-      }
-      if (days > 0) {
-        return t('common.shared.time.relativeDays', '{{days}}天', { days });
-      }
-      if (hours > 0 && minutes > 0) {
-        return t('common.shared.time.relativeHoursMinutes', '{{hours}}小时{{minutes}}分钟', { hours, minutes });
-      }
-      if (hours > 0) {
-        return t('common.shared.time.relativeHours', '{{hours}}小时', { hours });
-      }
-      return t('common.shared.time.relativeMinutes', '{{minutes}}分钟', { minutes });
-    },
-    [t],
-  );
+    if (normalized.includes('oauth') || normalized.includes('google')) {
+      return email ? `Signed in with Google (${email})` : 'Signed in with Google';
+    }
 
-  const resolveUpdatedText = useCallback(
-    (account: GeminiAccount) => {
-      const updatedAt = account.last_used || account.created_at || 0;
-      const secondsAgo = Math.floor(Date.now() / 1000) - updatedAt;
-      return t('gemini.updated.label', 'Updated {{relative}} ago', {
-        relative: formatRelativeDuration(secondsAgo),
-      });
-    },
-    [formatRelativeDuration, t],
-  );
+    if (email) {
+      return `Signed in with Google (${email})`;
+    }
 
-  const resolveTierQuota = useCallback(
-    (account: GeminiAccount, tier: 'pro' | 'flash') => {
-      const tierSummary = getGeminiTierQuotaSummary(account);
-      const target = tier === 'pro' ? tierSummary.pro : tierSummary.flash;
-      const hasRemaining =
-        typeof target.remainingPercent === 'number' && Number.isFinite(target.remainingPercent);
-      const remaining = hasRemaining
-        ? Math.max(0, Math.min(100, Math.round(target.remainingPercent!)))
-        : 0;
-      const usedPercent = 100 - remaining;
-      const resetText =
-        typeof target.resetAt === 'number' && Number.isFinite(target.resetAt)
-          ? (() => {
-              const secondsLeft = Math.floor(target.resetAt - Date.now() / 1000);
-              if (secondsLeft <= 0) {
-                return t('gemini.quota.resetsSoon', 'Resets soon');
-              }
-              return t('gemini.quota.resetsIn', 'Resets in {{relative}}', {
-                relative: formatRelativeDuration(secondsLeft),
-              });
-            })()
-          : t('gemini.quota.resetsUnknown', 'Reset time unknown');
+    return raw || '--';
+  }, []);
 
-      return {
-        label: t(`gemini.quota.${tier}`, tier === 'pro' ? 'Pro' : 'Flash'),
-        percentage: remaining,
-        quotaClass: getGeminiQuotaClass(usedPercent),
-        leftText: hasRemaining
-          ? t('gemini.quota.left', '{{value}}% left', { value: remaining })
-          : '--',
-        resetText,
-        hasRemaining,
-      };
-    },
-    [formatRelativeDuration, t],
-  );
+  const resolveTierRawText = useCallback((account: GeminiAccount) => {
+    const raw = (account.plan_name || account.tier_id || '').trim();
+    if (!raw) return '--';
+
+    const normalized = raw.toLowerCase();
+    if (normalized.startsWith('gemini code assist')) {
+      return raw;
+    }
+
+    if (
+      normalized.includes('google_one_ai_premium')
+      || normalized.includes('google one ai premium')
+      || normalized.includes('google_one_ai_pro')
+      || normalized.includes('google one ai pro')
+      || normalized.includes('pro-tier')
+    ) {
+      return 'Gemini Code Assist in Google One AI Pro';
+    }
+
+    if (normalized.includes('ultra')) {
+      return 'Gemini Code Assist in Google AI Ultra';
+    }
+
+    if (
+      normalized.includes('standard-tier')
+      || normalized.includes('free-tier')
+      || normalized === 'free'
+    ) {
+      return 'Gemini Code Assist';
+    }
+
+    return raw;
+  }, []);
 
   // ─── Platform-specific: Dynamic tier filter ────────────────────────
 
@@ -537,35 +391,9 @@ export function GeminiAccountsPage() {
       return currentFirstDiff;
     }
 
-    const getTierMetrics = (account: GeminiAccount) => {
-      const summary = getGeminiTierQuotaSummary(account);
-      const remainingCandidates = [summary.pro.remainingPercent, summary.flash.remainingPercent]
-        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-      const remaining = remainingCandidates.length > 0 ? Math.min(...remainingCandidates) : null;
-      const resetCandidates = [summary.pro.resetAt, summary.flash.resetAt]
-        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-      const nearestReset = resetCandidates.length > 0 ? Math.min(...resetCandidates) : null;
-      return { remaining, nearestReset };
-    };
-
-    if (sortBy === 'created_at') {
-      const diff = b.created_at - a.created_at;
-      return sortDirection === 'desc' ? diff : -diff;
-    }
-    if (sortBy === 'plan_end') {
-      const aReset = getTierMetrics(a).nearestReset;
-      const bReset = getTierMetrics(b).nearestReset;
-      if (aReset == null && bReset == null) return 0;
-      if (aReset == null) return 1;
-      if (bReset == null) return -1;
-      const diff = bReset - aReset;
-      return sortDirection === 'desc' ? diff : -diff;
-    }
-    const aValue = getTierMetrics(a).remaining ?? -1;
-    const bValue = getTierMetrics(b).remaining ?? -1;
-    const diff = bValue - aValue;
+    const diff = b.created_at - a.created_at;
     return sortDirection === 'desc' ? diff : -diff;
-  }, [currentAccountId, sortBy, sortDirection]);
+  }, [currentAccountId, sortDirection]);
 
   const sortedAccountsForInstances = useMemo(
     () => [...accounts].sort(compareAccountsBySort),
@@ -647,9 +475,8 @@ export function GeminiAccountsPage() {
     items.map((account) => {
       const displayEmail = resolveDisplayEmail(account);
       const emailText = displayEmail || account.id;
-      const updatedText = resolveUpdatedText(account);
-      const proQuota = resolveTierQuota(account, 'pro');
-      const flashQuota = resolveTierQuota(account, 'flash');
+      const authMethodText = resolveAuthMethodText(account);
+      const tierText = resolveTierRawText(account);
       const planLabel = resolvePlanLabel(account);
       const planClass = getGeminiPlanBadgeClass(undefined, account);
       const accountTags = (account.tags || []).map((tag) => tag.trim()).filter(Boolean);
@@ -694,14 +521,14 @@ export function GeminiAccountsPage() {
           </div>
 
           <div className="account-sub-line">
-            <span className="kiro-table-subline">{updatedText}</span>
-            {account.project_id && (
-              <span className="kiro-table-subline">
-                {t('gemini.projectConfig.current', '项目：{{projectId}}', {
-                  projectId: account.project_id,
-                })}
-              </span>
-            )}
+            <span className="kiro-table-subline">
+              Auth Method: {authMethodText}
+            </span>
+          </div>
+          <div className="account-sub-line">
+            <span className="kiro-table-subline">
+              Tier: {tierText}
+            </span>
           </div>
 
           {accountTags.length > 0 && (
@@ -713,41 +540,16 @@ export function GeminiAccountsPage() {
             </div>
           )}
 
-          <div className="ghcp-quota-section">
-            {[proQuota, flashQuota].map((quota) => (
-              <div className="quota-item windsurf-credit-item" key={`${account.id}-${quota.label}`}>
-                <div className="quota-header">
-                  <span className="quota-label">{quota.label}</span>
-                </div>
-                <div className="quota-bar-track">
-                  <div className={`quota-bar ${quota.quotaClass}`} style={{ width: `${Math.min(quota.percentage, 100)}%` }} />
-                </div>
-                <div className="windsurf-credit-meta-row">
-                  <span className="windsurf-credit-left">{quota.leftText}</span>
-                  <span className="windsurf-credit-used">{quota.resetText}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
           <div className="card-footer">
-            <span className="card-date">{updatedText}</span>
             <div className="card-actions">
               <button className="card-action-btn success" onClick={() => handleInjectToVSCode?.(account.id)} disabled={!!injecting || isBanned}
                 title={isBanned ? t('accounts.status.forbidden_msg') : t('gemini.injectToGemini', '切换到 Gemini')}>
                 {injecting === account.id ? <RefreshCw size={14} className="loading-spinner" /> : <Play size={14} />}
               </button>
-              <button
-                className="card-action-btn"
-                onClick={() => void handleOpenProjectModal(account)}
-                title={t('gemini.projectConfig.button', '设置 GCP 项目')}
-              >
-                <Settings2 size={14} />
-              </button>
               <button className="card-action-btn" onClick={() => openTagModal(account.id)} title={t('accounts.editTags', '编辑标签')}>
                 <Tag size={14} />
               </button>
-              <button className="card-action-btn" onClick={() => handleRefresh(account.id)} disabled={refreshing === account.id} title={t('common.shared.refreshQuota', '刷新配额')}>
+              <button className="card-action-btn" onClick={() => handleRefresh(account.id)} disabled={refreshing === account.id} title={t('common.refresh', '刷新')}>
                 <RotateCw size={14} className={refreshing === account.id ? 'loading-spinner' : ''} />
               </button>
               <button
@@ -770,9 +572,8 @@ export function GeminiAccountsPage() {
     items.map((account) => {
       const displayEmail = resolveDisplayEmail(account);
       const emailText = displayEmail || account.id;
-      const updatedText = resolveUpdatedText(account);
-      const proQuota = resolveTierQuota(account, 'pro');
-      const flashQuota = resolveTierQuota(account, 'flash');
+      const authMethodText = resolveAuthMethodText(account);
+      const tierText = resolveTierRawText(account);
       const planLabel = resolvePlanLabel(account);
       const planClass = getGeminiPlanBadgeClass(undefined, account);
       const accountTags = (account.tags || []).map((tag) => tag.trim()).filter(Boolean);
@@ -804,17 +605,15 @@ export function GeminiAccountsPage() {
                 </div>
               )}
               <div className="account-sub-line">
-                <span className="kiro-table-subline">{updatedText}</span>
+                <span className="kiro-table-subline">
+                  Auth Method: {authMethodText}
+                </span>
               </div>
-              {account.project_id && (
-                <div className="account-sub-line">
-                  <span className="kiro-table-subline">
-                    {t('gemini.projectConfig.current', '项目：{{projectId}}', {
-                      projectId: account.project_id,
-                    })}
-                  </span>
-                </div>
-              )}
+              <div className="account-sub-line">
+                <span className="kiro-table-subline">
+                  Tier: {tierText}
+                </span>
+              </div>
               {accountTags.length > 0 && (
                 <div className="account-tags-inline">
                   {visibleTags.map((tag, idx) => (<span key={`${account.id}-inline-${tag}-${idx}`} className="tag-pill">{tag}</span>))}
@@ -823,51 +622,16 @@ export function GeminiAccountsPage() {
               )}
             </div>
           </td>
-          <td>
-            <div className="quota-item windsurf-table-credit-item">
-              <div className="quota-header">
-                <span className="quota-name">{proQuota.label}</span>
-                <span className={`quota-value ${proQuota.quotaClass}`}>{proQuota.leftText}</span>
-              </div>
-              <div className="windsurf-credit-meta-row table">
-                <span className="windsurf-credit-used">{proQuota.resetText}</span>
-              </div>
-              <div className="quota-progress-track">
-                <div className={`quota-progress-bar ${proQuota.quotaClass}`} style={{ width: `${Math.min(proQuota.percentage, 100)}%` }} />
-              </div>
-            </div>
-          </td>
-          <td>
-            <div className="quota-item windsurf-table-credit-item">
-              <div className="quota-header">
-                <span className="quota-name">{flashQuota.label}</span>
-                <span className={`quota-value ${flashQuota.quotaClass}`}>{flashQuota.leftText}</span>
-              </div>
-              <div className="windsurf-credit-meta-row table">
-                <span className="windsurf-credit-used">{flashQuota.resetText}</span>
-              </div>
-              <div className="quota-progress-track">
-                <div className={`quota-progress-bar ${flashQuota.quotaClass}`} style={{ width: `${Math.min(flashQuota.percentage, 100)}%` }} />
-              </div>
-            </div>
-          </td>
           <td className="sticky-action-cell table-action-cell">
             <div className="action-buttons">
               <button className="action-btn success" onClick={() => handleInjectToVSCode?.(account.id)} disabled={!!injecting || isBanned}
                 title={isBanned ? t('accounts.status.forbidden_msg') : t('gemini.injectToGemini', '切换到 Gemini')}>
                 {injecting === account.id ? <RefreshCw size={14} className="loading-spinner" /> : <Play size={14} />}
               </button>
-              <button
-                className="action-btn"
-                onClick={() => void handleOpenProjectModal(account)}
-                title={t('gemini.projectConfig.button', '设置 GCP 项目')}
-              >
-                <Settings2 size={14} />
-              </button>
               <button className="action-btn" onClick={() => openTagModal(account.id)} title={t('accounts.editTags', '编辑标签')}>
                 <Tag size={14} />
               </button>
-              <button className="action-btn" onClick={() => handleRefresh(account.id)} disabled={refreshing === account.id} title={t('common.shared.refreshQuota', '刷新配额')}>
+              <button className="action-btn" onClick={() => handleRefresh(account.id)} disabled={refreshing === account.id} title={t('common.refresh', '刷新')}>
                 <RotateCw size={14} className={refreshing === account.id ? 'loading-spinner' : ''} />
               </button>
               <button
@@ -982,8 +746,6 @@ export function GeminiAccountsPage() {
             <ArrowDownWideNarrow size={14} className="sort-icon" />
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={t('common.shared.sortLabel', '排序')}>
               <option value="created_at">{t('common.shared.sort.createdAt', '按创建时间')}</option>
-              <option value="credits">{t('common.shared.sort.credits', '按剩余 Credits')}</option>
-              <option value="plan_end">{t('common.shared.sort.planEnd', '按配额周期结束时间')}</option>
             </select>
           </div>
 
@@ -1076,8 +838,6 @@ export function GeminiAccountsPage() {
                   <input type="checkbox" checked={selected.size === filteredAccounts.length && filteredAccounts.length > 0} onChange={() => toggleSelectAll(filteredAccounts.map((a) => a.id))} />
                 </th>
                 <th style={{ width: 240 }}>{t('common.shared.columns.email', '邮箱')}</th>
-                <th>{t('gemini.quota.pro', 'Pro')}</th>
-                <th>{t('gemini.quota.flash', 'Flash')}</th>
                 <th className="sticky-action-header table-action-header">{t('common.shared.columns.actions', '操作')}</th>
               </tr>
             </thead>
@@ -1085,7 +845,7 @@ export function GeminiAccountsPage() {
               {groupedAccounts.map(([groupKey, groupAccounts]) => (
                 <Fragment key={groupKey}>
                   <tr className="tag-group-row">
-                    <td colSpan={5}>
+                    <td colSpan={3}>
                       <div className="tag-group-header">
                         <span className="tag-group-title">{resolveGroupLabel(groupKey)}</span>
                         <span className="tag-group-count">{groupAccounts.length}</span>
@@ -1107,8 +867,6 @@ export function GeminiAccountsPage() {
                   <input type="checkbox" checked={selected.size === filteredAccounts.length && filteredAccounts.length > 0} onChange={() => toggleSelectAll(filteredAccounts.map((a) => a.id))} />
                 </th>
                 <th style={{ width: 240 }}>{t('common.shared.columns.email', '邮箱')}</th>
-                <th>{t('gemini.quota.pro', 'Pro')}</th>
-                <th>{t('gemini.quota.flash', 'Flash')}</th>
                 <th className="sticky-action-header table-action-header">{t('common.shared.columns.actions', '操作')}</th>
               </tr>
             </thead>
@@ -1348,102 +1106,6 @@ export function GeminiAccountsPage() {
         onClose={() => setShowTagModal(null)}
         onSave={handleSaveTags}
       />
-
-      {projectModal && (
-        <div className="modal-overlay" onClick={() => !projectModal.saving && closeProjectModal()}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{t('gemini.projectConfig.title', '设置 GCP 项目')}</h2>
-              <button
-                className="modal-close"
-                onClick={closeProjectModal}
-                disabled={projectModal.saving}
-                aria-label={t('common.close', '关闭')}
-              >
-                <X />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>{t('common.shared.columns.email', '邮箱')}</label>
-                <input
-                  className="form-input"
-                  value={maskAccountText(projectModal.accountEmail)}
-                  readOnly
-                />
-              </div>
-              <div className="form-group">
-                <label>{t('gemini.projectConfig.selectLabel', '选择项目')}</label>
-                {projectModal.loading ? (
-                  <div className="add-status loading">
-                    <RefreshCw size={16} className="loading-spinner" />
-                    <span>{t('gemini.projectConfig.loading', '正在加载项目列表...')}</span>
-                  </div>
-                ) : (
-                  <select
-                    className="form-input"
-                    value={projectModal.selectedProjectId}
-                    disabled={projectModal.saving}
-                    onChange={(e) =>
-                      setProjectModal((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              selectedProjectId: e.target.value,
-                              error: null,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    <option value="">
-                      {t('gemini.projectConfig.auto', '自动选择（不手动指定）')}
-                    </option>
-                    {projectModal.projects.map((project) => (
-                      <option key={project.projectId} value={project.projectId}>
-                        {project.projectName
-                          ? `${project.projectId} (${project.projectName})`
-                          : project.projectId}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {!projectModal.loading && projectModal.projects.length === 0 && (
-                  <p className="form-hint">
-                    {t(
-                      'gemini.projectConfig.empty',
-                      '未获取到可用项目，请确认该账号具备 GCP 项目权限。',
-                    )}
-                  </p>
-                )}
-                <p className="form-hint">
-                  {t(
-                    'gemini.projectConfig.hint',
-                    '保存后将优先使用该项目请求配额，并在启动命令中注入 GOOGLE_CLOUD_PROJECT。',
-                  )}
-                </p>
-              </div>
-              {projectModal.error && <div className="form-error">{projectModal.error}</div>}
-            </div>
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={closeProjectModal}
-                disabled={projectModal.saving}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={() => void handleSaveProjectId()}
-                disabled={projectModal.loading || projectModal.saving}
-              >
-                {projectModal.saving ? t('common.saving', '保存中...') : t('common.save', '保存')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {launchModal && (
         <div className="modal-overlay" onClick={() => setLaunchModal(null)}>

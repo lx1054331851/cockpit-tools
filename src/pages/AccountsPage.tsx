@@ -112,6 +112,10 @@ import {
   type FeatureUnlockChangedDetail,
   isAntigravitySeamlessSwitchFeatureUnlocked,
 } from '../utils/featureUnlocks'
+import {
+  consumeQueuedExternalProviderImportForPlatform,
+  EXTERNAL_PROVIDER_IMPORT_EVENT,
+} from '../utils/externalProviderImport'
 
 interface AccountsPageProps {
   onNavigate?: (page: Page) => void
@@ -1061,7 +1065,7 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     }
   }
 
-  const resetAddModalState = () => {
+  const resetAddModalState = useCallback(() => {
     setAddStatus('idle')
     setAddMessage('')
     setTokenInput('')
@@ -1069,13 +1073,33 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
     setOauthCallbackInput('')
     setOauthCallbackSubmitting(false)
     setOauthCallbackError(null)
-  }
+  }, [])
 
-  const openAddModal = (tab: 'oauth' | 'token' | 'import') => {
+  const openAddModal = useCallback((tab: 'oauth' | 'token' | 'import') => {
     setAddTab(tab)
     setShowAddModal(true)
     resetAddModalState()
-  }
+  }, [resetAddModalState])
+
+  const consumeExternalProviderImport = useCallback(() => {
+    const request = consumeQueuedExternalProviderImportForPlatform('antigravity')
+    if (!request) return
+    openAddModal('token')
+    setTokenInput(request.token)
+    setAddStatus('idle')
+    setAddMessage('')
+  }, [openAddModal])
+
+  useEffect(() => {
+    const handleExternalImportEvent = () => {
+      consumeExternalProviderImport()
+    }
+    consumeExternalProviderImport()
+    window.addEventListener(EXTERNAL_PROVIDER_IMPORT_EVENT, handleExternalImportEvent)
+    return () => {
+      window.removeEventListener(EXTERNAL_PROVIDER_IMPORT_EVENT, handleExternalImportEvent)
+    }
+  }, [consumeExternalProviderImport])
 
   const closeAddModal = () => {
     // 允许用户随时关闭弹窗，取消正在进行的 OAuth 流程

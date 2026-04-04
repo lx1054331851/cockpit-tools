@@ -22,6 +22,7 @@ pub mod cursor_instance;
 pub mod cursor_oauth;
 pub mod db;
 pub mod device;
+pub mod external_import;
 pub mod fingerprint;
 pub mod floating_card_window;
 pub mod gemini_account;

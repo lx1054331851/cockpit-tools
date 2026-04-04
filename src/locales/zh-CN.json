@@ -1205,6 +1205,8 @@
       "accountRequired": "请选择至少一个账号",
       "modelRequired": "请选择至少一个模型",
       "crontabRequired": "请输入 crontab 表达式",
+      "crontabValid": "Crontab 表达式有效",
+      "crontabInvalid": "Crontab 表达式无效",
       "taskSaved": "任务「{{name}}」已保存",
       "featureOff": "唤醒功能已关闭",
       "featureOn": "唤醒功能已开启",

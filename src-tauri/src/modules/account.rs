@@ -943,6 +943,12 @@ pub struct RefreshStats {
     pub details: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuotaRefreshTrigger {
+    ManualBatch,
+    Auto,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct QuotaAlertPayload {
     pub platform: String,
@@ -1179,7 +1185,10 @@ fn evaluate_auto_switch_trigger(
         return None;
     }
 
-    let selected_group_ids: Vec<String> = monitored_groups.iter().map(|group| group.id.clone()).collect();
+    let selected_group_ids: Vec<String> = monitored_groups
+        .iter()
+        .map(|group| group.id.clone())
+        .collect();
     let selected_group_names: Vec<String> = monitored_groups
         .iter()
         .map(|group| group.name.clone())
@@ -1216,11 +1225,13 @@ fn evaluate_auto_switch_trigger(
         group_quotas
             .into_iter()
             .filter(|group| group.percentage <= threshold)
-            .map(|group| modules::antigravity_switch_history::AntigravityAutoSwitchHitGroup {
-                group_id: group.id,
-                group_name: group.name,
-                percentage: group.percentage,
-            })
+            .map(
+                |group| modules::antigravity_switch_history::AntigravityAutoSwitchHitGroup {
+                    group_id: group.id,
+                    group_name: group.name,
+                    percentage: group.percentage,
+                },
+            )
             .collect();
     if hit_groups.is_empty() {
         return None;
@@ -1258,7 +1269,9 @@ fn can_be_auto_switch_candidate(
     if group_quotas.len() < monitored_groups.len() {
         return false;
     }
-    group_quotas.iter().all(|group| group.percentage >= threshold)
+    group_quotas
+        .iter()
+        .all(|group| group.percentage >= threshold)
 }
 
 fn can_be_quota_alert_candidate(account: &Account, current_id: &str) -> bool {
@@ -1629,17 +1642,23 @@ pub async fn run_auto_switch_if_needed() -> Result<Option<Account>, String> {
 }
 
 /// 批量刷新所有账号配额
-pub async fn refresh_all_quotas_logic() -> Result<RefreshStats, String> {
+pub async fn refresh_all_quotas_logic(
+    trigger: QuotaRefreshTrigger,
+) -> Result<RefreshStats, String> {
     use futures::future::join_all;
     use std::sync::Arc;
     use tokio::sync::Semaphore;
 
     const MAX_CONCURRENT: usize = 5;
     let start = std::time::Instant::now();
+    let trigger_label = match trigger {
+        QuotaRefreshTrigger::ManualBatch => "manual_batch",
+        QuotaRefreshTrigger::Auto => "auto",
+    };
 
     modules::logger::log_info(&format!(
-        "开始批量刷新所有账号配额 (并发模式, 最大并发: {})",
-        MAX_CONCURRENT
+        "开始批量刷新所有账号配额 (trigger={}, 并发模式, 最大并发: {})",
+        trigger_label, MAX_CONCURRENT
     ));
     let accounts = list_accounts()?;
 
@@ -1648,14 +1667,16 @@ pub async fn refresh_all_quotas_logic() -> Result<RefreshStats, String> {
     let tasks: Vec<_> = accounts
         .into_iter()
         .filter(|account| {
-            if account.disabled {
-                modules::logger::log_info("  - Skipping Disabled account");
-                return false;
-            }
-            if let Some(ref q) = account.quota {
-                if q.is_forbidden {
-                    modules::logger::log_info("  - Skipping Forbidden account");
+            if trigger == QuotaRefreshTrigger::Auto {
+                if account.disabled {
+                    modules::logger::log_info("  - Skipping Disabled account (auto)");
                     return false;
+                }
+                if let Some(ref q) = account.quota {
+                    if q.is_forbidden {
+                        modules::logger::log_info("  - Skipping Forbidden account (auto)");
+                        return false;
+                    }
                 }
             }
             true
@@ -1971,29 +1992,31 @@ pub async fn switch_account_dual_no_restart(
     let account = match local_result {
         Ok(account) => account,
         Err(error) => {
-            persist_switch_history(modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
-                id: history_id,
-                timestamp,
-                account_id: account_id.to_string(),
-                target_email: target_email_fallback,
-                trigger_type: trigger_type.clone(),
-                trigger_source: trigger_source.clone(),
-                local_ok: false,
-                seamless_ok: false,
-                success: false,
-                local_duration_ms,
-                seamless_duration_ms: None,
-                total_duration_ms: started.elapsed().as_millis() as u64,
-                error_stage: Some("local".to_string()),
-                error_code: None,
-                error_message: Some(error.clone()),
-                seamless_effective_mode: None,
-                seamless_from_email: None,
-                seamless_to_email: None,
-                seamless_execution_id: None,
-                seamless_finished_at: None,
-                auto_switch_reason: auto_switch_reason.clone(),
-            });
+            persist_switch_history(
+                modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
+                    id: history_id,
+                    timestamp,
+                    account_id: account_id.to_string(),
+                    target_email: target_email_fallback,
+                    trigger_type: trigger_type.clone(),
+                    trigger_source: trigger_source.clone(),
+                    local_ok: false,
+                    seamless_ok: false,
+                    success: false,
+                    local_duration_ms,
+                    seamless_duration_ms: None,
+                    total_duration_ms: started.elapsed().as_millis() as u64,
+                    error_stage: Some("local".to_string()),
+                    error_code: None,
+                    error_message: Some(error.clone()),
+                    seamless_effective_mode: None,
+                    seamless_from_email: None,
+                    seamless_to_email: None,
+                    seamless_execution_id: None,
+                    seamless_finished_at: None,
+                    auto_switch_reason: auto_switch_reason.clone(),
+                },
+            );
             return Err(error);
         }
     };
@@ -2002,29 +2025,31 @@ pub async fn switch_account_dual_no_restart(
         Ok(started_now) => started_now,
         Err(error) => {
             modules::websocket::broadcast_account_switched(&account.id, &account.email);
-            persist_switch_history(modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
-                id: history_id,
-                timestamp,
-                account_id: account.id.clone(),
-                target_email: account.email.clone(),
-                trigger_type: trigger_type.clone(),
-                trigger_source: trigger_source.clone(),
-                local_ok: true,
-                seamless_ok: false,
-                success: false,
-                local_duration_ms,
-                seamless_duration_ms: None,
-                total_duration_ms: started.elapsed().as_millis() as u64,
-                error_stage: Some("client_start".to_string()),
-                error_code: None,
-                error_message: Some(error.clone()),
-                seamless_effective_mode: None,
-                seamless_from_email: None,
-                seamless_to_email: None,
-                seamless_execution_id: None,
-                seamless_finished_at: None,
-                auto_switch_reason: auto_switch_reason.clone(),
-            });
+            persist_switch_history(
+                modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
+                    id: history_id,
+                    timestamp,
+                    account_id: account.id.clone(),
+                    target_email: account.email.clone(),
+                    trigger_type: trigger_type.clone(),
+                    trigger_source: trigger_source.clone(),
+                    local_ok: true,
+                    seamless_ok: false,
+                    success: false,
+                    local_duration_ms,
+                    seamless_duration_ms: None,
+                    total_duration_ms: started.elapsed().as_millis() as u64,
+                    error_stage: Some("client_start".to_string()),
+                    error_code: None,
+                    error_message: Some(error.clone()),
+                    seamless_effective_mode: None,
+                    seamless_from_email: None,
+                    seamless_to_email: None,
+                    seamless_execution_id: None,
+                    seamless_finished_at: None,
+                    auto_switch_reason: auto_switch_reason.clone(),
+                },
+            );
             if error.starts_with("APP_PATH_NOT_FOUND:") {
                 return Err(error);
             }
@@ -2055,56 +2080,60 @@ pub async fn switch_account_dual_no_restart(
     match seamless_result {
         Ok(response) if response.success => {
             modules::websocket::broadcast_account_switched(&account.id, &account.email);
-            persist_switch_history(modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
-                id: history_id,
-                timestamp,
-                account_id: account.id.clone(),
-                target_email: account.email.clone(),
-                trigger_type: trigger_type.clone(),
-                trigger_source: trigger_source.clone(),
-                local_ok: true,
-                seamless_ok: true,
-                success: true,
-                local_duration_ms,
-                seamless_duration_ms: Some(seamless_duration_ms),
-                total_duration_ms: started.elapsed().as_millis() as u64,
-                error_stage: None,
-                error_code: None,
-                error_message: None,
-                seamless_effective_mode: Some(response.effective_mode),
-                seamless_from_email: response.from_email,
-                seamless_to_email: Some(response.to_email),
-                seamless_execution_id: Some(response.execution_id),
-                seamless_finished_at: Some(response.finished_at),
-                auto_switch_reason: auto_switch_reason.clone(),
-            });
+            persist_switch_history(
+                modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
+                    id: history_id,
+                    timestamp,
+                    account_id: account.id.clone(),
+                    target_email: account.email.clone(),
+                    trigger_type: trigger_type.clone(),
+                    trigger_source: trigger_source.clone(),
+                    local_ok: true,
+                    seamless_ok: true,
+                    success: true,
+                    local_duration_ms,
+                    seamless_duration_ms: Some(seamless_duration_ms),
+                    total_duration_ms: started.elapsed().as_millis() as u64,
+                    error_stage: None,
+                    error_code: None,
+                    error_message: None,
+                    seamless_effective_mode: Some(response.effective_mode),
+                    seamless_from_email: response.from_email,
+                    seamless_to_email: Some(response.to_email),
+                    seamless_execution_id: Some(response.execution_id),
+                    seamless_finished_at: Some(response.finished_at),
+                    auto_switch_reason: auto_switch_reason.clone(),
+                },
+            );
             Ok(account)
         }
         Ok(response) => {
             modules::websocket::broadcast_account_switched(&account.id, &account.email);
-            persist_switch_history(modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
-                id: history_id,
-                timestamp,
-                account_id: account.id.clone(),
-                target_email: account.email.clone(),
-                trigger_type: trigger_type.clone(),
-                trigger_source: trigger_source.clone(),
-                local_ok: true,
-                seamless_ok: false,
-                success: false,
-                local_duration_ms,
-                seamless_duration_ms: Some(seamless_duration_ms),
-                total_duration_ms: started.elapsed().as_millis() as u64,
-                error_stage: Some("seamless".to_string()),
-                error_code: response.error_code.clone(),
-                error_message: response.error_message.clone(),
-                seamless_effective_mode: Some(response.effective_mode),
-                seamless_from_email: response.from_email,
-                seamless_to_email: Some(response.to_email),
-                seamless_execution_id: Some(response.execution_id),
-                seamless_finished_at: Some(response.finished_at),
-                auto_switch_reason: auto_switch_reason.clone(),
-            });
+            persist_switch_history(
+                modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
+                    id: history_id,
+                    timestamp,
+                    account_id: account.id.clone(),
+                    target_email: account.email.clone(),
+                    trigger_type: trigger_type.clone(),
+                    trigger_source: trigger_source.clone(),
+                    local_ok: true,
+                    seamless_ok: false,
+                    success: false,
+                    local_duration_ms,
+                    seamless_duration_ms: Some(seamless_duration_ms),
+                    total_duration_ms: started.elapsed().as_millis() as u64,
+                    error_stage: Some("seamless".to_string()),
+                    error_code: response.error_code.clone(),
+                    error_message: response.error_message.clone(),
+                    seamless_effective_mode: Some(response.effective_mode),
+                    seamless_from_email: response.from_email,
+                    seamless_to_email: Some(response.to_email),
+                    seamless_execution_id: Some(response.execution_id),
+                    seamless_finished_at: Some(response.finished_at),
+                    auto_switch_reason: auto_switch_reason.clone(),
+                },
+            );
             Err(format!(
                 "本地切换已完成，但扩展无感切号失败: {}",
                 response
@@ -2114,29 +2143,31 @@ pub async fn switch_account_dual_no_restart(
         }
         Err(error) => {
             modules::websocket::broadcast_account_switched(&account.id, &account.email);
-            persist_switch_history(modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
-                id: history_id,
-                timestamp,
-                account_id: account.id.clone(),
-                target_email: account.email.clone(),
-                trigger_type,
-                trigger_source,
-                local_ok: true,
-                seamless_ok: false,
-                success: false,
-                local_duration_ms,
-                seamless_duration_ms: Some(seamless_duration_ms),
-                total_duration_ms: started.elapsed().as_millis() as u64,
-                error_stage: Some("seamless".to_string()),
-                error_code: None,
-                error_message: Some(error.clone()),
-                seamless_effective_mode: None,
-                seamless_from_email: None,
-                seamless_to_email: None,
-                seamless_execution_id: None,
-                seamless_finished_at: None,
-                auto_switch_reason,
-            });
+            persist_switch_history(
+                modules::antigravity_switch_history::AntigravitySwitchHistoryItem {
+                    id: history_id,
+                    timestamp,
+                    account_id: account.id.clone(),
+                    target_email: account.email.clone(),
+                    trigger_type,
+                    trigger_source,
+                    local_ok: true,
+                    seamless_ok: false,
+                    success: false,
+                    local_duration_ms,
+                    seamless_duration_ms: Some(seamless_duration_ms),
+                    total_duration_ms: started.elapsed().as_millis() as u64,
+                    error_stage: Some("seamless".to_string()),
+                    error_code: None,
+                    error_message: Some(error.clone()),
+                    seamless_effective_mode: None,
+                    seamless_from_email: None,
+                    seamless_to_email: None,
+                    seamless_execution_id: None,
+                    seamless_finished_at: None,
+                    auto_switch_reason,
+                },
+            );
             Err(format!("本地切换已完成，但扩展无感切号失败: {}", error))
         }
     }
@@ -2148,7 +2179,8 @@ fn apply_bound_fingerprint_for_switch(account: &Account) {
             if let Ok(fingerprint) = modules::fingerprint::get_fingerprint(fp_id) {
                 modules::logger::log_info("[Switch] 写入设备指纹");
                 let _ = modules::device::write_profile(&storage_path, &fingerprint.profile);
-                let _ = modules::db::write_service_machine_id(&fingerprint.profile.service_machine_id);
+                let _ =
+                    modules::db::write_service_machine_id(&fingerprint.profile.service_machine_id);
                 let _ = modules::fingerprint::set_current_fingerprint_id(fp_id);
             }
         }
@@ -2169,9 +2201,11 @@ pub async fn switch_account_local_no_restart(account_id: &str) -> Result<Account
 
     set_current_account_id(account_id)?;
 
-    if let Err(e) =
-        modules::instance::update_default_settings(Some(Some(account_id.to_string())), None, Some(false))
-    {
+    if let Err(e) = modules::instance::update_default_settings(
+        Some(Some(account_id.to_string())),
+        None,
+        Some(false),
+    ) {
         modules::logger::log_warn(&format!(
             "[Switch][NoRestart] 更新默认实例绑定账号失败: {}",
             e

@@ -1160,6 +1160,8 @@
       "accountRequired": "少なくとも 1 つのアカウントを選択してください",
       "modelRequired": "少なくとも 1 つのモデルを選択してください",
       "crontabRequired": "crontab 式を入力してください",
+      "crontabValid": "crontab 式は有効です",
+      "crontabInvalid": "crontab 式が無効です",
       "taskSaved": "タスク「{{name}}」を保存しました",
       "featureOff": "ウェイクアップをオフにしました",
       "featureOn": "ウェイクアップをオンにしました",

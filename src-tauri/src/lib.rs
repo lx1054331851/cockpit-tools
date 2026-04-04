@@ -70,7 +70,11 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if modules::external_import::handle_external_import_args(app, &args, "single-instance")
+            {
+                return;
+            }
             let _ = app.get_webview_window("main").map(|window| {
                 let _ = window.show();
                 let _ = window.unminimize();
@@ -159,6 +163,13 @@ pub fn run() {
             {
                 logger::log_warn(&format!("[FloatingCard] 启动时显示悬浮卡片失败: {}", err));
             }
+
+            let startup_args: Vec<String> = std::env::args().collect();
+            let _ = modules::external_import::handle_external_import_args(
+                &app.handle(),
+                &startup_args,
+                "startup",
+            );
 
             Ok(())
         })
@@ -271,6 +282,7 @@ pub fn run() {
             commands::system::set_floating_card_confirm_on_close,
             commands::system::save_floating_card_position,
             commands::system::show_main_window_and_navigate,
+            commands::system::external_import_take_pending,
             commands::system::open_folder,
             commands::system::delete_corrupted_file,
             // Logs Commands
@@ -281,6 +293,7 @@ pub fn run() {
             commands::wakeup::wakeup_set_official_ls_version_mode,
             commands::wakeup::trigger_wakeup,
             commands::wakeup::fetch_available_models,
+            commands::wakeup::wakeup_validate_crontab,
             commands::wakeup::wakeup_sync_state,
             commands::wakeup::wakeup_load_history,
             commands::wakeup::wakeup_add_history,
@@ -600,8 +613,6 @@ pub fn run() {
             commands::gemini::gemini_oauth_login_cancel,
             commands::gemini::add_gemini_account_with_token,
             commands::gemini::update_gemini_account_tags,
-            commands::gemini::list_gemini_cloud_projects,
-            commands::gemini::set_gemini_account_project_id,
             commands::gemini::get_gemini_accounts_index_path,
             commands::gemini::inject_gemini_account,
             // Gemini Instance Commands

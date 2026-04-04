@@ -1,9 +1,7 @@
 use std::time::Instant;
 use tauri::AppHandle;
 
-use crate::models::gemini::{
-    GeminiAccount, GeminiCloudProject, GeminiOAuthCompletePayload, GeminiOAuthStartResponse,
-};
+use crate::models::gemini::{GeminiAccount, GeminiOAuthCompletePayload, GeminiOAuthStartResponse};
 use crate::modules::{gemini_account, gemini_oauth, logger};
 
 #[tauri::command]
@@ -90,9 +88,6 @@ pub async fn refresh_gemini_token(
 
     match gemini_account::refresh_account_token(&account_id).await {
         Ok(account) => {
-            if let Err(e) = gemini_account::run_quota_alert_if_needed() {
-                logger::log_warn(&format!("[QuotaAlert][Gemini] 预警检查失败: {}", e));
-            }
             let _ = crate::modules::tray::update_tray_menu(&app);
             logger::log_info(&format!(
                 "[Gemini Command] 刷新完成: account_id={}, email={}, elapsed={}ms",
@@ -123,15 +118,6 @@ pub async fn refresh_all_gemini_tokens(app: AppHandle) -> Result<i32, String> {
     let results = gemini_account::refresh_all_tokens().await?;
     let success_count = results.iter().filter(|(_, item)| item.is_ok()).count();
     let failed_count = results.len().saturating_sub(success_count);
-
-    if success_count > 0 {
-        if let Err(e) = gemini_account::run_quota_alert_if_needed() {
-            logger::log_warn(&format!(
-                "[QuotaAlert][Gemini] 全量刷新后预警检查失败: {}",
-                e
-            ));
-        }
-    }
 
     let _ = crate::modules::tray::update_tray_menu(&app);
     logger::log_info(&format!(
@@ -251,37 +237,6 @@ pub fn update_gemini_account_tags(
     tags: Vec<String>,
 ) -> Result<GeminiAccount, String> {
     gemini_account::update_account_tags(&account_id, tags)
-}
-
-#[tauri::command]
-pub async fn list_gemini_cloud_projects(
-    account_id: String,
-) -> Result<Vec<GeminiCloudProject>, String> {
-    gemini_account::list_cloud_projects(&account_id).await
-}
-
-#[tauri::command]
-pub async fn set_gemini_account_project_id(
-    app: AppHandle,
-    account_id: String,
-    project_id: Option<String>,
-) -> Result<GeminiAccount, String> {
-    let mut account = gemini_account::set_account_project_id(&account_id, project_id.as_deref())?;
-    match gemini_account::refresh_account_token(&account.id).await {
-        Ok(refreshed) => account = refreshed,
-        Err(error) => {
-            logger::log_warn(&format!(
-                "[Gemini Command] 设置项目后刷新失败: account_id={}, error={}",
-                account.id, error
-            ));
-            let _ = gemini_account::set_account_status(&account.id, Some("error"), Some(&error));
-            account.status = Some("error".to_string());
-            account.status_reason = Some(error);
-        }
-    }
-
-    let _ = crate::modules::tray::update_tray_menu(&app);
-    Ok(account)
 }
 
 #[tauri::command]

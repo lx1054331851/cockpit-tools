@@ -7,6 +7,15 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.20.18] - 2026-04-04
+
+### 变更
+- **Codex CLI 检测现已补充家目录下的常见用户级安装路径扫描**：运行时查找会覆盖 `~/.npm-global/bin`、`~/.local/bin`、`~/.cargo/bin`、`~/.volta/bin`、`~/.yarn/bin` 与 `~/bin`，提升非系统安装场景下的检测命中率。
+- **唤醒调度现已让 crontab/间隔预览与实际运行规则保持一致**：桌面端与前端均支持完整 5 段 crontab 校验（含范围、步长、列表与星期归一化），间隔时间窗支持跨午夜区间，配额重置任务在时间窗外也可按 fallback 时间点触发。
+- **Gemini 凭据同步现已优先使用 keychain，并强制按项目维度刷新配额**：本地凭据读取会合并 macOS keychain 与文件凭据，切号时会回写 keychain 并清理旧 file-keychain 文件，配额请求会稳定要求并传递已解析的 project id。
+- **Antigravity 配额刷新现已区分手动批量与自动触发来源**：自动刷新会继续跳过禁用/forbidden 账号，手动批量刷新保持全量账号处理行为。
+
+---
 ## [0.20.17] - 2026-04-01
 
 ### 变更

@@ -1095,6 +1095,12 @@ pub fn show_main_window_and_navigate(app: tauri::AppHandle, page: String) -> Res
     modules::floating_card_window::show_main_window_and_navigate(&app, &page)
 }
 
+#[tauri::command]
+pub fn external_import_take_pending(
+) -> Option<modules::external_import::ExternalProviderImportPayload> {
+    modules::external_import::take_pending_external_import()
+}
+
 /// 打开指定文件夹（如不存在则创建）
 #[tauri::command]
 pub async fn open_folder(path: String) -> Result<(), String> {

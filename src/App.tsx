@@ -45,6 +45,10 @@ import {
   UPDATE_DOWNLOAD_RETRY_DELAYS_MS,
 } from './utils/updaterRetry';
 import { loadWakeupOfficialLsVersionMode } from './utils/wakeupOfficialLsVersion';
+import {
+  dispatchExternalProviderImportEvent,
+  normalizeExternalProviderImportPayload,
+} from './utils/externalProviderImport';
 
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
@@ -436,6 +440,14 @@ function MainApp() {
   const openBreakout = useCallback(() => {
     setHasBreakoutSession(true);
     setShowBreakout(true);
+  }, []);
+  const handleExternalProviderImportRawPayload = useCallback((rawPayload: unknown) => {
+    const normalized = normalizeExternalProviderImportPayload(rawPayload);
+    if (!normalized) return;
+    setPage(normalized.page);
+    window.setTimeout(() => {
+      dispatchExternalProviderImportEvent(normalized);
+    }, 0);
   }, []);
   const handleBreakoutMinimize = useCallback(() => {
     setShowBreakout(false);
@@ -2426,6 +2438,36 @@ function MainApp() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen('external:provider-import', (event) => {
+      handleExternalProviderImportRawPayload(event.payload);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [handleExternalProviderImportRawPayload]);
+
+  useEffect(() => {
+    let canceled = false;
+    void invoke<unknown>('external_import_take_pending')
+      .then((payload) => {
+        if (canceled || !payload) return;
+        handleExternalProviderImportRawPayload(payload);
+      })
+      .catch((error) => {
+        console.warn('[ExternalImport] 读取待处理导入请求失败:', error);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [handleExternalProviderImportRawPayload]);
 
   // 窗口拖拽处理
   const handleDragStart = () => {

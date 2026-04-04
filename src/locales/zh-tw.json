@@ -1160,6 +1160,8 @@
       "accountRequired": "請至少選擇一個帳號",
       "modelRequired": "請至少選擇一個模型",
       "crontabRequired": "請輸入 crontab 表達式",
+      "crontabValid": "Crontab 表達式有效",
+      "crontabInvalid": "Crontab 表達式無效",
       "taskSaved": "任務「{{name}}」已儲存",
       "featureOff": "喚醒功能已關閉",
       "featureOn": "喚醒功能已開啟",

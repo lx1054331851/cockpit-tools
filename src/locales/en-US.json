@@ -1205,6 +1205,8 @@
       "accountRequired": "Select at least one account",
       "modelRequired": "Select at least one model",
       "crontabRequired": "Please enter a crontab expression",
+      "crontabValid": "Crontab expression is valid",
+      "crontabInvalid": "Crontab expression is invalid",
       "taskSaved": "Task \"{{name}}\" saved",
       "featureOff": "Wakeup disabled",
       "featureOn": "Wakeup enabled",

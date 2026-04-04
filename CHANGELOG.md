@@ -7,6 +7,15 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.20.18] - 2026-04-04
+
+### Changed
+- **Codex CLI detection now scans common user-level install paths in the home directory**: runtime lookup now includes `~/.npm-global/bin`, `~/.local/bin`, `~/.cargo/bin`, `~/.volta/bin`, `~/.yarn/bin`, and `~/bin`, improving detection reliability for non-system installs.
+- **Wakeup scheduling now aligns crontab/interval previews with actual runtime rules**: both desktop and frontend now validate full 5-field crontab syntax (including ranges, steps, list values, and weekday normalization), interval windows support overnight ranges, and quota-reset tasks can use fallback trigger times outside the configured time window.
+- **Gemini token sync now prioritizes keychain credentials and enforces project-aware quota refresh**: local credential loading merges macOS keychain and file data, account switching writes tokens back to keychain while cleaning legacy file-keychain artifacts, and quota requests now require and pass the resolved project id consistently.
+- **Antigravity quota refresh now distinguishes manual-batch vs automatic refresh triggers**: auto refresh continues skipping disabled/forbidden accounts, while manual batch refresh keeps full-account processing behavior.
+
+---
 ## [0.20.17] - 2026-04-01
 
 ### Changed

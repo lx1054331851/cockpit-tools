@@ -1160,6 +1160,8 @@
       "accountRequired": "Sélectionnez au moins un compte",
       "modelRequired": "Sélectionnez au moins un modèle",
       "crontabRequired": "Veuillez saisir une expression crontab",
+      "crontabValid": "L'expression crontab est valide",
+      "crontabInvalid": "L'expression crontab est invalide",
       "taskSaved": "Tâche « {{name}} » enregistrée",
       "featureOff": "Réveil désactivé",
       "featureOn": "Réveil activé",

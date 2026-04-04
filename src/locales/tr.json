@@ -1160,6 +1160,8 @@
       "accountRequired": "En az bir hesap seçin",
       "modelRequired": "En az bir model seçin",
       "crontabRequired": "Lütfen bir crontab ifadesi girin",
+      "crontabValid": "Crontab ifadesi geçerli",
+      "crontabInvalid": "Crontab ifadesi geçersiz",
       "taskSaved": "Görev \"{{name}}\" kaydedildi",
       "featureOff": "Uyandırma devre dışı bırakıldı",
       "featureOn": "Uyandırma etkinleştirildi",

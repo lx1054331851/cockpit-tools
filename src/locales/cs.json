@@ -1160,6 +1160,8 @@
       "accountRequired": "Vyberte alespoň jeden účet",
       "modelRequired": "Vyberte alespoň jeden model",
       "crontabRequired": "Zadejte crontab výraz",
+      "crontabValid": "Výraz crontab je platný",
+      "crontabInvalid": "Výraz crontab je neplatný",
       "taskSaved": "Úloha \"{{name}}\" uložena",
       "featureOff": "Probuzení vypnuto",
       "featureOn": "Probuzení zapnuto",

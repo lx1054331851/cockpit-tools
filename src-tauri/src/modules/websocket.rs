@@ -600,8 +600,8 @@ async fn handle_client_message(
             // 异步执行切换
             let server_clone = server.tx.clone();
             tokio::spawn(async move {
-                let dual_no_restart_enabled =
-                    crate::modules::config::get_user_config().antigravity_dual_switch_no_restart_enabled;
+                let dual_no_restart_enabled = crate::modules::config::get_user_config()
+                    .antigravity_dual_switch_no_restart_enabled;
                 let switch_result = if dual_no_restart_enabled {
                     crate::modules::account::switch_account_dual_no_restart(
                         &account_id,

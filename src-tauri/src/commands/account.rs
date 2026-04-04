@@ -84,7 +84,10 @@ pub async fn fetch_account_quota(account_id: String) -> AppResult<models::Accoun
 pub async fn refresh_all_quotas(
     app: tauri::AppHandle,
 ) -> Result<modules::account::RefreshStats, String> {
-    let result = modules::account::refresh_all_quotas_logic().await;
+    let result = modules::account::refresh_all_quotas_logic(
+        modules::account::QuotaRefreshTrigger::ManualBatch,
+    )
+    .await;
     if result.is_ok() {
         let mut switched = false;
         match modules::account::run_auto_switch_if_needed().await {

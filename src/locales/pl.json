@@ -1160,6 +1160,8 @@
       "accountRequired": "Wybierz co najmniej jedno konto",
       "modelRequired": "Wybierz co najmniej jeden model",
       "crontabRequired": "Wpisz wyrażenie crontab",
+      "crontabValid": "Wyrażenie crontab jest prawidłowe",
+      "crontabInvalid": "Wyrażenie crontab jest nieprawidłowe",
       "taskSaved": "Zadanie \"{{name}}\" zapisane",
       "featureOff": "Wybudzanie wyłączone",
       "featureOn": "Wybudzanie włączone",

@@ -1160,6 +1160,8 @@
       "accountRequired": "Selecione pelo menos uma conta",
       "modelRequired": "Selecione pelo menos um modelo",
       "crontabRequired": "Informe uma expressão crontab",
+      "crontabValid": "A expressão crontab é válida",
+      "crontabInvalid": "A expressão crontab é inválida",
       "taskSaved": "Tarefa \"{{name}}\" salva",
       "featureOff": "Despertar desativado",
       "featureOn": "Despertar ativado",

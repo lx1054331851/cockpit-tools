@@ -1160,6 +1160,8 @@
       "accountRequired": "Chọn ít nhất một tài khoản",
       "modelRequired": "Chọn ít nhất một mô hình",
       "crontabRequired": "Vui lòng nhập biểu thức crontab",
+      "crontabValid": "Biểu thức crontab hợp lệ",
+      "crontabInvalid": "Biểu thức crontab không hợp lệ",
       "taskSaved": "Nhiệm vụ \"{{name}}\" đã được lưu",
       "featureOff": "Đã tắt đánh thức",
       "featureOn": "Đã bật đánh thức",

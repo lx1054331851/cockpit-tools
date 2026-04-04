@@ -1160,6 +1160,8 @@
       "accountRequired": "Mindestens ein Konto auswählen",
       "modelRequired": "Mindestens ein Modell auswählen",
       "crontabRequired": "Bitte eine crontab-Ausdruck eingeben",
+      "crontabValid": "Crontab-Ausdruck ist gültig",
+      "crontabInvalid": "Crontab-Ausdruck ist ungültig",
       "taskSaved": "Aufgabe „{{name}}“ gespeichert",
       "featureOff": "Weckfunktion deaktiviert",
       "featureOn": "Weckfunktion aktiviert",

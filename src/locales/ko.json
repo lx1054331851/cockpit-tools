@@ -1160,6 +1160,8 @@
       "accountRequired": "계정을 하나 이상 선택하세요",
       "modelRequired": "모델을 하나 이상 선택하세요",
       "crontabRequired": "Crontab 표현식을 입력하세요",
+      "crontabValid": "Crontab 표현식이 유효합니다",
+      "crontabInvalid": "Crontab 표현식이 유효하지 않습니다",
       "taskSaved": "작업 \"{{name}}\" 저장됨",
       "featureOff": "깨우기 비활성화",
       "featureOn": "깨우기 활성화",

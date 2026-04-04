@@ -1160,6 +1160,8 @@
       "accountRequired": "Selecciona al menos una cuenta",
       "modelRequired": "Selecciona al menos un modelo",
       "crontabRequired": "Introduce una expresión crontab",
+      "crontabValid": "La expresión crontab es válida",
+      "crontabInvalid": "La expresión crontab no es válida",
       "taskSaved": "Tarea \"{{name}}\" guardada",
       "featureOff": "Activación deshabilitada",
       "featureOn": "Activación habilitada",

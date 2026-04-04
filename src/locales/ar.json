@@ -1206,6 +1206,8 @@
       "accountRequired": "اختر حساباً واحداً على الأقل",
       "modelRequired": "اختر نموذجاً واحداً على الأقل",
       "crontabRequired": "يرجى إدخال تعبير crontab",
+      "crontabValid": "تعبير crontab صالح",
+      "crontabInvalid": "تعبير crontab غير صالح",
       "taskSaved": "تم حفظ المهمة \"{{name}}\"",
       "featureOff": "تم تعطيل الاستيقاظ",
       "featureOn": "تم تفعيل الاستيقاظ",

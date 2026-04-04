@@ -1160,6 +1160,8 @@
       "accountRequired": "Seleziona almeno un account",
       "modelRequired": "Seleziona almeno un modello",
       "crontabRequired": "Inserisci un'espressione crontab",
+      "crontabValid": "L'espressione crontab è valida",
+      "crontabInvalid": "L'espressione crontab non è valida",
       "taskSaved": "Attività \"{{name}}\" salvata",
       "featureOff": "Risveglio disabilitato",
       "featureOn": "Risveglio abilitato",

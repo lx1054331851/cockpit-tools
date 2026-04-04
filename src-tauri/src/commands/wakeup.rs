@@ -37,6 +37,11 @@ pub async fn fetch_available_models() -> Result<Vec<modules::wakeup::AvailableMo
 }
 
 #[tauri::command]
+pub fn wakeup_validate_crontab(expr: String) -> Result<(), String> {
+    modules::wakeup_scheduler::validate_crontab_expression(&expr)
+}
+
+#[tauri::command]
 pub async fn wakeup_sync_state(
     app: AppHandle,
     enabled: bool,

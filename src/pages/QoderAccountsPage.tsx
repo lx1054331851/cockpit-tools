@@ -54,6 +54,10 @@ import {
 import { useExportJsonModal } from '../hooks/useExportJsonModal';
 import { parseFileCorruptedError } from '../components/FileCorruptedModal';
 import { compareCurrentAccountFirst } from '../utils/currentAccountSort';
+import {
+  consumeQueuedExternalProviderImportForPlatform,
+  EXTERNAL_PROVIDER_IMPORT_EVENT,
+} from '../utils/externalProviderImport';
 
 const QODER_FLOW_NOTICE_COLLAPSED_KEY = 'agtools.qoder.flow_notice_collapsed';
 const QODER_VIEW_MODE_KEY = 'agtools.qoder.accounts_view_mode';
@@ -332,6 +336,26 @@ export function QoderAccountsPage() {
     setAddTab(tab);
     setShowAddModal(true);
   }, []);
+
+  const consumeExternalProviderImport = useCallback(() => {
+    const request = consumeQueuedExternalProviderImportForPlatform('qoder');
+    if (!request) return;
+    openAddModal('token');
+    setTokenInput(request.token);
+    setAddStatus('idle');
+    setAddMessage(null);
+  }, [openAddModal]);
+
+  useEffect(() => {
+    const handleExternalImportEvent = () => {
+      consumeExternalProviderImport();
+    };
+    consumeExternalProviderImport();
+    window.addEventListener(EXTERNAL_PROVIDER_IMPORT_EVENT, handleExternalImportEvent);
+    return () => {
+      window.removeEventListener(EXTERNAL_PROVIDER_IMPORT_EVENT, handleExternalImportEvent);
+    };
+  }, [consumeExternalProviderImport]);
 
   useEffect(() => {
     const handleVisibility = () => {
