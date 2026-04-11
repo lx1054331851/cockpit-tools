@@ -734,7 +734,8 @@ impl Default for UserConfig {
             codex_auto_switch_primary_threshold: default_codex_auto_switch_primary_threshold(),
             codex_auto_switch_secondary_threshold: default_codex_auto_switch_secondary_threshold(),
             codex_auto_switch_account_scope_mode: default_codex_auto_switch_account_scope_mode(),
-            codex_auto_switch_selected_account_ids: default_codex_auto_switch_selected_account_ids(),
+            codex_auto_switch_selected_account_ids: default_codex_auto_switch_selected_account_ids(
+            ),
             quota_alert_enabled: default_quota_alert_enabled(),
             quota_alert_threshold: default_quota_alert_threshold(),
             codex_quota_alert_enabled: default_codex_quota_alert_enabled(),

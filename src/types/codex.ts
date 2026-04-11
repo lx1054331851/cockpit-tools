@@ -1,3 +1,12 @@
+export type CodexApiProviderMode = 'openai_builtin' | 'custom';
+
+export interface CodexQuickConfig {
+  context_window_1m: boolean;
+  auto_compact_token_limit: number;
+  detected_model_context_window?: number;
+  detected_auto_compact_token_limit?: number;
+}
+
 /** Codex 账号数据 */
 export interface CodexAccount {
   id: string;
@@ -5,6 +14,9 @@ export interface CodexAccount {
   auth_mode?: string;
   openai_api_key?: string;
   api_base_url?: string;
+  api_provider_mode?: CodexApiProviderMode;
+  api_provider_id?: string;
+  api_provider_name?: string;
   user_id?: string;
   plan_type?: string;
   account_id?: string;

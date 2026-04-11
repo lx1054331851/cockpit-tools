@@ -262,7 +262,12 @@ pub async fn run_enabled_tasks_now(
             .tasks
             .into_iter()
             .filter(|task| task.enabled && task.schedule.kind == "startup")
-            .map(|task| (task.id, task.schedule.startup_delay_minutes.unwrap_or(0).max(0)))
+            .map(|task| {
+                (
+                    task.id,
+                    task.schedule.startup_delay_minutes.unwrap_or(0).max(0),
+                )
+            })
             .collect();
 
         for (task_id, delay_minutes) in &startup_tasks {
@@ -292,7 +297,8 @@ pub async fn run_enabled_tasks_now(
                     return;
                 }
 
-                if let Err(err) = run_task_now(app_handle.as_ref(), &task_id, "startup", None).await {
+                if let Err(err) = run_task_now(app_handle.as_ref(), &task_id, "startup", None).await
+                {
                     logger::log_warn(&format!(
                         "[CodexWakeup] 启动后执行任务失败: task_id={}, error={}",
                         task_id, err

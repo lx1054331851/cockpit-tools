@@ -51,6 +51,7 @@ import {
   hasCodexAccountName,
   isCodexApiKeyAccount,
   isCodexTeamLikePlan,
+  type CodexApiProviderMode,
   type CodexQuotaErrorInfo,
 } from '../types/codex';
 import { buildCodexAccountPresentation } from '../presentation/platformAccountPresentation';
@@ -80,6 +81,7 @@ import {
   resolveCodexApiProviderPresetId,
 } from '../utils/codexProviderPresets';
 import {
+  findCodexModelProviderById,
   findCodexModelProviderByBaseUrl,
   listCodexModelProviders,
   type CodexModelProvider,
@@ -110,6 +112,22 @@ const CODEX_TOKEN_BATCH_EXAMPLE = `[
     "last_used": 1730000000
   }
 ]`;
+const OPENAI_OFFICIAL_PRESET_ID = 'openai_official';
+
+function normalizeCodexApiBaseUrl(rawValue?: string | null): string {
+  return normalizeHttpBaseUrl(rawValue ?? '') ?? '';
+}
+
+function inferCodexAccountProviderMode(account: CodexAccount): CodexApiProviderMode {
+  if (account.api_provider_mode === 'custom' || account.api_provider_mode === 'openai_builtin') {
+    return account.api_provider_mode;
+  }
+  const normalizedBaseUrl = normalizeCodexApiBaseUrl(account.api_base_url);
+  if (!normalizedBaseUrl || normalizedBaseUrl === 'https://api.openai.com/v1') {
+    return 'openai_builtin';
+  }
+  return 'custom';
+}
 const CODEX_USAGE_URL = 'https://platform.openai.com/usage';
 const CODEX_OVERVIEW_LAYOUT_MODE_KEY = 'agtools.codex.accounts.overview_layout_mode';
 const DEFAULT_CODEX_API_PROVIDER_ID = CODEX_API_PROVIDER_CUSTOM_ID;
@@ -443,6 +461,49 @@ export function CodexAccountsPage() {
     }
   }, []);
 
+  const buildApiProviderPayload = useCallback(
+    (
+      apiBaseUrl: string,
+      providerPresetId: string,
+      providerId: string,
+      customProviderName: string,
+    ): {
+      apiProviderMode: CodexApiProviderMode;
+      apiProviderId?: string;
+      apiProviderName?: string;
+    } => {
+      const normalizedBaseUrl = normalizeHttpBaseUrl(apiBaseUrl);
+      if (providerPresetId === OPENAI_OFFICIAL_PRESET_ID || !normalizedBaseUrl) {
+        return { apiProviderMode: 'openai_builtin' };
+      }
+
+      const managedProvider = findCodexModelProviderById(managedProviders, providerId);
+      if (managedProvider) {
+        return {
+          apiProviderMode: 'custom',
+          apiProviderId: managedProvider.id,
+          apiProviderName: managedProvider.name,
+        };
+      }
+
+      const preset = findCodexApiProviderPresetById(providerPresetId);
+      if (preset && providerPresetId !== CODEX_API_PROVIDER_CUSTOM_ID) {
+        return {
+          apiProviderMode: 'custom',
+          apiProviderId: preset.id,
+          apiProviderName: preset.name,
+        };
+      }
+
+      const trimmedName = customProviderName.trim();
+      return {
+        apiProviderMode: 'custom',
+        apiProviderName: trimmedName || undefined,
+      };
+    },
+    [managedProviders],
+  );
+
   useEffect(() => {
     showAddModalRef.current = showAddModal;
     addTabRef.current = addTab;
@@ -470,11 +531,11 @@ export function CodexAccountsPage() {
   }, [showAddModal]);
 
   useEffect(() => {
-    const resolvedId = resolveCodexApiProviderPresetId(apiBaseUrlInput);
-    setApiProviderPresetId((prev) => (prev === resolvedId ? prev : resolvedId));
-  }, [apiBaseUrlInput]);
-
-  useEffect(() => {
+    if (apiProviderPresetId === OPENAI_OFFICIAL_PRESET_ID) {
+      setManagedProviderId('');
+      setManagedProviderApiKeyId('');
+      return;
+    }
     const matched = findCodexModelProviderByBaseUrl(managedProviders, apiBaseUrlInput);
     setManagedProviderId((prev) => (prev === (matched?.id ?? '') ? prev : matched?.id ?? ''));
     if (!matched || matched.apiKeys.length === 0) {
@@ -485,7 +546,7 @@ export function CodexAccountsPage() {
       if (matched.apiKeys.some((item) => item.id === prev)) return prev;
       return matched.apiKeys[0]?.id ?? '';
     });
-  }, [apiBaseUrlInput, managedProviders]);
+  }, [apiBaseUrlInput, apiProviderPresetId, managedProviders]);
 
   useEffect(() => {
     if (!selectedManagedProviderApiKey) return;
@@ -493,11 +554,11 @@ export function CodexAccountsPage() {
   }, [managedProviderApiKeyId, selectedManagedProviderApiKey]);
 
   useEffect(() => {
-    const resolvedId = resolveCodexApiProviderPresetId(editingApiBaseUrlCredentialsValue);
-    setEditingApiProviderPresetId((prev) => (prev === resolvedId ? prev : resolvedId));
-  }, [editingApiBaseUrlCredentialsValue]);
-
-  useEffect(() => {
+    if (editingApiProviderPresetId === OPENAI_OFFICIAL_PRESET_ID) {
+      setEditingManagedProviderId('');
+      setEditingManagedProviderApiKeyId('');
+      return;
+    }
     const matched = findCodexModelProviderByBaseUrl(
       managedProviders,
       editingApiBaseUrlCredentialsValue,
@@ -511,7 +572,7 @@ export function CodexAccountsPage() {
       if (matched.apiKeys.some((item) => item.id === prev)) return prev;
       return matched.apiKeys[0]?.id ?? '';
     });
-  }, [editingApiBaseUrlCredentialsValue, managedProviders]);
+  }, [editingApiBaseUrlCredentialsValue, editingApiProviderPresetId, managedProviders]);
 
   useEffect(() => {
     if (!selectedEditingManagedProviderApiKey) return;
@@ -965,6 +1026,7 @@ export function CodexAccountsPage() {
 
   const handleSelectManagedProvider = useCallback(
     (providerId: string) => {
+      setApiProviderPresetId(CODEX_API_PROVIDER_CUSTOM_ID);
       setManagedProviderId(providerId);
       const provider = managedProviders.find((item) => item.id === providerId);
       if (!provider) return;
@@ -1001,6 +1063,7 @@ export function CodexAccountsPage() {
 
   const handleSelectEditingManagedProvider = useCallback(
     (providerId: string) => {
+      setEditingApiProviderPresetId(CODEX_API_PROVIDER_CUSTOM_ID);
       setEditingManagedProviderId(providerId);
       const provider = managedProviders.find((item) => item.id === providerId);
       if (!provider) return;
@@ -1041,7 +1104,9 @@ export function CodexAccountsPage() {
       if (!isCodexApiKeyAccount(account)) return;
       const baseUrl = (account.api_base_url || '').trim();
       const apiKey = (account.openai_api_key || '').trim();
-      const matchedProvider = findCodexModelProviderByBaseUrl(managedProviders, baseUrl);
+      const matchedProvider =
+        findCodexModelProviderById(managedProviders, account.api_provider_id) ??
+        findCodexModelProviderByBaseUrl(managedProviders, baseUrl);
       const fallbackProvider = matchedProvider ?? managedProviders[0] ?? null;
       const matchedApiKey = matchedProvider?.apiKeys.find((item) => item.apiKey.trim() === apiKey);
       const fallbackApiKey = matchedApiKey ?? fallbackProvider?.apiKeys[0] ?? null;
@@ -1087,6 +1152,9 @@ export function CodexAccountsPage() {
         quickSwitchAccount.id,
         selectedQuickSwitchApiKey.apiKey,
         selectedQuickSwitchProvider.baseUrl,
+        'custom',
+        selectedQuickSwitchProvider.id,
+        selectedQuickSwitchProvider.name,
       );
       setMessage({
         text: t('codex.quickSwitch.success', {
@@ -1132,6 +1200,12 @@ export function CodexAccountsPage() {
       page.setAddMessage(validation.message);
       return;
     }
+    const providerPayload = buildApiProviderPayload(
+      apiBaseUrlInput,
+      apiProviderPresetId,
+      managedProviderId,
+      newManagedProviderNameInput,
+    );
 
     page.setAddStatus('loading');
     page.setAddMessage(t('common.shared.token.importing', '正在导入...'));
@@ -1139,12 +1213,15 @@ export function CodexAccountsPage() {
       const account = await codexService.addCodexAccountWithApiKey(
         validation.apiKey,
         validation.apiBaseUrl,
+        providerPayload.apiProviderMode,
+        providerPayload.apiProviderId,
+        providerPayload.apiProviderName,
       );
-      if (validation.apiBaseUrl) {
+      if (validation.apiBaseUrl && providerPayload.apiProviderMode === 'custom') {
         try {
           await upsertCodexModelProviderFromCredential({
-            providerId: managedProviderId || null,
-            providerName: newManagedProviderNameInput.trim() || null,
+            providerId: providerPayload.apiProviderId ?? null,
+            providerName: providerPayload.apiProviderName ?? null,
             apiBaseUrl: validation.apiBaseUrl,
             apiKey: validation.apiKey,
           });
@@ -1292,11 +1369,17 @@ export function CodexAccountsPage() {
 
   const resolveApiProviderDisplayName = useCallback(
     (account: CodexAccount): string => {
-      const baseUrl = (account.api_base_url || '').trim();
-      if (!baseUrl) {
-        const fallback = findCodexApiProviderPresetById('openai_official');
-        return fallback ? t(`codex.api.providers.${fallback.id}.name`, fallback.name) : t('common.none', '暂无');
+      const providerMode = inferCodexAccountProviderMode(account);
+      if (providerMode === 'openai_builtin') {
+        const fallback = findCodexApiProviderPresetById(OPENAI_OFFICIAL_PRESET_ID);
+        return fallback
+          ? t(`codex.api.providers.${fallback.id}.name`, fallback.name)
+          : t('common.none', '暂无');
       }
+      if (account.api_provider_name?.trim()) {
+        return account.api_provider_name.trim();
+      }
+      const baseUrl = (account.api_base_url || '').trim();
       const matchedProvider = findCodexModelProviderByBaseUrl(managedProviders, baseUrl);
       if (matchedProvider) return matchedProvider.name;
       const preset = findCodexApiProviderPresetById(resolveCodexApiProviderPresetId(baseUrl));
@@ -1321,7 +1404,10 @@ export function CodexAccountsPage() {
     if (!isCodexApiKeyAccount(account)) return;
     const initialBaseUrl = (account.api_base_url || '').trim();
     const initialApiKey = (account.openai_api_key || '').trim();
-    const matchedProvider = findCodexModelProviderByBaseUrl(managedProviders, initialBaseUrl);
+    const providerMode = inferCodexAccountProviderMode(account);
+    const matchedProvider =
+      findCodexModelProviderById(managedProviders, account.api_provider_id) ??
+      findCodexModelProviderByBaseUrl(managedProviders, initialBaseUrl);
     const matchedProviderKey = matchedProvider?.apiKeys.find(
       (item) => item.apiKey.trim() === initialApiKey,
     );
@@ -1329,10 +1415,16 @@ export function CodexAccountsPage() {
     setEditingApiKeyCredentialsId(account.id);
     setEditingApiKeyCredentialsValue(initialApiKey);
     setEditingApiBaseUrlCredentialsValue(initialBaseUrl);
-    setEditingApiProviderPresetId(resolveCodexApiProviderPresetId(initialBaseUrl));
+    setEditingApiProviderPresetId(
+      providerMode === 'openai_builtin'
+        ? OPENAI_OFFICIAL_PRESET_ID
+        : resolveCodexApiProviderPresetId(initialBaseUrl),
+    );
     setEditingManagedProviderId(matchedProvider?.id ?? '');
     setEditingManagedProviderApiKeyId(matchedProviderKey?.id ?? '');
-    setEditingNewManagedProviderNameInput(matchedProvider?.name ?? '');
+    setEditingNewManagedProviderNameInput(
+      matchedProvider?.name ?? account.api_provider_name ?? '',
+    );
   }, [managedProviders]);
 
   const handleSubmitApiKeyCredentials = useCallback(async () => {
@@ -1350,6 +1442,12 @@ export function CodexAccountsPage() {
       });
       return;
     }
+    const providerPayload = buildApiProviderPayload(
+      editingApiBaseUrlCredentialsValue,
+      editingApiProviderPresetId,
+      editingManagedProviderId,
+      editingNewManagedProviderNameInput,
+    );
 
     setSavingApiKeyCredentials(true);
     try {
@@ -1357,12 +1455,15 @@ export function CodexAccountsPage() {
         accountId,
         validation.apiKey,
         validation.apiBaseUrl,
+        providerPayload.apiProviderMode,
+        providerPayload.apiProviderId,
+        providerPayload.apiProviderName,
       );
-      if (validation.apiBaseUrl) {
+      if (validation.apiBaseUrl && providerPayload.apiProviderMode === 'custom') {
         try {
           await upsertCodexModelProviderFromCredential({
-            providerId: editingManagedProviderId || null,
-            providerName: editingNewManagedProviderNameInput.trim() || null,
+            providerId: providerPayload.apiProviderId ?? null,
+            providerName: providerPayload.apiProviderName ?? null,
             apiBaseUrl: validation.apiBaseUrl,
             apiKey: validation.apiKey,
           });
@@ -1388,9 +1489,11 @@ export function CodexAccountsPage() {
       setSavingApiKeyCredentials(false);
     }
   }, [
+    buildApiProviderPayload,
     editingApiBaseUrlCredentialsValue,
     editingApiKeyCredentialsId,
     editingApiKeyCredentialsValue,
+    editingApiProviderPresetId,
     editingManagedProviderId,
     editingNewManagedProviderNameInput,
     reloadManagedProviders,

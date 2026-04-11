@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use tauri::menu::{IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager, Runtime,
+    Emitter, Runtime,
 };
 use tracing::info;
 
@@ -3199,10 +3199,8 @@ fn handle_menu_event<R: Runtime>(app: &tauri::AppHandle<R>, event: tauri::menu::
 
     match id {
         menu_ids::SHOW_WINDOW => {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
+            if let Err(err) = crate::modules::floating_card_window::show_main_window(app) {
+                logger::log_warn(&format!("[Tray] 显示主窗口失败: {}", err));
             }
         }
         menu_ids::REFRESH_QUOTA => {
@@ -3212,11 +3210,10 @@ fn handle_menu_event<R: Runtime>(app: &tauri::AppHandle<R>, event: tauri::menu::
             let _ = crate::modules::floating_card_window::show_floating_card_window(app, true);
         }
         menu_ids::SETTINGS => {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-                let _ = app.emit("tray:navigate", "settings");
+            if let Err(err) =
+                crate::modules::floating_card_window::show_main_window_and_navigate(app, "settings")
+            {
+                logger::log_warn(&format!("[Tray] 打开设置页失败: {}", err));
             }
         }
         menu_ids::QUIT => {
@@ -3225,25 +3222,33 @@ fn handle_menu_event<R: Runtime>(app: &tauri::AppHandle<R>, event: tauri::menu::
         }
         _ => {
             if let Some(platform) = parse_platform_from_menu_id(id) {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
-                    let _ = app.emit("tray:navigate", platform.nav_target());
+                if let Err(err) =
+                    crate::modules::floating_card_window::show_main_window_and_navigate(
+                        app,
+                        platform.nav_target(),
+                    )
+                {
+                    logger::log_warn(&format!(
+                        "[Tray] 打开平台页面失败: platform={}, err={}",
+                        platform.as_str(),
+                        err
+                    ));
                 }
             } else if id.starts_with("ag_") {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
-                    let _ = app.emit("tray:navigate", "overview");
+                if let Err(err) =
+                    crate::modules::floating_card_window::show_main_window_and_navigate(
+                        app, "overview",
+                    )
+                {
+                    logger::log_warn(&format!("[Tray] 打开 Antigravity 总览失败: {}", err));
                 }
             } else if id.starts_with("codex_") {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
-                    let _ = app.emit("tray:navigate", "codex");
+                if let Err(err) =
+                    crate::modules::floating_card_window::show_main_window_and_navigate(
+                        app, "codex",
+                    )
+                {
+                    logger::log_warn(&format!("[Tray] 打开 Codex 页面失败: {}", err));
                 }
             }
         }
@@ -3270,10 +3275,10 @@ fn handle_tray_event<R: Runtime>(tray: &TrayIcon<R>, event: TrayIconEvent) {
             #[cfg(target_os = "macos")]
             {
                 if button == MouseButton::Left && button_state == MouseButtonState::Up {
-                    if let Some(window) = tray.app_handle().get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.unminimize();
-                        let _ = window.set_focus();
+                    if let Err(err) =
+                        crate::modules::floating_card_window::show_main_window(tray.app_handle())
+                    {
+                        logger::log_warn(&format!("[Tray] 左键恢复主窗口失败: {}", err));
                     }
                     return;
                 }
@@ -3289,10 +3294,10 @@ fn handle_tray_event<R: Runtime>(tray: &TrayIcon<R>, event: TrayIconEvent) {
 
             #[cfg(not(target_os = "macos"))]
             if button == MouseButton::Left && button_state == MouseButtonState::Up {
-                if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
+                if let Err(err) =
+                    crate::modules::floating_card_window::show_main_window(tray.app_handle())
+                {
+                    logger::log_warn(&format!("[Tray] 左键恢复主窗口失败: {}", err));
                 }
             }
         }
@@ -3306,10 +3311,10 @@ fn handle_tray_event<R: Runtime>(tray: &TrayIcon<R>, event: TrayIconEvent) {
             }
 
             #[cfg(not(target_os = "macos"))]
-            if let Some(window) = tray.app_handle().get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
+            if let Err(err) =
+                crate::modules::floating_card_window::show_main_window(tray.app_handle())
+            {
+                logger::log_warn(&format!("[Tray] 双击恢复主窗口失败: {}", err));
             }
         }
         _ => {}

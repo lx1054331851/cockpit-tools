@@ -153,7 +153,10 @@ fn load_account_index() -> CursorAccountIndex {
     }
 
     match fs::read_to_string(path.as_path()) {
-        Ok(content) => match crate::modules::atomic_write::parse_json_with_auto_restore::<CursorAccountIndex>(&path, &content) {
+        Ok(content) => match crate::modules::atomic_write::parse_json_with_auto_restore::<
+            CursorAccountIndex,
+        >(&path, &content)
+        {
             Ok(index) => index,
             Err(err) => {
                 logger::log_warn(&format!(
@@ -200,7 +203,9 @@ fn load_account_index_checked() -> Result<CursorAccountIndex, String> {
         return Ok(CursorAccountIndex::new());
     }
 
-    match crate::modules::atomic_write::parse_json_with_auto_restore::<CursorAccountIndex>(&path, &content) {
+    match crate::modules::atomic_write::parse_json_with_auto_restore::<CursorAccountIndex>(
+        &path, &content,
+    ) {
         Ok(index) => Ok(index),
         Err(err) => {
             if !collect_account_ids_from_directory().is_empty() {

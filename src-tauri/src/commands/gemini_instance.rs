@@ -279,7 +279,6 @@ pub async fn gemini_update_instance(
     ))
 }
 
-
 #[tauri::command]
 pub async fn gemini_delete_instance(instance_id: String) -> Result<(), String> {
     if instance_id == DEFAULT_INSTANCE_ID {
@@ -402,17 +401,24 @@ fn escape_applescript(value: &str) -> String {
 }
 
 #[tauri::command]
-pub async fn gemini_execute_instance_launch_command(instance_id: String) -> Result<String, String> {
+pub async fn gemini_execute_instance_launch_command(
+    instance_id: String,
+    terminal: Option<String>,
+) -> Result<String, String> {
     let context = resolve_instance_launch_context(&instance_id)?;
     let command = build_launch_command(&context);
 
     let config = crate::modules::config::get_user_config();
-    let terminal = config.default_terminal;
+    let terminal = terminal
+        .unwrap_or(config.default_terminal)
+        .trim()
+        .to_string();
 
     #[cfg(target_os = "macos")]
     {
         let is_iterm = terminal.to_lowercase().contains("iterm");
-        let app_name = if terminal == "system" || terminal.is_empty() {
+        let is_terminal_app = terminal == "system" || terminal.is_empty() || terminal == "Terminal";
+        let app_name = if is_terminal_app {
             "Terminal"
         } else {
             &terminal
@@ -421,34 +427,37 @@ pub async fn gemini_execute_instance_launch_command(instance_id: String) -> Resu
         let script = if is_iterm {
             format!(
                 "tell application \"iTerm\"
+                    activate
                     if not (exists window 1) then
                         create window with default profile
-                    end if
-                    tell current window
-                        create tab with default profile
-                        tell current session
+                        tell current session of current window
                             write text \"{}\"
                         end tell
-                    end tell
-                    activate
-                end tell",
-                escape_applescript(&command)
-            )
-        } else {
-            format!(
-                "tell application \"Terminal\"
-                    if not (exists window 1) then
-                        do script \"{}\"
                     else
-                        tell application \"System Events\" to keystroke \"t\" using command down
-                        delay 0.2
-                        do script \"{}\" in front window
+                        tell current window
+                            create tab with default profile
+                            tell current session
+                                write text \"{}\"
+                            end tell
+                        end tell
                     end if
-                    activate
                 end tell",
                 escape_applescript(&command),
                 escape_applescript(&command)
             )
+        } else if is_terminal_app {
+            format!(
+                "tell application \"Terminal\"
+                    activate
+                    do script \"{}\"
+                end tell",
+                escape_applescript(&command)
+            )
+        } else {
+            return Err(format!(
+                "当前终端暂不支持直接执行：{}。请改用 Terminal 或 iTerm2。",
+                terminal
+            ));
         };
 
         let output = Command::new("osascript")
@@ -482,8 +491,7 @@ pub async fn gemini_execute_instance_launch_command(instance_id: String) -> Resu
             cmd.args(["/C", "start", "", "cmd", "/K", &command]);
         }
 
-        cmd.spawn()
-            .map_err(|e| format!("打开终端失败: {}", e))?;
+        cmd.spawn().map_err(|e| format!("打开终端失败: {}", e))?;
         return Ok("已在终端执行 Gemini Cli 命令".to_string());
     }
 
@@ -504,7 +512,10 @@ pub async fn gemini_execute_instance_launch_command(instance_id: String) -> Resu
                         .args(["--", "bash", "-lc", &shell_command])
                         .spawn()
                 } else {
-                    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "指定终端未找到"))
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "指定终端未找到",
+                    ))
                 }
             })
             .or_else(|_| {
@@ -513,7 +524,10 @@ pub async fn gemini_execute_instance_launch_command(instance_id: String) -> Resu
                         .args(["-e", "bash", "-lc", &shell_command])
                         .spawn()
                 } else {
-                    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "指定终端未找到"))
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "指定终端未找到",
+                    ))
                 }
             })
             .or_else(|_| Command::new("sh").args(["-lc", &command]).spawn())

@@ -350,12 +350,14 @@
     "status": {
       "running": "Running",
       "stopped": "Stopped",
+      "ready": "Ready",
       "restarting": "Restarting",
       "starting": "Starting"
     },
     "labels": {
       "path": "Directory",
       "args": "Launch Args",
+      "argsPresent": "Args Set",
       "argsEmpty": "None",
       "bindAccount": "Bound Account",
       "unbound": "Unbound",
@@ -406,6 +408,13 @@
       "selectAccount": "Select account",
       "bindAccount": "Bind account",
       "unbound": "Unbound",
+      "optional": "Optional",
+      "launchMode": "Launch Mode",
+      "launchModeApp": "Desktop",
+      "launchModeCli": "CLI",
+      "workingDir": "Working Directory",
+      "workingDirPlaceholder": "Default to current path",
+      "workingDirDesc": "Will switch to this directory first upon startup",
       "extraArgs": "Custom launch args",
       "extraArgsPlaceholder": "e.g. --disable-gpu --log-level=2",
       "extraArgsDesc": "Separate args with spaces, quotes supported",
@@ -425,6 +434,7 @@
       "updated": "Instance updated",
       "deleted": "Instance deleted",
       "started": "Instance started",
+      "launchPrepared": "Launch command is ready",
       "stopped": "Instance stopped",
       "startedAll": "Started all stopped instances",
       "restartedAll": "Restarted running instances",
@@ -440,6 +450,13 @@
       "pathLabel": "Instance directory",
       "go": "Go now",
       "restart": "Close & restart"
+    },
+    "launchDialog": {
+      "title": "Launch Instance",
+      "terminal": "Terminal",
+      "command": "Launch Command",
+      "hint": "Copy the command and run it manually, or execute it directly in the terminal.",
+      "runInTerminal": "Run in Terminal"
     },
     "initGuide": {
       "title": "Instance not initialized",
@@ -1570,7 +1587,41 @@
       "selectSavedApiKey": "Saved API Keys",
       "noSavedProviders": "No saved providers yet. You can fill in fields directly and it will be saved automatically.",
       "newProviderName": "Provider Name (Optional, used for auto-save)",
-      "newProviderNamePlaceholder": "If empty, hostname will be used automatically"
+      "newProviderNamePlaceholder": "If empty, hostname will be used automatically",
+      "preview": {
+        "title": "Save Preview",
+        "desc": "Saving a provider updates the provider store first. It does not switch the current official Codex config immediately.",
+        "writeNow": "Will Write",
+        "noImmediateChange": "No Immediate Change",
+        "providerStoreTitle": "Provider Store",
+        "providerStoreDesc": "Saves the provider name, Base URL, website/API Key page links, and any new API key added in this modal.",
+        "codexConfigTitle": "Current Codex Config",
+        "codexConfigDesc": "The current provider or Base URL will not change right away. That file updates only when a Codex API-key account is saved or switched.",
+        "authFileTitle": "Current Codex Credentials",
+        "authFileDesc": "Saving a provider does not overwrite the current OPENAI_API_KEY in auth.json."
+      },
+      "quickConfig": {
+        "title": "Current Codex Config",
+        "desc": "These quick settings write directly to the active ~/.codex/config.toml and do not change the model provider store.",
+        "configPath": "Config File",
+        "openConfig": "Open File",
+        "loadFailed": "Failed to load the current Codex config: {{error}}",
+        "openFailed": "Failed to open config.toml: {{error}}",
+        "saveSuccess": "Current Codex config saved.",
+        "saveFailed": "Failed to save the current Codex config: {{error}}",
+        "contextWindow1m": "1M Context Window",
+        "contextWindow1mHint": "When enabled, writes model_context_window = 1000000 and manages the auto-compact limit together.",
+        "autoCompactLimit": "Auto-Compact Limit",
+        "autoCompactLimitHint": "Writes model_auto_compact_token_limit. Turning off the 1M toggle removes this field together.",
+        "preview": "Write Preview",
+        "previewApply": "Will Write",
+        "previewRemove": "Will Remove",
+        "customDetected": "A custom model_context_window = {{context}} was detected in config.toml. Saving will rewrite it using the quick setting below.",
+        "compactMissingDetected": "1M context is already enabled, but the auto-compact limit is missing. Saving will write the default value {{limit}}.",
+        "validation": {
+          "autoCompactInvalid": "Auto-compact limit must be an integer greater than 0."
+        }
+      }
     },
     "quickSwitch": {
       "action": "Quick Switch Provider",

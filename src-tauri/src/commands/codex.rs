@@ -1,4 +1,6 @@
-use crate::models::codex::{CodexAccount, CodexQuota, CodexTokens};
+use crate::models::codex::{
+    CodexAccount, CodexApiProviderMode, CodexQuickConfig, CodexQuota, CodexTokens,
+};
 use crate::modules::{
     codex_account, codex_oauth, codex_quota, codex_wakeup, codex_wakeup_scheduler, config, logger,
     openclaw_auth, opencode_auth, process,
@@ -27,6 +29,19 @@ pub fn get_codex_config_toml_path() -> Result<String, String> {
     Ok(path.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+pub fn get_codex_quick_config() -> Result<CodexQuickConfig, String> {
+    codex_account::load_current_quick_config()
+}
+
+#[tauri::command]
+pub fn save_codex_quick_config(
+    context_window_1m: bool,
+    auto_compact_token_limit: Option<i64>,
+) -> Result<CodexQuickConfig, String> {
+    codex_account::save_current_quick_config(context_window_1m, auto_compact_token_limit)
+}
+
 /// 刷新账号资料（团队名/结构）
 #[tauri::command]
 pub async fn refresh_codex_account_profile(account_id: String) -> Result<CodexAccount, String> {
@@ -49,6 +64,7 @@ pub async fn switch_codex_account(
         Some(Some(account_id.clone())),
         None,
         Some(false),
+        None,
     ) {
         logger::log_warn(&format!("更新 Codex 默认实例绑定账号失败: {}", e));
     } else {
@@ -376,8 +392,17 @@ pub async fn add_codex_account_with_token(
 pub fn add_codex_account_with_api_key(
     api_key: String,
     api_base_url: Option<String>,
+    api_provider_mode: Option<CodexApiProviderMode>,
+    api_provider_id: Option<String>,
+    api_provider_name: Option<String>,
 ) -> Result<CodexAccount, String> {
-    let account = codex_account::upsert_api_key_account(api_key, api_base_url)?;
+    let account = codex_account::upsert_api_key_account(
+        api_key,
+        api_base_url,
+        api_provider_mode,
+        api_provider_id,
+        api_provider_name,
+    )?;
     codex_account::load_account(&account.id).ok_or_else(|| "账号保存后无法读取".to_string())
 }
 
@@ -391,8 +416,18 @@ pub fn update_codex_api_key_credentials(
     account_id: String,
     api_key: String,
     api_base_url: Option<String>,
+    api_provider_mode: Option<CodexApiProviderMode>,
+    api_provider_id: Option<String>,
+    api_provider_name: Option<String>,
 ) -> Result<CodexAccount, String> {
-    codex_account::update_api_key_credentials(&account_id, api_key, api_base_url)
+    codex_account::update_api_key_credentials(
+        &account_id,
+        api_key,
+        api_base_url,
+        api_provider_mode,
+        api_provider_id,
+        api_provider_name,
+    )
 }
 
 #[tauri::command]

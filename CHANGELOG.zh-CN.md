@@ -7,6 +7,17 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [0.21.1] - 2026-04-11
+
+### 新增
+- **Codex 实例现已支持按实例选择“桌面版 / CLI”启动方式**：CLI 模式可持久化工作目录，实例列表会显示启动方式状态，切换实例后还可在 macOS 上生成可复制或直接在终端执行的启动命令。
+- **Codex 模型供应商页现已补充当前 `~/.codex/config.toml` 的快捷配置卡片**：可直接切换 `model_context_window = 1000000`、维护 `model_auto_compact_token_limit`、打开生效中的配置文件，并在保存供应商前查看写入预览。
+
+### 变更
+- **Codex API Key 账号现已连同 Base URL 一起持久化供应商身份，并同步把对应的 `model_provider` / `model_providers` 写入 `config.toml`**：托管供应商选择与 API Key 凭据更新现会和真实生效的 Codex 运行时供应商配置保持一致。
+- **Gemini 启动弹框现已支持在直接执行前选择目标终端**：默认实例和普通实例的 Gemini CLI 启动弹框现在既可复制命令，也可直接在所选受支持终端中执行，不再只隐式依赖已保存的默认终端。
+
+---
 ## [0.21.0] - 2026-04-11
 
 ### 新增

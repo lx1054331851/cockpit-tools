@@ -1,5 +1,10 @@
-import { create } from 'zustand';
-import { InstanceDefaults, InstanceInitMode, InstanceProfile } from '../types/instance';
+import { create } from "zustand";
+import {
+  InstanceDefaults,
+  InstanceInitMode,
+  InstanceLaunchMode,
+  InstanceProfile,
+} from "../types/instance";
 
 export type InstanceStoreState = {
   instances: InstanceProfile[];
@@ -15,6 +20,7 @@ export type InstanceStoreState = {
     workingDir?: string | null;
     extraArgs?: string;
     bindAccountId?: string | null;
+    launchMode?: InstanceLaunchMode;
     copySourceInstanceId: string;
     initMode?: InstanceInitMode;
   }) => Promise<InstanceProfile>;
@@ -25,6 +31,7 @@ export type InstanceStoreState = {
     extraArgs?: string;
     bindAccountId?: string | null;
     followLocalAccount?: boolean;
+    launchMode?: InstanceLaunchMode;
   }) => Promise<InstanceProfile>;
   deleteInstance: (instanceId: string) => Promise<void>;
   startInstance: (instanceId: string) => Promise<InstanceProfile>;
@@ -42,6 +49,7 @@ type InstanceService = {
     workingDir?: string | null;
     extraArgs?: string;
     bindAccountId?: string | null;
+    launchMode?: InstanceLaunchMode;
     copySourceInstanceId: string;
     initMode?: InstanceInitMode;
   }) => Promise<InstanceProfile>;
@@ -52,6 +60,7 @@ type InstanceService = {
     extraArgs?: string;
     bindAccountId?: string | null;
     followLocalAccount?: boolean;
+    launchMode?: InstanceLaunchMode;
   }) => Promise<InstanceProfile>;
   deleteInstance: (instanceId: string) => Promise<void>;
   startInstance: (instanceId: string) => Promise<InstanceProfile>;
@@ -60,7 +69,10 @@ type InstanceService = {
   openInstanceWindow: (instanceId: string) => Promise<void>;
 };
 
-export function createInstanceStore(service: InstanceService, cacheKey: string) {
+export function createInstanceStore(
+  service: InstanceService,
+  cacheKey: string,
+) {
   const loadCachedInstances = () => {
     try {
       const raw = localStorage.getItem(cacheKey);

@@ -34,7 +34,11 @@ fn build_temp_file_path(parent: &Path, target: &Path, suffix: &str) -> PathBuf {
     ))
 }
 
-fn write_string_atomic_internal(path: &Path, content: &str, create_backup: bool) -> Result<(), String> {
+fn write_string_atomic_internal(
+    path: &Path,
+    content: &str,
+    create_backup: bool,
+) -> Result<(), String> {
     let parent = path.parent().ok_or("无法定位目标目录")?;
     fs::create_dir_all(parent).map_err(|e| format_io_error("创建目录", parent, &e))?;
 

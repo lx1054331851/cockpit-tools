@@ -7,6 +7,17 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [0.21.1] - 2026-04-11
+
+### Added
+- **Codex instances now support choosing Desktop vs CLI launch mode per instance**: CLI mode can persist a working directory, shows launch-mode state in the instance list, and after switching an instance it can prepare a runnable command for copy or direct terminal execution on macOS.
+- **Codex Model Providers now include quick controls for the active `~/.codex/config.toml`**: the manager can toggle `model_context_window = 1000000`, manage `model_auto_compact_token_limit`, open the live config file, and show a write preview before saving provider changes.
+
+### Changed
+- **Codex API-key accounts now persist provider identity together with the Base URL and sync matching `model_provider` / `model_providers` entries into `config.toml`**: managed-provider selection and API-key credential updates now stay aligned with the actual Codex runtime provider config.
+- **Gemini launch dialogs now support choosing the target terminal before direct execution**: launch-command popups for default and instance Gemini CLI flows can copy the command or run it in the selected supported terminal instead of only relying on the saved default terminal.
+
+---
 ## [0.21.0] - 2026-04-11
 
 ### Added

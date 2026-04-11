@@ -4122,6 +4122,11 @@ public class Win32 {{
     Err(format!("窗口聚焦失败: {}", stderr.trim()))
 }
 
+#[cfg(target_os = "windows")]
+pub fn focus_current_process_main_window() -> Result<(), String> {
+    focus_window_by_pid(std::process::id())
+}
+
 #[cfg(target_os = "linux")]
 fn focus_window_by_pid(pid: u32) -> Result<(), String> {
     if let Ok(output) = Command::new("wmctrl").arg("-lp").output() {
@@ -5745,7 +5750,10 @@ tell application \"System Events\" to keystroke \"q\" using command down",
     {
         use std::os::windows::process::CommandExt;
 
-        crate::modules::logger::log_info(&format!("[AG Close] graceful taskkill start pid={}", pid));
+        crate::modules::logger::log_info(&format!(
+            "[AG Close] graceful taskkill start pid={}",
+            pid
+        ));
         let output = Command::new("taskkill")
             .args(["/PID", &pid.to_string(), "/T"])
             .creation_flags(CREATE_NO_WINDOW)

@@ -83,7 +83,7 @@ pub async fn cursor_list_instances() -> Result<Vec<InstanceProfileView>, String>
         id: DEFAULT_INSTANCE_ID.to_string(),
         name: String::new(),
         user_data_dir: default_dir_str,
-            working_dir: None,
+        working_dir: None,
         extra_args: default_settings.extra_args.clone(),
         bind_account_id: default_settings.bind_account_id.clone(),
         created_at: 0,

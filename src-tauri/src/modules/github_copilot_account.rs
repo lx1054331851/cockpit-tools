@@ -88,7 +88,10 @@ fn load_account_index() -> GitHubCopilotAccountIndex {
             repair_account_index_from_details("索引文件为空")
                 .unwrap_or_else(GitHubCopilotAccountIndex::new)
         }
-        Ok(content) => match crate::modules::atomic_write::parse_json_with_auto_restore::<GitHubCopilotAccountIndex>(&path, &content) {
+        Ok(content) => match crate::modules::atomic_write::parse_json_with_auto_restore::<
+            GitHubCopilotAccountIndex,
+        >(&path, &content)
+        {
             Ok(index) if !index.accounts.is_empty() => index,
             Ok(_) => repair_account_index_from_details("索引账号列表为空")
                 .unwrap_or_else(GitHubCopilotAccountIndex::new),
@@ -132,7 +135,9 @@ fn load_account_index_checked() -> Result<GitHubCopilotAccountIndex, String> {
         return Ok(GitHubCopilotAccountIndex::new());
     }
 
-    match crate::modules::atomic_write::parse_json_with_auto_restore::<GitHubCopilotAccountIndex>(&path, &content) {
+    match crate::modules::atomic_write::parse_json_with_auto_restore::<GitHubCopilotAccountIndex>(
+        &path, &content,
+    ) {
         Ok(index) if !index.accounts.is_empty() => Ok(index),
         Ok(index) => {
             if let Some(repaired) = repair_account_index_from_details("索引账号列表为空") {

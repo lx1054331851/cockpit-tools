@@ -350,12 +350,14 @@
     "status": {
       "running": "运行中",
       "stopped": "未运行",
+      "ready": "已准备",
       "restarting": "重启中",
       "starting": "启动中"
     },
     "labels": {
       "path": "目录",
       "args": "启动参数",
+      "argsPresent": "有参数",
       "argsEmpty": "无",
       "bindAccount": "绑定账号",
       "unbound": "未绑定",
@@ -406,6 +408,13 @@
       "selectAccount": "选择账号",
       "bindAccount": "绑定账号",
       "unbound": "不绑定",
+      "optional": "可选",
+      "launchMode": "启动方式",
+      "launchModeApp": "桌面版",
+      "launchModeCli": "CLI",
+      "workingDir": "工作目录",
+      "workingDirPlaceholder": "默认当前路径",
+      "workingDirDesc": "启动时将首先切换到此目录",
       "extraArgs": "自定义启动参数",
       "extraArgsPlaceholder": "例如：--disable-gpu --log-level=2",
       "extraArgsDesc": "按空格分隔参数，支持引号包裹",
@@ -425,6 +434,7 @@
       "updated": "实例已更新",
       "deleted": "实例已删除",
       "started": "实例已启动",
+      "launchPrepared": "启动命令已准备",
       "stopped": "实例已关闭",
       "startedAll": "已启动所有未运行实例",
       "restartedAll": "已重启运行中的实例",
@@ -440,6 +450,13 @@
       "pathLabel": "实例目录",
       "go": "立马前往",
       "restart": "关闭并重启"
+    },
+    "launchDialog": {
+      "title": "启动实例",
+      "terminal": "终端",
+      "command": "启动命令",
+      "hint": "可复制命令手动执行，或点击下方按钮直接在终端执行。",
+      "runInTerminal": "终端执行"
     },
     "initGuide": {
       "title": "实例尚未初始化",
@@ -1570,7 +1587,41 @@
       "selectSavedApiKey": "已保存 API Key",
       "noSavedProviders": "暂无已保存供应商，可直接填写后自动保存。",
       "newProviderName": "供应商名称（自动保存时使用，可选）",
-      "newProviderNamePlaceholder": "不填则按域名自动生成"
+      "newProviderNamePlaceholder": "不填则按域名自动生成",
+      "preview": {
+        "title": "保存预览",
+        "desc": "保存供应商时会先更新供应商仓库；不会因为这次操作立刻切换官方 Codex 的当前配置。",
+        "writeNow": "会写入",
+        "noImmediateChange": "不会立即修改",
+        "providerStoreTitle": "模型供应商仓库",
+        "providerStoreDesc": "保存供应商名称、Base URL、官网/API Key 页面链接，以及本弹框新增的 API Key。",
+        "codexConfigTitle": "当前 Codex 配置",
+        "codexConfigDesc": "不会立即改动当前 provider 或 Base URL；只有在保存或切换 Codex API Key 账号时才会更新。",
+        "authFileTitle": "当前 Codex 登录凭据",
+        "authFileDesc": "不会因为保存供应商而覆盖当前 auth.json 中的 OPENAI_API_KEY。"
+      },
+      "quickConfig": {
+        "title": "当前 Codex 配置",
+        "desc": "这里的快捷项直接写入当前生效的 ~/.codex/config.toml，不会改动模型供应商仓库。",
+        "configPath": "配置文件",
+        "openConfig": "打开文件",
+        "loadFailed": "加载当前 Codex 配置失败：{{error}}",
+        "openFailed": "打开 config.toml 失败：{{error}}",
+        "saveSuccess": "当前 Codex 配置已保存",
+        "saveFailed": "保存当前 Codex 配置失败：{{error}}",
+        "contextWindow1m": "1M 上下文窗口",
+        "contextWindow1mHint": "启用后写入 model_context_window = 1000000，并联动管理自动压缩阈值。",
+        "autoCompactLimit": "自动压缩阈值",
+        "autoCompactLimitHint": "写入 model_auto_compact_token_limit。关闭 1M 开关后，这个字段会一起移除。",
+        "preview": "写入预览",
+        "previewApply": "将写入",
+        "previewRemove": "将移除",
+        "customDetected": "检测到当前 config.toml 存在自定义 model_context_window = {{context}}。保存后会按下方快捷项改写。",
+        "compactMissingDetected": "检测到当前已启用 1M 上下文，但缺少自动压缩阈值。保存后会补写默认值 {{limit}}。",
+        "validation": {
+          "autoCompactInvalid": "自动压缩阈值必须是大于 0 的整数"
+        }
+      }
     },
     "quickSwitch": {
       "action": "快速切换供应商",

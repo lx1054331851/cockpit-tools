@@ -71,8 +71,10 @@ pub fn repair_session_visibility_across_instances(
     for instance in &instances {
         let running = is_instance_running(instance, &process_entries);
         let target_provider = read_target_provider(&instance.data_dir)?;
-        let rollout_changes = collect_rollout_provider_changes(&instance.data_dir, &target_provider)?;
-        let sqlite_rows_to_update = count_sqlite_rows_to_update(&instance.data_dir, &target_provider)?;
+        let rollout_changes =
+            collect_rollout_provider_changes(&instance.data_dir, &target_provider)?;
+        let sqlite_rows_to_update =
+            count_sqlite_rows_to_update(&instance.data_dir, &target_provider)?;
 
         if rollout_changes.is_empty() && sqlite_rows_to_update == 0 {
             items.push(CodexSessionVisibilityRepairItem {
@@ -96,12 +98,16 @@ pub fn repair_session_visibility_across_instances(
         )?;
         let backup_dir_string = backup_dir.to_string_lossy().to_string();
 
-        let repaired = repair_single_instance(&instance.data_dir, &target_provider, &rollout_changes);
+        let repaired =
+            repair_single_instance(&instance.data_dir, &target_provider, &rollout_changes);
         let sqlite_rows_updated = match repaired {
             Ok(value) => value,
             Err(error) => {
-                let restore_result =
-                    restore_instance_files_from_backup(&instance.data_dir, &backup_dir, sqlite_rows_to_update > 0);
+                let restore_result = restore_instance_files_from_backup(
+                    &instance.data_dir,
+                    &backup_dir,
+                    sqlite_rows_to_update > 0,
+                );
                 if let Err(restore_error) = restore_result {
                     return Err(format!(
                         "修复实例历史会话可见性失败 ({}): {}；自动回滚也失败: {}；备份目录: {}",
@@ -138,8 +144,12 @@ pub fn repair_session_visibility_across_instances(
         });
     }
 
-    let message =
-        build_summary_message(mutated_instance_count, changed_rollout_file_count, updated_sqlite_row_count, mutated_running_instance_count);
+    let message = build_summary_message(
+        mutated_instance_count,
+        changed_rollout_file_count,
+        updated_sqlite_row_count,
+        mutated_running_instance_count,
+    );
 
     Ok(CodexSessionVisibilityRepairSummary {
         instance_count: instances.len(),
@@ -234,15 +244,24 @@ fn read_target_provider(data_dir: &Path) -> Result<String, String> {
         return Ok(DEFAULT_PROVIDER_ID.to_string());
     }
 
-    let content = fs::read_to_string(&config_path)
-        .map_err(|error| format!("读取 config.toml 失败 ({}): {}", config_path.display(), error))?;
+    let content = fs::read_to_string(&config_path).map_err(|error| {
+        format!(
+            "读取 config.toml 失败 ({}): {}",
+            config_path.display(),
+            error
+        )
+    })?;
     if content.trim().is_empty() {
         return Ok(DEFAULT_PROVIDER_ID.to_string());
     }
 
-    let doc = content
-        .parse::<Document>()
-        .map_err(|error| format!("解析 config.toml 失败 ({}): {}", config_path.display(), error))?;
+    let doc = content.parse::<Document>().map_err(|error| {
+        format!(
+            "解析 config.toml 失败 ({}): {}",
+            config_path.display(),
+            error
+        )
+    })?;
     let provider = doc
         .get("model_provider")
         .and_then(|item| item.as_str())
@@ -311,15 +330,18 @@ fn list_rollout_files(root_dir: &Path) -> Result<Vec<PathBuf>, String> {
         let entry =
             entry.map_err(|error| format!("读取目录项失败 ({}): {}", root_dir.display(), error))?;
         let path = entry.path();
-        let file_type = entry.file_type().map_err(|error| {
-            format!("读取文件类型失败 ({}): {}", path.display(), error)
-        })?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("读取文件类型失败 ({}): {}", path.display(), error))?;
         if file_type.is_dir() {
             result.extend(list_rollout_files(&path)?);
             continue;
         }
         if file_type.is_file() {
-            let file_name = path.file_name().and_then(|item| item.to_str()).unwrap_or_default();
+            let file_name = path
+                .file_name()
+                .and_then(|item| item.to_str())
+                .unwrap_or_default();
             if file_name.starts_with("rollout-") && file_name.ends_with(".jsonl") {
                 result.push(path);
             }
@@ -331,8 +353,8 @@ fn list_rollout_files(root_dir: &Path) -> Result<Vec<PathBuf>, String> {
 }
 
 fn read_first_line(path: &Path) -> Result<Option<(String, String)>, String> {
-    let file =
-        fs::File::open(path).map_err(|error| format!("打开 rollout 文件失败 ({}): {}", path.display(), error))?;
+    let file = fs::File::open(path)
+        .map_err(|error| format!("打开 rollout 文件失败 ({}): {}", path.display(), error))?;
     let mut reader = BufReader::new(file);
     let mut buffer = Vec::new();
     let bytes_read = reader
@@ -350,8 +372,13 @@ fn read_first_line(path: &Path) -> Result<Option<(String, String)>, String> {
         (&buffer[..], "")
     };
 
-    let line = String::from_utf8(line_bytes.to_vec())
-        .map_err(|error| format!("解析 rollout 首行 UTF-8 失败 ({}): {}", path.display(), error))?;
+    let line = String::from_utf8(line_bytes.to_vec()).map_err(|error| {
+        format!(
+            "解析 rollout 首行 UTF-8 失败 ({}): {}",
+            path.display(),
+            error
+        )
+    })?;
     Ok(Some((line, separator.to_string())))
 }
 
@@ -384,7 +411,13 @@ fn count_sqlite_rows_to_update(data_dir: &Path, target_provider: &str) -> Result
             [target_provider],
             |row| row.get::<usize, i64>(0),
         )
-        .map_err(|error| format!("统计 SQLite provider 差异失败 ({}): {}", db_path.display(), error))?;
+        .map_err(|error| {
+            format!(
+                "统计 SQLite provider 差异失败 ({}): {}",
+                db_path.display(),
+                error
+            )
+        })?;
     Ok(count.max(0) as usize)
 }
 
@@ -398,7 +431,13 @@ fn update_sqlite_provider(data_dir: &Path, target_provider: &str) -> Result<usiz
         .map_err(|error| format!("打开实例数据库失败 ({}): {}", db_path.display(), error))?;
     connection
         .busy_timeout(Duration::from_secs(3))
-        .map_err(|error| format!("设置 SQLite busy_timeout 失败 ({}): {}", db_path.display(), error))?;
+        .map_err(|error| {
+            format!(
+                "设置 SQLite busy_timeout 失败 ({}): {}",
+                db_path.display(),
+                error
+            )
+        })?;
     let transaction = connection
         .transaction()
         .map_err(|error| format_sqlite_write_error(&db_path, &error))?;
@@ -424,7 +463,11 @@ fn format_sqlite_write_error(path: &Path, error: &rusqlite::Error) -> String {
             message
         );
     }
-    format!("更新 SQLite provider 失败 ({}): {}", path.display(), message)
+    format!(
+        "更新 SQLite provider 失败 ({}): {}",
+        path.display(),
+        message
+    )
 }
 
 fn rewrite_rollout_provider(change: &RolloutProviderChange) -> Result<(), String> {
@@ -456,7 +499,9 @@ fn detect_first_line_boundary(bytes: &[u8]) -> (usize, &'static str) {
 }
 
 fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), String> {
-    let parent = path.parent().ok_or_else(|| format!("无法定位目标目录: {}", path.display()))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("无法定位目标目录: {}", path.display()))?;
     fs::create_dir_all(parent)
         .map_err(|error| format!("创建目录失败 ({}): {}", parent.display(), error))?;
 
@@ -495,8 +540,13 @@ fn backup_instance_files(
     for change in rollout_changes {
         let target = backup_dir.join("files").join(&change.relative_path);
         if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|error| format!("创建 rollout 备份目录失败 ({}): {}", parent.display(), error))?;
+            fs::create_dir_all(parent).map_err(|error| {
+                format!(
+                    "创建 rollout 备份目录失败 ({}): {}",
+                    parent.display(),
+                    error
+                )
+            })?;
         }
         fs::copy(&change.absolute_path, &target).map_err(|error| {
             format!(
@@ -583,11 +633,16 @@ fn restore_directory_contents(source_root: &Path, target_root: &Path) -> Result<
     let entries = fs::read_dir(source_root)
         .map_err(|error| format!("读取备份目录失败 ({}): {}", source_root.display(), error))?;
     for entry in entries {
-        let entry = entry
-            .map_err(|error| format!("读取备份目录项失败 ({}): {}", source_root.display(), error))?;
+        let entry = entry.map_err(|error| {
+            format!("读取备份目录项失败 ({}): {}", source_root.display(), error)
+        })?;
         let source_path = entry.path();
         let file_type = entry.file_type().map_err(|error| {
-            format!("读取备份文件类型失败 ({}): {}", source_path.display(), error)
+            format!(
+                "读取备份文件类型失败 ({}): {}",
+                source_path.display(),
+                error
+            )
         })?;
         let relative = source_path
             .strip_prefix(source_root)
@@ -603,9 +658,8 @@ fn restore_directory_contents(source_root: &Path, target_root: &Path) -> Result<
         }
 
         if let Some(parent) = target_path.parent() {
-            fs::create_dir_all(parent).map_err(|error| {
-                format!("创建恢复父目录失败 ({}): {}", parent.display(), error)
-            })?;
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("创建恢复父目录失败 ({}): {}", parent.display(), error))?;
         }
         fs::copy(&source_path, &target_path).map_err(|error| {
             format!(

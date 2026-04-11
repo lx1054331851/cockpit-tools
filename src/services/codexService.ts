@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { CodexAccount, CodexQuota } from '../types/codex';
+import { CodexAccount, CodexApiProviderMode, CodexQuickConfig, CodexQuota } from '../types/codex';
 
 export interface CodexOAuthLoginStartResponse {
   loginId: string;
@@ -19,6 +19,22 @@ export async function getCurrentCodexAccount(): Promise<CodexAccount | null> {
 /** 获取当前 Codex config.toml 路径 */
 export async function getCodexConfigTomlPath(): Promise<string> {
   return await invoke('get_codex_config_toml_path');
+}
+
+/** 获取 Codex config.toml 快捷配置 */
+export async function getCodexQuickConfig(): Promise<CodexQuickConfig> {
+  return await invoke('get_codex_quick_config');
+}
+
+/** 保存 Codex config.toml 快捷配置 */
+export async function saveCodexQuickConfig(
+  contextWindow1m: boolean,
+  autoCompactTokenLimit?: number,
+): Promise<CodexQuickConfig> {
+  return await invoke('save_codex_quick_config', {
+    contextWindow1m,
+    autoCompactTokenLimit: autoCompactTokenLimit ?? null,
+  });
 }
 
 /** 刷新 Codex 账号资料（团队名/结构） */
@@ -116,10 +132,16 @@ export async function addCodexAccountWithToken(
 export async function addCodexAccountWithApiKey(
   apiKey: string,
   apiBaseUrl?: string,
+  apiProviderMode?: CodexApiProviderMode,
+  apiProviderId?: string,
+  apiProviderName?: string,
 ): Promise<CodexAccount> {
   return await invoke('add_codex_account_with_api_key', {
     apiKey,
     apiBaseUrl: apiBaseUrl ?? null,
+    apiProviderMode: apiProviderMode ?? null,
+    apiProviderId: apiProviderId ?? null,
+    apiProviderName: apiProviderName ?? null,
   });
 }
 
@@ -131,11 +153,17 @@ export async function updateCodexApiKeyCredentials(
   accountId: string,
   apiKey: string,
   apiBaseUrl?: string,
+  apiProviderMode?: CodexApiProviderMode,
+  apiProviderId?: string,
+  apiProviderName?: string,
 ): Promise<CodexAccount> {
   return await invoke('update_codex_api_key_credentials', {
     accountId,
     apiKey,
     apiBaseUrl: apiBaseUrl ?? null,
+    apiProviderMode: apiProviderMode ?? null,
+    apiProviderId: apiProviderId ?? null,
+    apiProviderName: apiProviderName ?? null,
   });
 }
 

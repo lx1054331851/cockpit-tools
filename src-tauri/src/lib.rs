@@ -75,11 +75,9 @@ pub fn run() {
             {
                 return;
             }
-            let _ = app.get_webview_window("main").map(|window| {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            });
+            if let Err(err) = modules::floating_card_window::show_main_window(app) {
+                logger::log_warn(&format!("[Window] 单实例唤起恢复主窗口失败: {}", err));
+            }
         }))
         .setup(|app| {
             info!("Cockpit Tools 启动...");
@@ -340,6 +338,8 @@ pub fn run() {
             commands::codex::list_codex_accounts,
             commands::codex::get_current_codex_account,
             commands::codex::get_codex_config_toml_path,
+            commands::codex::get_codex_quick_config,
+            commands::codex::save_codex_quick_config,
             commands::codex::refresh_codex_account_profile,
             commands::codex::switch_codex_account,
             commands::codex::delete_codex_account,
@@ -686,6 +686,8 @@ pub fn run() {
             commands::codex_instance::codex_stop_instance,
             commands::codex_instance::codex_open_instance_window,
             commands::codex_instance::codex_close_all_instances,
+            commands::codex_instance::codex_get_instance_launch_command,
+            commands::codex_instance::codex_execute_instance_launch_command,
             // Instance Commands
             commands::instance::get_instance_defaults,
             commands::instance::list_instances,

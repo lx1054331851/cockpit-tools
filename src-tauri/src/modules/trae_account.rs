@@ -6,7 +6,7 @@ use rand::RngCore;
 use reqwest::{Method, Url};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha512};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -60,7 +60,10 @@ const BYTE_CRYPTO_AES_B: [u8; BYTE_CRYPTO_SHA512_LEN] = [
 type Aes128CbcEnc = cbc::Encryptor<Aes128>;
 type Aes128CbcDec = cbc::Decryptor<Aes128>;
 
-const TRAE_DEFAULT_API_ORIGIN: &str = "https://www.trae.ai";
+const TRAE_ACCOUNT_API_ORIGIN_NORMAL: &str = "https://grow-normal.trae.ai";
+const TRAE_ACCOUNT_API_ORIGIN_SG: &str = "https://growsg-normal.trae.ai";
+const TRAE_ACCOUNT_API_ORIGIN_US: &str = "https://growva-normal.trae.ai";
+const TRAE_ACCOUNT_API_ORIGIN_USTTP: &str = "https://grow-normal.traeapi.us";
 const TRAE_EXCHANGE_TOKEN_PATH: &str = "/cloudide/api/v3/trae/oauth/ExchangeToken";
 const TRAE_GET_USER_INFO_PATH: &str = "/cloudide/api/v3/trae/GetUserInfo";
 const TRAE_CHECK_LOGIN_PATH: &str = "/cloudide/api/v3/trae/CheckLogin";
@@ -128,48 +131,65 @@ fn ensure_https_url(raw: &str) -> Result<Url, String> {
     Url::parse(with_scheme.as_str()).map_err(|e| format!("解析 Trae 域名失败: {}", e))
 }
 
-fn dedup_keep_order(values: Vec<String>) -> Vec<String> {
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut output = Vec::new();
-    for value in values {
-        if value.is_empty() || seen.contains(value.as_str()) {
-            continue;
-        }
-        seen.insert(value.clone());
-        output.push(value);
-    }
-    output
+fn normalize_origin(raw: &str) -> Option<String> {
+    let url = ensure_https_url(raw).ok()?;
+    let host = url.host_str()?;
+    Some(format!("{}://{}", url.scheme(), host))
 }
 
-fn candidate_api_origins(login_host: &str) -> Vec<String> {
-    let mut origins = Vec::new();
-
-    if let Ok(url) = ensure_https_url(login_host) {
-        if let Some(host) = url.host_str() {
-            origins.push(format!("{}://{}", url.scheme(), host));
-            if let Some(stripped) = host.strip_prefix("www.") {
-                origins.push(format!("{}://api.{}", url.scheme(), stripped));
-            }
-        }
-    }
-
-    origins.extend([
-        "https://api.marscode.com".to_string(),
-        "https://api.trae.ai".to_string(),
-        "https://www.trae.ai".to_string(),
-        "https://www.marscode.com".to_string(),
-    ]);
-
-    dedup_keep_order(origins)
-}
-
-fn build_api_urls(login_host: &str, path: &str) -> Vec<String> {
-    dedup_keep_order(
-        candidate_api_origins(login_host)
-            .into_iter()
-            .map(|origin| format!("{}{}", origin.trim_end_matches('/'), path))
-            .collect(),
+fn is_official_trae_account_api_origin(origin: &str) -> bool {
+    matches!(
+        origin.trim_end_matches('/'),
+        TRAE_ACCOUNT_API_ORIGIN_NORMAL
+            | TRAE_ACCOUNT_API_ORIGIN_SG
+            | TRAE_ACCOUNT_API_ORIGIN_US
+            | TRAE_ACCOUNT_API_ORIGIN_USTTP
     )
+}
+
+fn official_trae_account_api_origin_for_region(
+    store_region: Option<&str>,
+    ai_region: Option<&str>,
+    login_region: Option<&str>,
+) -> String {
+    let normalized_region = store_region
+        .or(ai_region)
+        .map(|value| to_store_region(value))
+        .or_else(|| {
+            login_region.map(|value| match value.trim().to_ascii_lowercase().as_str() {
+                "sg" => "SG".to_string(),
+                "us" => "US".to_string(),
+                "usttp" => "USTTP".to_string(),
+                _ => "CN".to_string(),
+            })
+        })
+        .unwrap_or_else(|| "CN".to_string());
+
+    match normalized_region.as_str() {
+        "SG" => TRAE_ACCOUNT_API_ORIGIN_SG.to_string(),
+        "US" => TRAE_ACCOUNT_API_ORIGIN_US.to_string(),
+        "USTTP" => TRAE_ACCOUNT_API_ORIGIN_USTTP.to_string(),
+        _ => TRAE_ACCOUNT_API_ORIGIN_NORMAL.to_string(),
+    }
+}
+
+fn resolve_trae_account_api_origin(
+    host: Option<&str>,
+    store_region: Option<&str>,
+    ai_region: Option<&str>,
+    login_region: Option<&str>,
+) -> String {
+    if let Some(origin) = host.and_then(normalize_origin) {
+        if is_official_trae_account_api_origin(origin.as_str()) {
+            return origin;
+        }
+    }
+
+    official_trae_account_api_origin_for_region(store_region, ai_region, login_region)
+}
+
+fn build_api_urls(origin: &str, path: &str) -> Vec<String> {
+    vec![format!("{}{}", origin.trim_end_matches('/'), path)]
 }
 
 fn get_data_dir() -> Result<PathBuf, String> {
@@ -1931,16 +1951,39 @@ fn ensure_auth_raw_for_inject(account: &TraeAccount, existing_auth_raw: Option<&
     .map(|value| to_store_region(value.as_str()))
     .unwrap_or_else(|| "UNKNOWN".to_string());
 
-    let host = pick_string_multi(
-        &roots,
-        &[
-            &["host"],
-            &["loginHost"],
-            &["callbackQuery", "host"],
-            &["data", "host"],
-        ],
-    )
-    .unwrap_or_else(|| "https://www.trae.ai".to_string());
+    let login_region = normalize_login_region(
+        pick_string_multi(
+            &roots,
+            &[
+                &["loginRegion"],
+                &["callbackQuery", "userRegion"],
+                &["userRegion", "region"],
+                &["userRegion", "_aiRegion"],
+                &["storeRegion"],
+                &["AIRegion"],
+            ],
+        )
+        .as_deref(),
+    );
+
+    let api_host = resolve_trae_account_api_origin(
+        pick_string_multi(
+            &roots,
+            &[
+                &["host"],
+                &["loginHost"],
+                &["callbackQuery", "host"],
+                &["data", "host"],
+                &["Result", "Host"],
+                &["Result", "AIPayHost"],
+                &["Result", "AIHost"],
+            ],
+        )
+        .as_deref(),
+        Some(store_region.as_str()),
+        Some(ai_region.as_str()),
+        login_region.as_deref(),
+    );
 
     let expires_at = resolve_iso_timestamp(
         account.expires_at,
@@ -2066,7 +2109,8 @@ fn ensure_auth_raw_for_inject(account: &TraeAccount, existing_auth_raw: Option<&
         "tokenReleaseAt".to_string(),
         Value::String(token_release_at),
     );
-    obj.insert("host".to_string(), Value::String(host));
+    obj.insert("host".to_string(), Value::String(api_host.clone()));
+    obj.insert("loginHost".to_string(), Value::String(api_host));
     if had_region_key {
         obj.insert("region".to_string(), Value::String(ai_region.clone()));
     }
@@ -2265,23 +2309,6 @@ fn build_refresh_routing_context(account: &TraeAccount) -> TraeRefreshRoutingCon
         account.trae_usage_raw.as_ref(),
     ];
 
-    let login_host = pick_string_multi(
-        &roots,
-        &[
-            &["loginHost"],
-            &["host"],
-            &["account", "host"],
-            &["callbackQuery", "host"],
-            &["callbackQuery", "consoleHost"],
-            &["data", "host"],
-            &["Result", "loginHost"],
-            &["result", "loginHost"],
-            &["data", "loginHost"],
-            &["exchangeResponse", "Result", "loginHost"],
-        ],
-    )
-    .unwrap_or_else(|| TRAE_DEFAULT_API_ORIGIN.to_string());
-
     let login_region = normalize_login_region(
         pick_string_multi(
             &roots,
@@ -2320,6 +2347,29 @@ fn build_refresh_routing_context(account: &TraeAccount) -> TraeRefreshRoutingCon
         ],
     )
     .map(|value| to_store_region(value.as_str()));
+
+    let login_host = resolve_trae_account_api_origin(
+        pick_string_multi(
+            &roots,
+            &[
+                &["loginHost"],
+                &["host"],
+                &["account", "host"],
+                &["callbackQuery", "host"],
+                &["data", "host"],
+                &["Result", "Host"],
+                &["Result", "AIPayHost"],
+                &["Result", "AIHost"],
+                &["result", "loginHost"],
+                &["data", "loginHost"],
+                &["exchangeResponse", "Result", "loginHost"],
+            ],
+        )
+        .as_deref(),
+        store_region.as_deref(),
+        ai_region.as_deref(),
+        login_region.as_deref(),
+    );
 
     TraeRefreshRoutingContext {
         login_host,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirm as confirmDialog } from '@tauri-apps/plugin-dialog';
+import { homeDir, join } from '@tauri-apps/api/path';
 import {
   CircleAlert,
   ExternalLink,
@@ -31,6 +32,7 @@ import {
   findCodexApiProviderPresetById,
   resolveCodexApiProviderPresetId,
 } from '../../utils/codexProviderPresets';
+import { CodexQuickConfigCard } from './CodexQuickConfigCard';
 
 interface CodexModelProviderManagerProps {
   accounts: CodexAccount[];
@@ -64,6 +66,18 @@ const EMPTY_FORM: ProviderFormState = {
   newApiKey: '',
 };
 
+interface ProviderPreviewPaths {
+  providerStorePath: string;
+  codexConfigPath: string;
+  codexAuthPath: string;
+}
+
+const DEFAULT_PROVIDER_PREVIEW_PATHS: ProviderPreviewPaths = {
+  providerStorePath: '~/.antigravity_cockpit/codex_model_providers.json',
+  codexConfigPath: '~/.codex/config.toml',
+  codexAuthPath: '~/.codex/auth.json',
+};
+
 export function CodexModelProviderManager({
   accounts,
   onProvidersChanged,
@@ -77,6 +91,9 @@ export function CodexModelProviderManager({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState<ProviderFormState>(EMPTY_FORM);
+  const [previewPaths, setPreviewPaths] = useState<ProviderPreviewPaths>(
+    DEFAULT_PROVIDER_PREVIEW_PATHS,
+  );
   const [selectedPresetId, setSelectedPresetId] = useState<string>(CODEX_API_PROVIDER_CUSTOM_ID);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -118,6 +135,33 @@ export function CodexModelProviderManager({
   useEffect(() => {
     void reloadProviders();
   }, [reloadProviders]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const home = await homeDir();
+        const [providerStorePath, codexConfigPath, codexAuthPath] = await Promise.all([
+          join(home, '.antigravity_cockpit', 'codex_model_providers.json'),
+          join(home, '.codex', 'config.toml'),
+          join(home, '.codex', 'auth.json'),
+        ]);
+        if (cancelled) return;
+        setPreviewPaths({
+          providerStorePath,
+          codexConfigPath,
+          codexAuthPath,
+        });
+      } catch {
+        // ignore path resolution failures and keep fallback preview paths
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const providerReferenceMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -354,6 +398,8 @@ export function CodexModelProviderManager({
           </button>
         </div>
       )}
+
+      <CodexQuickConfigCard />
 
       <div className="toolbar">
         <div className="toolbar-left">
@@ -644,6 +690,93 @@ export function CodexModelProviderManager({
                   onChange={(event) => mutateForm({ newApiKey: event.target.value })}
                   disabled={saving}
                 />
+              </div>
+
+              <div className="provider-save-preview">
+                <div className="provider-save-preview-header">
+                  <div className="provider-save-preview-title">
+                    {t('codex.modelProviders.preview.title', '保存预览')}
+                  </div>
+                  <span className="provider-save-preview-chip primary">
+                    {t('codex.modelProviders.preview.writeNow', '会写入')}
+                  </span>
+                </div>
+                <p className="provider-save-preview-desc">
+                  {t(
+                    'codex.modelProviders.preview.desc',
+                    '保存供应商时会先更新供应商仓库；不会因为这次操作立刻切换官方 Codex 的当前配置。',
+                  )}
+                </p>
+                <div className="provider-save-preview-list">
+                  <div className="provider-save-preview-item primary">
+                    <div className="provider-save-preview-item-head">
+                      <span className="provider-save-preview-item-title">
+                        {t(
+                          'codex.modelProviders.preview.providerStoreTitle',
+                          '模型供应商仓库',
+                        )}
+                      </span>
+                      <span className="provider-save-preview-chip primary">
+                        {t('codex.modelProviders.preview.writeNow', '会写入')}
+                      </span>
+                    </div>
+                    <code>{previewPaths.providerStorePath}</code>
+                    <p>
+                      {t(
+                        'codex.modelProviders.preview.providerStoreDesc',
+                        '保存供应商名称、Base URL、官网/API Key 页面链接，以及本弹框新增的 API Key。',
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="provider-save-preview-item muted">
+                    <div className="provider-save-preview-item-head">
+                      <span className="provider-save-preview-item-title">
+                        {t(
+                          'codex.modelProviders.preview.codexConfigTitle',
+                          '当前 Codex 配置',
+                        )}
+                      </span>
+                      <span className="provider-save-preview-chip muted">
+                        {t(
+                          'codex.modelProviders.preview.noImmediateChange',
+                          '不会立即修改',
+                        )}
+                      </span>
+                    </div>
+                    <code>{previewPaths.codexConfigPath}</code>
+                    <p>
+                      {t(
+                        'codex.modelProviders.preview.codexConfigDesc',
+                        '不会立即改动当前 provider 或 Base URL；只有在保存或切换 Codex API Key 账号时才会更新。',
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="provider-save-preview-item muted">
+                    <div className="provider-save-preview-item-head">
+                      <span className="provider-save-preview-item-title">
+                        {t(
+                          'codex.modelProviders.preview.authFileTitle',
+                          '当前 Codex 登录凭据',
+                        )}
+                      </span>
+                      <span className="provider-save-preview-chip muted">
+                        {t(
+                          'codex.modelProviders.preview.noImmediateChange',
+                          '不会立即修改',
+                        )}
+                      </span>
+                    </div>
+                    <code>{previewPaths.codexAuthPath}</code>
+                    <p>
+                      {t(
+                        'codex.modelProviders.preview.authFileDesc',
+                        '不会因为保存供应商而覆盖当前 auth.json 中的 OPENAI_API_KEY。',
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {formError && (

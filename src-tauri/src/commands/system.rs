@@ -511,35 +511,56 @@ pub async fn get_available_terminals() -> Result<Vec<String>, String> {
     {
         let home = std::env::var("HOME").unwrap_or_default();
         let terminals = [
-            ("Terminal", vec![
-                "/System/Applications/Utilities/Terminal.app".to_string(),
-                "/Applications/Utilities/Terminal.app".to_string()
-            ]),
-            ("iTerm2", vec![
-                "/Applications/iTerm.app".to_string(),
-                "/Applications/iTerm 2.app".to_string(),
-                format!("{}/Applications/iTerm.app", home)
-            ]),
-            ("Warp", vec![
-                "/Applications/Warp.app".to_string(),
-                format!("{}/Applications/Warp.app", home)
-            ]),
-            ("Ghostty", vec![
-                "/Applications/Ghostty.app".to_string(),
-                format!("{}/Applications/Ghostty.app", home)
-            ]),
-            ("WezTerm", vec![
-                "/Applications/WezTerm.app".to_string(),
-                format!("{}/Applications/WezTerm.app", home)
-            ]),
-            ("Kitty", vec![
-                "/Applications/Kitty.app".to_string(),
-                format!("{}/Applications/Kitty.app", home)
-            ]),
-            ("Alacritty", vec![
-                "/Applications/Alacritty.app".to_string(),
-                format!("{}/Applications/Alacritty.app", home)
-            ]),
+            (
+                "Terminal",
+                vec![
+                    "/System/Applications/Utilities/Terminal.app".to_string(),
+                    "/Applications/Utilities/Terminal.app".to_string(),
+                ],
+            ),
+            (
+                "iTerm2",
+                vec![
+                    "/Applications/iTerm.app".to_string(),
+                    "/Applications/iTerm 2.app".to_string(),
+                    format!("{}/Applications/iTerm.app", home),
+                ],
+            ),
+            (
+                "Warp",
+                vec![
+                    "/Applications/Warp.app".to_string(),
+                    format!("{}/Applications/Warp.app", home),
+                ],
+            ),
+            (
+                "Ghostty",
+                vec![
+                    "/Applications/Ghostty.app".to_string(),
+                    format!("{}/Applications/Ghostty.app", home),
+                ],
+            ),
+            (
+                "WezTerm",
+                vec![
+                    "/Applications/WezTerm.app".to_string(),
+                    format!("{}/Applications/WezTerm.app", home),
+                ],
+            ),
+            (
+                "Kitty",
+                vec![
+                    "/Applications/Kitty.app".to_string(),
+                    format!("{}/Applications/Kitty.app", home),
+                ],
+            ),
+            (
+                "Alacritty",
+                vec![
+                    "/Applications/Alacritty.app".to_string(),
+                    format!("{}/Applications/Alacritty.app", home),
+                ],
+            ),
         ];
         for (name, paths) in terminals {
             for path in paths {
@@ -893,8 +914,8 @@ pub fn save_general_config(
         floating_card_always_on_top.unwrap_or(current.floating_card_always_on_top);
     let app_auto_launch_enabled_value =
         app_auto_launch_enabled.unwrap_or(current.app_auto_launch_enabled);
-    let antigravity_startup_wakeup_enabled_value = antigravity_startup_wakeup_enabled
-        .unwrap_or(current.antigravity_startup_wakeup_enabled);
+    let antigravity_startup_wakeup_enabled_value =
+        antigravity_startup_wakeup_enabled.unwrap_or(current.antigravity_startup_wakeup_enabled);
     let antigravity_startup_wakeup_delay_seconds_value = sanitize_startup_wakeup_delay_seconds(
         antigravity_startup_wakeup_delay_seconds
             .unwrap_or(current.antigravity_startup_wakeup_delay_seconds),

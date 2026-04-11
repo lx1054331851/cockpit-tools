@@ -148,7 +148,8 @@ fn save_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<(), String> 
             .and_then(|item| item.to_str())
             .unwrap_or("wakeup_tasks")
     ));
-    let content = serde_json::to_string_pretty(value).map_err(|e| format!("序列化唤醒任务失败: {}", e))?;
+    let content =
+        serde_json::to_string_pretty(value).map_err(|e| format!("序列化唤醒任务失败: {}", e))?;
     fs::write(&temp_path, content).map_err(|e| format!("写入唤醒任务临时文件失败: {}", e))?;
     fs::rename(&temp_path, path).map_err(|e| format!("替换唤醒任务文件失败: {}", e))
 }
