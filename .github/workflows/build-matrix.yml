@@ -181,11 +181,14 @@ jobs:
 
           node <<'NODE'
           const fs = require('node:fs');
+          const baseConfigPath = 'src-tauri/tauri.conf.json';
           const configPath = 'src-tauri/tauri.test.conf.json';
           const outputPath = 'src-tauri/tauri.test.full.conf.json';
+          const baseConfig = JSON.parse(fs.readFileSync(baseConfigPath, 'utf8'));
           const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
           config.bundle = config.bundle || {};
           config.bundle.resources = {
+            ...((baseConfig.bundle && baseConfig.bundle.resources) || {}),
             ...(config.bundle.resources || {}),
             '../platform-packages/bootstrap/index.json': 'platform-packages/bootstrap/index.json',
             '../platform-packages/bootstrap/dist': 'platform-packages/bootstrap/dist',
