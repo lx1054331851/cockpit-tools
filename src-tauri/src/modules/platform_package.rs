@@ -2561,31 +2561,22 @@ fn replace_current_with_prepared(
     fs::create_dir_all(&platform_dir).map_err(|err| format!("创建平台包目录失败: {}", err))?;
 
     let current_dir = platform_dir.join(CURRENT_DIR);
-    let backup_dir = unique_work_dir(&platform_dir, "previous");
-    if backup_dir.exists() {
-        remove_path_if_exists(&backup_dir)?;
-    }
+    let prepared_parent = prepared_root.parent().map(Path::to_path_buf);
 
     if current_dir.exists() {
         check_platform_package_cancelled(cancel_flag)?;
+        stop_platform_runtime_before_package_mutation(platform_id, operation);
         close_platform_package_processes_before_switch(platform_id);
-        rename_path_for_package_switch(&current_dir, &backup_dir, "备份旧平台包目录失败")?;
+        remove_path_for_package_switch(&current_dir, Some("卸载旧平台包目录失败"))?;
+        logger::log_info(&format!(
+            "[PlatformPackage] 安装前已卸载旧平台包目录: platform={}, path={}",
+            platform_id,
+            current_dir.display()
+        ));
     }
 
-    let prepared_parent = prepared_root.parent().map(Path::to_path_buf);
-    if let Err(err) =
-        rename_path_for_package_switch(prepared_root, &current_dir, "切换平台包目录失败")
-    {
-        if backup_dir.exists() {
-            let _ =
-                rename_path_for_package_switch(&backup_dir, &current_dir, "回滚旧平台包目录失败");
-        }
-        return Err(err);
-    }
+    rename_path_for_package_switch(prepared_root, &current_dir, "切换平台包目录失败")?;
 
-    if backup_dir.exists() {
-        let _ = remove_path_if_exists(&backup_dir);
-    }
     if let Some(parent) = prepared_parent {
         if parent != platform_dir && parent.exists() {
             let _ = remove_path_if_exists(&parent);
