@@ -1,0 +1,74 @@
+name: Sync Upstream
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 */6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync upstream/main to fork main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream main
+        run: |
+          set -euo pipefail
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/jlcodes99/cockpit-tools.git
+          git fetch upstream main --prune
+          git fetch origin main --prune
+
+      - name: Check sync status
+        id: sync
+        run: |
+          set -euo pipefail
+          if git rev-parse upstream/main >/dev/null 2>&1 && git rev-parse origin/main >/dev/null 2>&1 && git diff --quiet origin/main upstream/main; then
+            echo "mode=up-to-date" >> "$GITHUB_OUTPUT"
+          elif git merge-base --is-ancestor origin/main upstream/main; then
+            echo "mode=fast-forward" >> "$GITHUB_OUTPUT"
+          elif git merge-base --is-ancestor upstream/main origin/main; then
+            echo "mode=origin-ahead" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=diverged" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fast-forward fork main
+        if: steps.sync.outputs.mode == 'fast-forward'
+        run: |
+          set -euo pipefail
+          git checkout -B main upstream/main
+          git push origin main:main
+
+      - name: Report no changes
+        if: steps.sync.outputs.mode == 'up-to-date'
+        run: |
+          echo "origin/main is already up to date with upstream/main"
+
+      - name: Report origin ahead
+        if: steps.sync.outputs.mode == 'origin-ahead'
+        run: |
+          echo "origin/main is already ahead of upstream/main; skipping sync."
+
+      - name: Fail on divergence
+        if: steps.sync.outputs.mode == 'diverged'
+        run: |
+          echo "origin/main and upstream/main have diverged; manual reconciliation required."
+          exit 1
