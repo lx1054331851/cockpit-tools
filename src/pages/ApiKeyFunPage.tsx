@@ -34,6 +34,8 @@ import {
   getApiKeyFunPrefillPage,
   type ApiKeyFunPrefillTarget,
 } from '../utils/apiKeyFunPrefill';
+import { SingleSelectDropdown } from '../components/SingleSelectDropdown';
+import type { CodexApiKeyWriteMode } from '../types/codex';
 import apiKeyFunIcon from '../assets/icons/apikey-fun.png';
 import './ApiKeyFunPage.css';
 
@@ -140,6 +142,21 @@ function isClaudeModelId(value: string): boolean {
   return model.startsWith('claude-') || model.startsWith('anthropic/claude-');
 }
 
+function buildCodexWriteModeOptions(t: ReturnType<typeof useTranslation>['t']) {
+  return [
+    {
+      value: 'standard',
+      label: t('apiKeyFun.keyManager.codexWriteMode.configToml', 'config.toml'),
+      description: t('apiKeyFun.keyManager.codexWriteMode.configTomlDesc', '写入 Codex 配置文件'),
+    },
+    {
+      value: 'auth_json',
+      label: t('apiKeyFun.keyManager.codexWriteMode.authJson', 'Auth.json'),
+      description: t('apiKeyFun.keyManager.codexWriteMode.authJsonDesc', '写入 Codex 凭证文件'),
+    },
+  ];
+}
+
 export function ApiKeyFunPage() {
   const { t } = useTranslation();
   const [apiKey, setApiKey] = useState('');
@@ -165,6 +182,8 @@ export function ApiKeyFunPage() {
 
   // 复制状态
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [codexWriteMode, setCodexWriteMode] =
+    useState<CodexApiKeyWriteMode>('standard');
 
   const providerBaseUrl = useMemo(
     () => buildApiKeyFunProviderBaseUrl(APIKEY_FUN_GLOBAL_ENDPOINT),
@@ -189,6 +208,7 @@ export function ApiKeyFunPage() {
   const canShowTargetActions = canAddCurrentKeyToCodex || canAddCurrentKeyToClaude;
   const canPrefillCurrentKey =
     Boolean(currentSavedKey) && !queryingModels && apiKeyFunModelCatalog.length > 0;
+  const codexWriteModeOptions = useMemo(() => buildCodexWriteModeOptions(t), [t]);
 
   useEffect(() => {
     if (initialManagedKeySelectedRef.current) return;
@@ -395,6 +415,7 @@ export function ApiKeyFunPage() {
         apiKeyName: item.name || buildManagedKeyName(key),
         providerName: 'APIKEY.FUN',
         baseUrl: target === 'codex' ? APIKEY_FUN_PROVIDER_BASE_URL : CLAUDE_APIKEY_FUN_BASE_URL,
+        codexWriteMode: target === 'codex' ? codexWriteMode : null,
         sourceTag: APIKEY_FUN_SOURCE_TAG,
         modelCatalog: apiKeyFunModelCatalog,
       });
@@ -407,7 +428,7 @@ export function ApiKeyFunPage() {
         target: targetName,
       }),
     });
-  }, [apiKeyFunModelCatalog, setManagedKeyAction, t]);
+  }, [apiKeyFunModelCatalog, codexWriteMode, setManagedKeyAction, t]);
 
   // 切换密钥
   const handleUseManagedKey = useCallback((item: ManagedApiKey) => {
@@ -583,16 +604,27 @@ export function ApiKeyFunPage() {
               {canShowTargetActions && (
                 <div className="apikey-fun-target-actions">
                   {canAddCurrentKeyToCodex && (
-                    <button
-                      type="button"
-                      className="btn apikey-fun-target-btn"
-                      disabled={!canPrefillCurrentKey}
-                      onClick={() => {
-                        if (currentSavedKey) handlePrefillTarget('codex', currentSavedKey);
-                      }}
-                    >
-                      <span>{t('apiKeyFun.keyManager.addToCodex', '添加到 Codex')}</span>
-                    </button>
+                    <>
+                      <SingleSelectDropdown
+                        value={codexWriteMode}
+                        options={codexWriteModeOptions}
+                        onChange={(value) =>
+                          setCodexWriteMode(value as CodexApiKeyWriteMode)
+                        }
+                        menuWidth={220}
+                        ariaLabel={t('apiKeyFun.keyManager.codexWriteMode.label', 'Codex 写入模式')}
+                      />
+                      <button
+                        type="button"
+                        className="btn apikey-fun-target-btn"
+                        disabled={!canPrefillCurrentKey}
+                        onClick={() => {
+                          if (currentSavedKey) handlePrefillTarget('codex', currentSavedKey);
+                        }}
+                      >
+                        <span>{t('apiKeyFun.keyManager.addToCodex', '添加到 Codex')}</span>
+                      </button>
+                    </>
                   )}
                   {canAddCurrentKeyToClaude && (
                     <button

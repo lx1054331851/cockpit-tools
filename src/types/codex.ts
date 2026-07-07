@@ -1,5 +1,6 @@
 export type CodexApiProviderMode = "openai_builtin" | "custom";
 export type CodexProviderWireApi = "responses" | "chat_completions";
+export type CodexApiKeyWriteMode = "standard" | "auth_json";
 
 export interface CodexQuickConfig {
   context_window_1m: boolean;
@@ -27,6 +28,7 @@ export interface CodexAccount {
   api_provider_name?: string;
   api_model_catalog?: string[];
   api_wire_api?: CodexProviderWireApi | null;
+  api_key_write_mode?: CodexApiKeyWriteMode;
   api_supports_vision?: boolean;
   api_model_vision_support?: Record<string, boolean>;
   api_vision_routing_model?: string | null;
@@ -391,6 +393,14 @@ export interface CodexSessionRestoreSummary {
   requestedSessionCount: number;
   restoredSessionCount: number;
   restoredInstanceCount: number;
+  message: string;
+}
+
+export interface CodexSessionPermanentDeleteSummary {
+  requestedSessionCount: number;
+  deletedSessionCount: number;
+  deletedInstanceCount: number;
+  deletedTrashEntryCount: number;
   message: string;
 }
 

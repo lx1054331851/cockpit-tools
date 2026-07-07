@@ -1,6 +1,6 @@
 use crate::models::codex::{
-    CodexAccount, CodexApiProviderMode, CodexAppSpeed, CodexAppSpeedConfig, CodexFileImportResult,
-    CodexQuickConfig, CodexQuota,
+    CodexAccount, CodexApiKeyWriteMode, CodexApiProviderMode, CodexAppSpeed, CodexAppSpeedConfig,
+    CodexFileImportResult, CodexQuickConfig, CodexQuota,
 };
 use crate::models::codex_local_access::{
     CodexLocalAccessAccountModelRule, CodexLocalAccessChatMessage, CodexLocalAccessChatResult,
@@ -686,6 +686,7 @@ pub fn add_codex_account_with_api_key(
     api_model_vision_support: Option<std::collections::HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
     account_name: Option<String>,
+    api_key_write_mode: Option<CodexApiKeyWriteMode>,
 ) -> Result<CodexAccount, String> {
     platform_adapter::call_codex(
         "accounts.addApiKey",
@@ -701,6 +702,7 @@ pub fn add_codex_account_with_api_key(
             "apiModelVisionSupport": api_model_vision_support,
             "apiVisionRoutingModel": api_vision_routing_model,
             "accountName": account_name,
+            "apiKeyWriteMode": api_key_write_mode,
         }),
     )
 }
@@ -726,6 +728,7 @@ pub fn update_codex_api_key_credentials(
     api_supports_vision: Option<bool>,
     api_model_vision_support: Option<std::collections::HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
+    api_key_write_mode: Option<CodexApiKeyWriteMode>,
 ) -> Result<CodexAccount, String> {
     platform_adapter::call_codex(
         "accounts.updateApiKeyCredentials",
@@ -741,7 +744,19 @@ pub fn update_codex_api_key_credentials(
             "apiSupportsVision": api_supports_vision,
             "apiModelVisionSupport": api_model_vision_support,
             "apiVisionRoutingModel": api_vision_routing_model,
+            "apiKeyWriteMode": api_key_write_mode,
         }),
+    )
+}
+
+#[tauri::command]
+pub fn update_codex_api_key_write_mode(
+    account_id: String,
+    write_mode: CodexApiKeyWriteMode,
+) -> Result<CodexAccount, String> {
+    platform_adapter::call_codex(
+        "accounts.updateApiKeyWriteMode",
+        json!({ "accountId": account_id, "writeMode": write_mode }),
     )
 }
 

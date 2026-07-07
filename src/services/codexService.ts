@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import {
   CodexAccount,
   CodexAccountNoteUpdate,
+  CodexApiKeyWriteMode,
   CodexApiProviderMode,
   CodexAppSpeed,
   CodexAppSpeedConfig,
@@ -368,6 +369,7 @@ export async function addCodexAccountWithApiKey(
   apiVisionRoutingModel?: string,
   accountName?: string,
   apiWireApi?: CodexProviderWireApi,
+  apiKeyWriteMode?: CodexApiKeyWriteMode,
 ): Promise<CodexAccount> {
   return await invoke('add_codex_account_with_api_key', {
     apiKey,
@@ -381,6 +383,7 @@ export async function addCodexAccountWithApiKey(
     apiModelVisionSupport: apiModelVisionSupport ?? {},
     apiVisionRoutingModel: apiVisionRoutingModel ?? null,
     accountName: accountName ?? null,
+    apiKeyWriteMode: apiKeyWriteMode ?? "standard",
   });
 }
 
@@ -400,6 +403,7 @@ export async function updateCodexApiKeyCredentials(
   apiModelVisionSupport?: Record<string, boolean>,
   apiVisionRoutingModel?: string,
   apiWireApi?: CodexProviderWireApi,
+  apiKeyWriteMode?: CodexApiKeyWriteMode,
 ): Promise<CodexAccount> {
   return await invoke('update_codex_api_key_credentials', {
     accountId,
@@ -413,6 +417,17 @@ export async function updateCodexApiKeyCredentials(
     apiSupportsVision: apiSupportsVision ?? null,
     apiModelVisionSupport: apiModelVisionSupport ?? null,
     apiVisionRoutingModel: apiVisionRoutingModel ?? null,
+    apiKeyWriteMode: apiKeyWriteMode ?? null,
+  });
+}
+
+export async function updateCodexApiKeyWriteMode(
+  accountId: string,
+  writeMode: CodexApiKeyWriteMode,
+): Promise<CodexAccount> {
+  return await invoke('update_codex_api_key_write_mode', {
+    accountId,
+    writeMode,
   });
 }
 

@@ -98,6 +98,7 @@ import {
   isCodexChatCompletionsApiKeyAccount,
   isCodexNewApiAccount,
   isCodexTeamLikePlan,
+  type CodexApiKeyWriteMode,
   type CodexApiProviderMode,
   type CodexQuotaErrorInfo,
   type CodexReferralEligibilityRules,
@@ -2746,6 +2747,7 @@ export function CodexAccountsContent() {
     updateAccountName,
     updateApiKeyCredentials,
     updateApiKeyBoundOAuthAccount,
+    updateApiKeyWriteMode,
     updateAccountAppSpeed,
   } = store;
   const localAccessCollection = localAccessState?.collection ?? null;
@@ -3806,6 +3808,8 @@ export function CodexAccountsContent() {
   const [switching, setSwitching] = useState<string | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [apiKeyInputVisible, setApiKeyInputVisible] = useState(false);
+  const [apiKeyWriteModeInput, setApiKeyWriteModeInput] =
+    useState<CodexApiKeyWriteMode>("standard");
   const [apiBaseUrlInput, setApiBaseUrlInput] = useState(
     DEFAULT_CODEX_API_BASE_URL,
   );
@@ -3855,6 +3859,78 @@ export function CodexAccountsContent() {
     setEditingNewManagedProviderNameInput,
   ] = useState("");
   const [savingApiKeyCredentials, setSavingApiKeyCredentials] = useState(false);
+  const [savingApiKeyWriteModeId, setSavingApiKeyWriteModeId] = useState<
+    string | null
+  >(null);
+  const codexApiKeyWriteModeOptions = useMemo(
+    () => [
+      {
+        value: "standard",
+        label: t("codex.api.writeMode.configToml", "config.toml"),
+        description: t(
+          "codex.api.writeMode.configTomlDesc",
+          "写入 Codex 配置文件",
+        ),
+      },
+      {
+        value: "auth_json",
+        label: t("codex.api.writeMode.authJson", "Auth.json"),
+        description: t(
+          "codex.api.writeMode.authJsonDesc",
+          "写入 Codex 凭证文件",
+        ),
+      },
+    ],
+    [t],
+  );
+  const handleApiKeyWriteModeChange = useCallback(
+    async (account: CodexAccount, writeMode: CodexApiKeyWriteMode) => {
+      if (savingApiKeyWriteModeId || account.api_key_write_mode === writeMode) {
+        return;
+      }
+      setSavingApiKeyWriteModeId(account.id);
+      try {
+        await updateApiKeyWriteMode(account.id, writeMode);
+        setMessage({
+          text: t("codex.api.writeMode.saveSuccess", "写入模式已更新"),
+        });
+      } catch (error) {
+        setMessage({
+          text: t("codex.api.writeMode.saveFailed", {
+            defaultValue: "保存写入模式失败：{{error}}",
+            error: String(error),
+          }),
+          tone: "error",
+        });
+      } finally {
+        setSavingApiKeyWriteModeId(null);
+      }
+    },
+    [savingApiKeyWriteModeId, setMessage, t, updateApiKeyWriteMode],
+  );
+  const renderApiKeyWriteModeSelect = useCallback(
+    (account: CodexAccount) => (
+      <SingleSelectDropdown
+        value={account.api_key_write_mode ?? "standard"}
+        options={codexApiKeyWriteModeOptions}
+        onChange={(value) =>
+          void handleApiKeyWriteModeChange(
+            account,
+            value as CodexApiKeyWriteMode,
+          )
+        }
+        disabled={savingApiKeyWriteModeId === account.id}
+        menuWidth={220}
+        ariaLabel={t("codex.api.writeMode.label", "写入模式")}
+      />
+    ),
+    [
+      codexApiKeyWriteModeOptions,
+      handleApiKeyWriteModeChange,
+      savingApiKeyWriteModeId,
+      t,
+    ],
+  );
   const [quickSwitchAccountId, setQuickSwitchAccountId] = useState<
     string | null
   >(null);
@@ -5823,6 +5899,7 @@ export function CodexAccountsContent() {
     setManagedProviderId("");
     setManagedProviderApiKeyId("");
     setApiProviderPresetId(sponsorTemplate?.id ?? CODEX_API_PROVIDER_CUSTOM_ID);
+    setApiKeyWriteModeInput(request.codexWriteMode ?? "standard");
     setNewManagedProviderNameInput(
       sponsorTemplate?.name ?? request.providerName?.trim() ?? "APIKEY.FUN",
     );
@@ -6120,6 +6197,7 @@ export function CodexAccountsContent() {
         finalProviderPayload.apiVisionRoutingModel,
         finalProviderPayload.accountName,
         finalProviderPayload.apiWireApi,
+        apiKeyWriteModeInput,
       );
       await fetchAccounts();
       await fetchCurrentAccount();
@@ -6137,6 +6215,7 @@ export function CodexAccountsContent() {
       setApiKeyInput("");
       setApiBaseUrlInput(DEFAULT_CODEX_API_BASE_URL);
       setApiProviderPresetId(defaultApiProviderPresetId);
+      setApiKeyWriteModeInput("standard");
       setManagedProviderId("");
       setManagedProviderApiKeyId("");
       setNewManagedProviderNameInput("");
@@ -9750,6 +9829,9 @@ export function CodexAccountsContent() {
           )}
           <div className="codex-card-bottom">
             <span className="card-date">{formatDate(account.created_at)}</span>
+            {isApiKeyAccount && !isNewApiAccount
+              ? renderApiKeyWriteModeSelect(account)
+              : null}
             {renderAccountSpeedSelect(account)}
             <div className="card-footer">
               <div className="card-actions">
@@ -13805,6 +13887,20 @@ export function CodexAccountsContent() {
                             )}
                           />
                         </div>
+                      </div>
+                      <div className="oauth-link">
+                        <label>{t("codex.api.writeMode.label", "写入模式")}</label>
+                        <SingleSelectDropdown
+                          value={apiKeyWriteModeInput}
+                          options={codexApiKeyWriteModeOptions}
+                          onChange={(value) =>
+                            setApiKeyWriteModeInput(
+                              value as CodexApiKeyWriteMode,
+                            )
+                          }
+                          menuWidth={220}
+                          ariaLabel={t("codex.api.writeMode.label", "写入模式")}
+                        />
                       </div>
                       {apiProviderPresetId !== COCKPIT_API_PROVIDER_ID && (
                         <div className="oauth-link">

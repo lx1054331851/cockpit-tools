@@ -90,6 +90,16 @@ pub struct CodexSessionRestoreSummary {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionPermanentDeleteSummary {
+    pub requested_session_count: usize,
+    pub deleted_session_count: usize,
+    pub deleted_instance_count: usize,
+    pub deleted_trash_entry_count: usize,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct CodexSessionSearchFilter {
     pub title_query: Option<String>,
@@ -771,6 +781,126 @@ pub fn restore_sessions_from_trash_across_instances(
     })
 }
 
+pub fn delete_sessions_permanently_across_instances(
+    session_ids: Vec<String>,
+) -> Result<CodexSessionPermanentDeleteSummary, String> {
+    let requested_ids = session_ids
+        .into_iter()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect::<HashSet<_>>();
+    if requested_ids.is_empty() {
+        return Err("请至少选择一条会话".to_string());
+    }
+
+    let instances = collect_instances()?;
+    let process_entries = modules::process::collect_codex_process_entries();
+    let mut deleted_session_ids = HashSet::new();
+    let mut deleted_instance_count = 0usize;
+    let mut mutated_running_instance_count = 0usize;
+    let mut metadata_rebuild_failed_count = 0usize;
+
+    for instance in &instances {
+        let snapshots = load_thread_snapshots(instance)?
+            .into_iter()
+            .filter(|snapshot| requested_ids.contains(&snapshot.id))
+            .collect::<Vec<_>>();
+        if snapshots.is_empty() {
+            continue;
+        }
+
+        if is_instance_running(instance, &process_entries) {
+            mutated_running_instance_count += 1;
+        }
+
+        let outcome = delete_snapshots_for_instance(instance, &snapshots)?;
+        if outcome.metadata_rebuild_failed {
+            metadata_rebuild_failed_count += 1;
+        }
+        deleted_instance_count += 1;
+        for snapshot in snapshots {
+            deleted_session_ids.insert(snapshot.id);
+        }
+    }
+
+    let (trash_session_ids, deleted_trash_entry_count) =
+        delete_trash_entries_for_session_ids(&requested_ids)?;
+    deleted_session_ids.extend(trash_session_ids);
+
+    if deleted_session_ids.is_empty() {
+        return Ok(CodexSessionPermanentDeleteSummary {
+            requested_session_count: requested_ids.len(),
+            deleted_session_count: 0,
+            deleted_instance_count: 0,
+            deleted_trash_entry_count: 0,
+            message: "所选会话在当前实例集合和废纸篓中不存在，无需处理".to_string(),
+        });
+    }
+
+    let mut message = if mutated_running_instance_count > 0 {
+        format!(
+            "已彻底删除 {} 条会话，并已触发官方 Codex 重建会话索引；运行中的实例可能需要刷新或重启后显示",
+            deleted_session_ids.len()
+        )
+    } else {
+        format!(
+            "已彻底删除 {} 条会话，并已触发官方 Codex 重建会话索引",
+            deleted_session_ids.len()
+        )
+    };
+    if deleted_trash_entry_count > 0 {
+        message.push_str(&format!("；同时清理 {} 个废纸篓条目", deleted_trash_entry_count));
+    }
+    if metadata_rebuild_failed_count > 0 {
+        message.push_str(&format!(
+            "；{} 个实例的官方侧边栏索引重建未完成，重启 Codex 后会重新加载",
+            metadata_rebuild_failed_count
+        ));
+    }
+
+    Ok(CodexSessionPermanentDeleteSummary {
+        requested_session_count: requested_ids.len(),
+        deleted_session_count: deleted_session_ids.len(),
+        deleted_instance_count,
+        deleted_trash_entry_count,
+        message,
+    })
+}
+
+pub fn delete_trashed_sessions_permanently_across_instances(
+    session_ids: Vec<String>,
+) -> Result<CodexSessionPermanentDeleteSummary, String> {
+    let requested_ids = session_ids
+        .into_iter()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect::<HashSet<_>>();
+    if requested_ids.is_empty() {
+        return Err("请至少选择一条会话".to_string());
+    }
+
+    let (deleted_session_ids, deleted_trash_entry_count) =
+        delete_trash_entries_for_session_ids(&requested_ids)?;
+
+    let message = if deleted_session_ids.is_empty() {
+        "所选会话在废纸篓中不存在，无需处理".to_string()
+    } else {
+        format!(
+            "已从废纸篓中彻底删除 {} 条会话备份，共清理 {} 个条目",
+            deleted_session_ids.len(),
+            deleted_trash_entry_count
+        )
+    };
+
+    Ok(CodexSessionPermanentDeleteSummary {
+        requested_session_count: requested_ids.len(),
+        deleted_session_count: deleted_session_ids.len(),
+        deleted_instance_count: 0,
+        deleted_trash_entry_count,
+        message,
+    })
+}
+
 fn collect_instances() -> Result<Vec<CodexSyncInstance>, String> {
     let mut instances = Vec::new();
     let default_dir = modules::codex_instance::get_default_codex_home()?;
@@ -963,6 +1093,44 @@ where
 
     Ok(TrashSnapshotsOutcome {
         metadata_rebuild_failed,
+    })
+}
+
+fn delete_snapshots_for_instance(
+    instance: &CodexSyncInstance,
+    snapshots: &[ThreadSnapshot],
+) -> Result<TrashSnapshotsOutcome, String> {
+    for snapshot in snapshots {
+        delete_snapshot_rollout_file(snapshot)?;
+    }
+
+    rewrite_session_index_without_ids(&instance.data_dir, snapshots)?;
+    let mut metadata_rebuild_failed = false;
+    if let Err(error) =
+        modules::codex_official_app_server::rebuild_thread_metadata(&instance.data_dir)
+    {
+        metadata_rebuild_failed = true;
+        modules::logger::log_warn(&format!(
+            "会话文件已删除，但官方 Codex 重建会话索引失败 ({}): {}",
+            instance.name, error
+        ));
+    }
+
+    Ok(TrashSnapshotsOutcome {
+        metadata_rebuild_failed,
+    })
+}
+
+fn delete_snapshot_rollout_file(snapshot: &ThreadSnapshot) -> Result<(), String> {
+    if !snapshot.rollout_path.exists() {
+        return Ok(());
+    }
+    fs::remove_file(&snapshot.rollout_path).map_err(|error| {
+        format!(
+            "彻底删除会话文件失败 ({}): {}",
+            snapshot.rollout_path.display(),
+            error
+        )
     })
 }
 
@@ -1648,6 +1816,35 @@ fn restore_session_index_content(root_dir: &Path, content: Option<&str>) -> Resu
         }
     }
     Ok(())
+}
+
+fn delete_trash_entries_for_session_ids(
+    session_ids: &HashSet<String>,
+) -> Result<(HashSet<String>, usize), String> {
+    let entries = load_trash_entries()?;
+    let mut deleted_session_ids = HashSet::new();
+    let mut deleted_entry_count = 0usize;
+
+    for entry in entries {
+        if !session_ids.contains(&entry.manifest.session_id) {
+            continue;
+        }
+        let session_id = entry.manifest.session_id.clone();
+        if entry.entry_dir.exists() {
+            fs::remove_dir_all(&entry.entry_dir).map_err(|error| {
+                format!(
+                    "彻底删除废纸篓会话失败 ({}): {}",
+                    entry.entry_dir.display(),
+                    error
+                )
+            })?;
+            cleanup_empty_trash_ancestors(&entry.entry_dir);
+        }
+        deleted_session_ids.insert(session_id);
+        deleted_entry_count += 1;
+    }
+
+    Ok((deleted_session_ids, deleted_entry_count))
 }
 
 fn cleanup_empty_trash_ancestors(entry_dir: &Path) {

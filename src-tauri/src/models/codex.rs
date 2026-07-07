@@ -37,6 +37,19 @@ impl Default for CodexApiProviderMode {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CodexApiKeyWriteMode {
+    Standard,
+    AuthJson,
+}
+
+impl Default for CodexApiKeyWriteMode {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
 /// Codex config.toml 快捷配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CodexQuickConfig {
@@ -91,6 +104,8 @@ pub struct CodexAccount {
     pub api_model_catalog: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_wire_api: Option<String>,
+    #[serde(default)]
+    pub api_key_write_mode: CodexApiKeyWriteMode,
     #[serde(default)]
     pub api_supports_vision: bool,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
@@ -369,6 +384,7 @@ impl CodexAccount {
             api_provider_name: None,
             api_model_catalog: Vec::new(),
             api_wire_api: None,
+            api_key_write_mode: CodexApiKeyWriteMode::Standard,
             api_supports_vision: false,
             api_model_vision_support: HashMap::new(),
             api_vision_routing_model: None,
@@ -631,5 +647,15 @@ pub struct CodexSessionRestoreSummary {
     pub requested_session_count: usize,
     pub restored_session_count: usize,
     pub restored_instance_count: usize,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionPermanentDeleteSummary {
+    pub requested_session_count: usize,
+    pub deleted_session_count: usize,
+    pub deleted_instance_count: usize,
+    pub deleted_trash_entry_count: usize,
     pub message: String,
 }

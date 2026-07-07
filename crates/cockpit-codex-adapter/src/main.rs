@@ -1,5 +1,6 @@
 use cockpit_core::models::codex::{
-    CodexAccount, CodexApiProviderMode, CodexAppSpeed, CodexQuota, CodexTokens,
+    CodexAccount, CodexApiKeyWriteMode, CodexApiProviderMode, CodexAppSpeed, CodexQuota,
+    CodexTokens,
 };
 use cockpit_core::models::codex_local_access::{
     CodexLocalAccessAccountModelRule, CodexLocalAccessChatMessage,
@@ -634,6 +635,7 @@ struct ApiKeyAccountPayload {
     api_model_vision_support: Option<HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
     account_name: Option<String>,
+    api_key_write_mode: Option<CodexApiKeyWriteMode>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -657,6 +659,14 @@ struct ApiKeyCredentialsPayload {
     api_supports_vision: Option<bool>,
     api_model_vision_support: Option<HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
+    api_key_write_mode: Option<CodexApiKeyWriteMode>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiKeyWriteModePayload {
+    account_id: String,
+    write_mode: CodexApiKeyWriteMode,
 }
 
 #[derive(Debug, Deserialize)]
@@ -2520,13 +2530,16 @@ fn add_api_key_account(payload: ApiKeyAccountPayload) -> Result<Value, String> {
         payload.api_vision_routing_model,
         payload.account_name,
     )?;
+    if let Some(write_mode) = payload.api_key_write_mode {
+        let _ = codex_account::update_api_key_write_mode(&account.id, write_mode)?;
+    }
     to_value(
         codex_account::load_account(&account.id).ok_or_else(|| "账号保存后无法读取".to_string())?,
     )
 }
 
 fn update_api_key_credentials(payload: ApiKeyCredentialsPayload) -> Result<Value, String> {
-    to_value(codex_account::update_api_key_credentials(
+    let account = codex_account::update_api_key_credentials(
         &payload.account_id,
         payload.api_key,
         payload.api_base_url,
@@ -2538,6 +2551,20 @@ fn update_api_key_credentials(payload: ApiKeyCredentialsPayload) -> Result<Value
         payload.api_supports_vision,
         payload.api_model_vision_support,
         payload.api_vision_routing_model,
+    )?;
+    if let Some(write_mode) = payload.api_key_write_mode {
+        return to_value(codex_account::update_api_key_write_mode(
+            &account.id,
+            write_mode,
+        )?);
+    }
+    to_value(account)
+}
+
+fn update_api_key_write_mode(payload: ApiKeyWriteModePayload) -> Result<Value, String> {
+    to_value(codex_account::update_api_key_write_mode(
+        &payload.account_id,
+        payload.write_mode,
     )?)
 }
 
@@ -3315,6 +3342,10 @@ fn handle_rpc(runtime: &Runtime, request: RpcRequest) -> Result<Value, String> {
             let payload: ApiKeyCredentialsPayload = parse_payload(request.payload)?;
             update_api_key_credentials(payload)
         }
+        "accounts.updateApiKeyWriteMode" => {
+            let payload: ApiKeyWriteModePayload = parse_payload(request.payload)?;
+            update_api_key_write_mode(payload)
+        }
         "accounts.updateApiKeyBoundOAuthAccount" => {
             let payload: ApiKeyBoundOAuthPayload = parse_payload(request.payload)?;
             update_api_key_bound_oauth_account(runtime, payload)
@@ -3858,6 +3889,22 @@ fn handle_rpc(runtime: &Runtime, request: RpcRequest) -> Result<Value, String> {
             let payload: SessionIdsPayload = parse_payload(request.payload)?;
             to_value(
                 codex_session_manager::restore_sessions_from_trash_across_instances(
+                    payload.session_ids,
+                )?,
+            )
+        }
+        "sessions.deletePermanently" => {
+            let payload: SessionIdsPayload = parse_payload(request.payload)?;
+            to_value(
+                codex_session_manager::delete_sessions_permanently_across_instances(
+                    payload.session_ids,
+                )?,
+            )
+        }
+        "sessions.deleteTrashPermanently" => {
+            let payload: SessionIdsPayload = parse_payload(request.payload)?;
+            to_value(
+                codex_session_manager::delete_trashed_sessions_permanently_across_instances(
                     payload.session_ids,
                 )?,
             )

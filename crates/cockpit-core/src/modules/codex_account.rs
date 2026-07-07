@@ -1,6 +1,7 @@
 use crate::models::codex::{
-    CodexAccount, CodexAccountIndex, CodexAccountSummary, CodexApiProviderMode, CodexAppSpeed,
-    CodexAuthFile, CodexAuthMode, CodexAuthTokens, CodexJwtPayload, CodexQuickConfig, CodexTokens,
+    CodexAccount, CodexAccountIndex, CodexAccountSummary, CodexApiKeyWriteMode,
+    CodexApiProviderMode, CodexAppSpeed, CodexAuthFile, CodexAuthMode, CodexAuthTokens,
+    CodexJwtPayload, CodexQuickConfig, CodexTokens,
 };
 use crate::modules::{account, codex_oauth, logger};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -370,7 +371,7 @@ fn apply_api_key_fields(
     api_model_catalog: Vec<String>,
     api_wire_api: Option<String>,
     api_supports_vision: bool,
-    api_model_vision_support: std::collections::HashMap<String, bool>,
+    api_model_vision_support: HashMap<String, bool>,
     api_vision_routing_model: Option<String>,
 ) {
     let is_cockpit_api = provider_config
@@ -415,9 +416,7 @@ fn apply_api_key_fields(
     account.quota_error = None;
 }
 
-fn normalize_api_model_vision_support(
-    values: std::collections::HashMap<String, bool>,
-) -> std::collections::HashMap<String, bool> {
+fn normalize_api_model_vision_support(values: HashMap<String, bool>) -> HashMap<String, bool> {
     values
         .into_iter()
         .filter_map(|(model, supports)| {
@@ -1092,6 +1091,57 @@ fn write_api_key_provider_to_config_toml(
     provider_table["wire_api"] = value(CODEX_PROVIDER_WIRE_API);
     provider_table["requires_openai_auth"] = value(true);
     provider_table[CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY] = value(bearer_token);
+    provider_table["supports_websockets"] = value(false);
+
+    if let Some(parent) = config_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("创建 config.toml 目录失败: {}", e))?;
+    }
+    let content = crate::modules::codex_config_format::codex_config_doc_to_string(&mut doc);
+    crate::modules::codex_config_format::write_codex_config_toml_atomic(&config_path, &content)
+        .map_err(|e| format!("写入 config.toml 失败: {}", e))
+}
+
+fn write_api_key_provider_without_token_to_config_toml(
+    base_dir: &Path,
+    provider_config: &ApiProviderConfig,
+) -> Result<(), String> {
+    let config_path = get_config_toml_path(base_dir);
+    let base_url = provider_config
+        .base_url
+        .as_deref()
+        .unwrap_or(CODEX_DEFAULT_OPENAI_BASE_URL);
+    let provider_name = provider_config
+        .provider_name
+        .as_deref()
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or(CODEX_DEFAULT_RUNTIME_PROVIDER_NAME);
+
+    let existing = fs::read_to_string(&config_path).unwrap_or_default();
+    let mut doc = if existing.trim().is_empty() {
+        Document::new()
+    } else {
+        crate::modules::codex_config_format::read_codex_config_doc_from_str(&existing)
+            .map_err(|e| format!("解析 config.toml 失败: {}", e))?
+    };
+
+    doc[CODEX_CONFIG_MODEL_PROVIDER_KEY] = value(CODEX_RUNTIME_MODEL_PROVIDER_ID);
+    if doc.get(CODEX_CONFIG_MODEL_PROVIDERS_KEY).is_none() {
+        doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY] = toml_edit::table();
+    }
+    let model_providers = doc[CODEX_CONFIG_MODEL_PROVIDERS_KEY]
+        .as_table_mut()
+        .ok_or("config.toml 中 model_providers 不是合法表结构")?;
+    if !model_providers.contains_key(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
+        model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID] = toml_edit::table();
+    }
+    let provider_table = model_providers[CODEX_RUNTIME_MODEL_PROVIDER_ID]
+        .as_table_mut()
+        .ok_or("config.toml 中目标 provider 不是合法表结构")?;
+    provider_table["name"] = value(provider_name);
+    provider_table["base_url"] = value(base_url);
+    provider_table["wire_api"] = value(CODEX_PROVIDER_WIRE_API);
+    provider_table["requires_openai_auth"] = value(true);
+    let _ = provider_table.remove(CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY);
     provider_table["supports_websockets"] = value(false);
 
     if let Some(parent) = config_path.parent() {
@@ -3626,9 +3676,12 @@ fn verify_api_key_provider_override_in_config(
         .get(CODEX_CONFIG_EXPERIMENTAL_BEARER_TOKEN_KEY)
         .and_then(|item| item.as_str())
         .and_then(normalize_api_key);
-    if actual_base_url.as_deref() != Some(expected_base_url.as_str())
-        || actual_key.as_deref() != Some(expected_key.as_str())
-    {
+    let expected_key_matches = if account.api_key_write_mode == CodexApiKeyWriteMode::AuthJson {
+        actual_key.is_none()
+    } else {
+        actual_key.as_deref() == Some(expected_key.as_str())
+    };
+    if actual_base_url.as_deref() != Some(expected_base_url.as_str()) || !expected_key_matches {
         return Err(format!(
             "Codex config.toml 写入后校验失败: path={}, expected=api-key-provider",
             config_path.display()
@@ -3853,7 +3906,11 @@ pub fn write_auth_file_to_dir(base_dir: &Path, account: &CodexAccount) -> Result
             account.api_provider_id.as_deref(),
             account.api_provider_name.as_deref(),
         );
-        write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+        if account.api_key_write_mode == CodexApiKeyWriteMode::AuthJson {
+            write_api_key_provider_without_token_to_config_toml(base_dir, &provider_config)?;
+        } else {
+            write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+        }
         provider_config
     } else {
         let provider_config = ApiProviderConfig {
@@ -3956,7 +4013,11 @@ fn write_api_key_provider_override_to_config_toml(
         api_key_account.api_provider_id.as_deref(),
         api_key_account.api_provider_name.as_deref(),
     );
-    write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+    if api_key_account.api_key_write_mode == CodexApiKeyWriteMode::AuthJson {
+        write_api_key_provider_without_token_to_config_toml(base_dir, &provider_config)?;
+    } else {
+        write_api_key_provider_to_config_toml(base_dir, &provider_config, &api_key)?;
+    }
     verify_api_key_provider_override_in_config(base_dir, api_key_account)?;
     Ok(provider_config)
 }
@@ -4687,7 +4748,7 @@ pub fn import_from_local() -> Result<CodexAccount, String> {
             Vec::new(),
             None,
             false,
-            std::collections::HashMap::new(),
+            HashMap::new(),
             None,
             None,
         );
@@ -4707,7 +4768,7 @@ pub fn import_from_local() -> Result<CodexAccount, String> {
             Vec::new(),
             None,
             false,
-            std::collections::HashMap::new(),
+            HashMap::new(),
             None,
             None,
         );
@@ -5276,7 +5337,7 @@ async fn import_account_from_json_value(
                 Vec::new(),
                 None,
                 false,
-                std::collections::HashMap::new(),
+                HashMap::new(),
                 None,
                 None,
             )?;
@@ -5377,7 +5438,7 @@ pub async fn import_from_json(json_content: &str) -> Result<Vec<CodexAccount>, S
                 Vec::new(),
                 None,
                 false,
-                std::collections::HashMap::new(),
+                HashMap::new(),
                 None,
                 None,
             )?;
@@ -5408,7 +5469,7 @@ pub async fn import_from_json(json_content: &str) -> Result<Vec<CodexAccount>, S
                 Vec::new(),
                 None,
                 false,
-                std::collections::HashMap::new(),
+                HashMap::new(),
                 None,
                 None,
             )?;
@@ -7422,7 +7483,7 @@ mod tests {
     fn update_api_key_credentials_preserves_provider_metadata_when_optional_fields_omitted() {
         let _lock = TEST_ENV_LOCK.lock().expect("lock test env");
         let _env = TestEnvGuard::new("codex-api-key-provider-patch");
-        let mut vision_support = std::collections::HashMap::new();
+        let mut vision_support = HashMap::new();
         vision_support.insert("gpt-5.5".to_string(), true);
         let account = upsert_api_key_account(
             "sk-provider-patch".to_string(),
@@ -9355,7 +9416,7 @@ pub fn update_api_key_credentials(
     api_model_catalog: Option<Vec<String>>,
     api_wire_api: Option<String>,
     api_supports_vision: Option<bool>,
-    api_model_vision_support: Option<std::collections::HashMap<String, bool>>,
+    api_model_vision_support: Option<HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
 ) -> Result<CodexAccount, String> {
     let mut account =
@@ -9476,6 +9537,32 @@ pub fn update_api_key_credentials(
         account.id,
         normalize_optional_ref(account.api_base_url.as_deref()).is_some()
     ));
+
+    Ok(account)
+}
+
+pub fn update_api_key_write_mode(
+    account_id: &str,
+    write_mode: CodexApiKeyWriteMode,
+) -> Result<CodexAccount, String> {
+    let mut account =
+        load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
+
+    if !account.is_api_key_auth() {
+        return Err("仅 API Key 账号支持写入模式".to_string());
+    }
+
+    account.api_key_write_mode = write_mode;
+    save_account(&account)?;
+
+    let is_current = load_account_index()
+        .current_account_id
+        .as_deref()
+        .map(|current_id| current_id == account.id)
+        .unwrap_or(false);
+    if is_current {
+        write_account_bundle_to_dir(&get_codex_home(), &account)?;
+    }
 
     Ok(account)
 }

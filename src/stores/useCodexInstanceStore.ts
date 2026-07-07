@@ -8,6 +8,7 @@ import type {
   CodexInstanceTargetThreadSyncSummary,
   CodexSessionRecord,
   CodexSessionSearchOptions,
+  CodexSessionPermanentDeleteSummary,
   CodexSessionTokenStats,
   CodexSessionTrashSummary,
   CodexTrashedSessionRecord,
@@ -32,6 +33,10 @@ type CodexInstanceStoreState = InstanceStoreState & {
   moveSessionsToTrashAcrossInstances: (sessionIds: string[]) => Promise<CodexSessionTrashSummary>;
   listTrashedSessionsAcrossInstances: () => Promise<CodexTrashedSessionRecord[]>;
   restoreSessionsFromTrashAcrossInstances: (sessionIds: string[]) => Promise<CodexSessionRestoreSummary>;
+  deleteSessionsPermanentlyAcrossInstances: (sessionIds: string[]) => Promise<CodexSessionPermanentDeleteSummary>;
+  deleteTrashedSessionsPermanentlyAcrossInstances: (
+    sessionIds: string[],
+  ) => Promise<CodexSessionPermanentDeleteSummary>;
 };
 
 type CodexInstanceStoreHook = {
@@ -110,6 +115,22 @@ const restoreSessionsFromTrashAcrossInstances = async (
   return summary;
 };
 
+const deleteSessionsPermanentlyAcrossInstances = async (
+  sessionIds: string[],
+): Promise<CodexSessionPermanentDeleteSummary> => {
+  const summary = await codexInstanceService.deleteSessionsPermanentlyAcrossInstances(sessionIds);
+  await typedBaseStore.getState().fetchInstances();
+  return summary;
+};
+
+const deleteTrashedSessionsPermanentlyAcrossInstances = async (
+  sessionIds: string[],
+): Promise<CodexSessionPermanentDeleteSummary> => {
+  const summary = await codexInstanceService.deleteTrashedSessionsPermanentlyAcrossInstances(sessionIds);
+  await typedBaseStore.getState().fetchInstances();
+  return summary;
+};
+
 typedBaseStore.setState({
   syncThreadsAcrossInstances,
   syncSessionsToInstance,
@@ -121,6 +142,8 @@ typedBaseStore.setState({
   moveSessionsToTrashAcrossInstances,
   listTrashedSessionsAcrossInstances,
   restoreSessionsFromTrashAcrossInstances,
+  deleteSessionsPermanentlyAcrossInstances,
+  deleteTrashedSessionsPermanentlyAcrossInstances,
 });
 
 export const useCodexInstanceStore = typedBaseStore;

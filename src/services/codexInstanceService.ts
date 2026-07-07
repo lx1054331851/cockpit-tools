@@ -9,6 +9,7 @@ import type {
   CodexInstanceTargetThreadSyncSummary,
   CodexSessionRecord,
   CodexSessionSearchOptions,
+  CodexSessionPermanentDeleteSummary,
   CodexSessionTokenStats,
   CodexSessionTrashSummary,
   CodexTrashedSessionRecord,
@@ -234,6 +235,22 @@ export async function restoreSessionsFromTrashAcrossInstances(
   sessionIds: string[],
 ): Promise<CodexSessionRestoreSummary> {
   return await invoke("codex_restore_sessions_from_trash_across_instances", {
+    sessionIds,
+  });
+}
+
+export async function deleteSessionsPermanentlyAcrossInstances(
+  sessionIds: string[],
+): Promise<CodexSessionPermanentDeleteSummary> {
+  return await invoke("codex_delete_sessions_permanently_across_instances", {
+    sessionIds,
+  });
+}
+
+export async function deleteTrashedSessionsPermanentlyAcrossInstances(
+  sessionIds: string[],
+): Promise<CodexSessionPermanentDeleteSummary> {
+  return await invoke("codex_delete_trashed_sessions_permanently_across_instances", {
     sessionIds,
   });
 }

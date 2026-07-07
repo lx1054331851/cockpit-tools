@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   CodexAccount,
   CodexAccountNoteUpdate,
+  CodexApiKeyWriteMode,
   CodexApiProviderMode,
   CodexAppSpeed,
   CodexBatchDeleteJobStatus,
@@ -122,11 +123,16 @@ interface CodexAccountState {
     apiModelVisionSupport?: Record<string, boolean>,
     apiVisionRoutingModel?: string,
     apiWireApi?: CodexProviderWireApi,
+    apiKeyWriteMode?: CodexApiKeyWriteMode,
   ) => Promise<CodexAccount>;
   updateApiKeyBoundOAuthAccount: (
     accountId: string,
     boundOauthAccountId: string | null,
     boundOauthUseLocalGateway?: boolean,
+  ) => Promise<CodexAccount>;
+  updateApiKeyWriteMode: (
+    accountId: string,
+    writeMode: CodexApiKeyWriteMode,
   ) => Promise<CodexAccount>;
   updateAccountTags: (accountId: string, tags: string[]) => Promise<CodexAccount>;
   updateAccountNote: (
@@ -465,6 +471,7 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
     apiModelVisionSupport?: Record<string, boolean>,
     apiVisionRoutingModel?: string,
     apiWireApi?: CodexProviderWireApi,
+    apiKeyWriteMode?: CodexApiKeyWriteMode,
   ) => {
     const account = await codexService.updateCodexApiKeyCredentials(
       accountId,
@@ -478,6 +485,20 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
       apiModelVisionSupport,
       apiVisionRoutingModel,
       apiWireApi,
+      apiKeyWriteMode,
+    );
+    await get().fetchAccounts();
+    await get().fetchCurrentAccount();
+    return account;
+  },
+
+  updateApiKeyWriteMode: async (
+    accountId: string,
+    writeMode: CodexApiKeyWriteMode,
+  ) => {
+    const account = await codexService.updateCodexApiKeyWriteMode(
+      accountId,
+      writeMode,
     );
     await get().fetchAccounts();
     await get().fetchCurrentAccount();

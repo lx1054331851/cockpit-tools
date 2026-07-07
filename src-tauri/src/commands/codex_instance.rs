@@ -8,10 +8,11 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::models::codex::{
     CodexAppSpeed, CodexInstanceTargetThreadSyncSummary, CodexInstanceThreadSyncSummary,
-    CodexQuickConfig, CodexSessionRecord, CodexSessionRestoreSummary, CodexSessionTokenStats,
-    CodexSessionTrashSummary, CodexSessionVisibilityRepairInstanceList,
-    CodexSessionVisibilityRepairMode, CodexSessionVisibilityRepairProviderList,
-    CodexSessionVisibilityRepairSummary, CodexTrashedSessionRecord,
+    CodexQuickConfig, CodexSessionPermanentDeleteSummary, CodexSessionRecord,
+    CodexSessionRestoreSummary, CodexSessionTokenStats, CodexSessionTrashSummary,
+    CodexSessionVisibilityRepairInstanceList, CodexSessionVisibilityRepairMode,
+    CodexSessionVisibilityRepairProviderList, CodexSessionVisibilityRepairSummary,
+    CodexTrashedSessionRecord,
 };
 use crate::models::InstanceLaunchMode;
 use crate::modules;
@@ -230,6 +231,26 @@ pub async fn codex_restore_sessions_from_trash_across_instances(
 ) -> Result<CodexSessionRestoreSummary, String> {
     modules::platform_adapter::call_codex(
         "sessions.restoreFromTrash",
+        serde_json::json!({ "sessionIds": session_ids }),
+    )
+}
+
+#[tauri::command]
+pub async fn codex_delete_sessions_permanently_across_instances(
+    session_ids: Vec<String>,
+) -> Result<CodexSessionPermanentDeleteSummary, String> {
+    modules::platform_adapter::call_codex(
+        "sessions.deletePermanently",
+        serde_json::json!({ "sessionIds": session_ids }),
+    )
+}
+
+#[tauri::command]
+pub async fn codex_delete_trashed_sessions_permanently_across_instances(
+    session_ids: Vec<String>,
+) -> Result<CodexSessionPermanentDeleteSummary, String> {
+    modules::platform_adapter::call_codex(
+        "sessions.deleteTrashPermanently",
         serde_json::json!({ "sessionIds": session_ids }),
     )
 }

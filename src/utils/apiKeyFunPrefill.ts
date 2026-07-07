@@ -1,4 +1,5 @@
 import type { Page } from '../types/navigation';
+import type { CodexApiKeyWriteMode } from '../types/codex';
 
 export const APIKEY_FUN_PREFILL_EVENT = 'app:apikey-fun-prefill';
 
@@ -7,6 +8,7 @@ export type ApiKeyFunPrefillTarget = 'codex' | 'claude_desktop' | 'claude_cli';
 export interface ApiKeyFunPrefillPayload {
   target: ApiKeyFunPrefillTarget;
   apiKey: string;
+  codexWriteMode?: CodexApiKeyWriteMode | null;
   apiKeyName?: string | null;
   providerName?: string | null;
   baseUrl?: string | null;
@@ -49,6 +51,11 @@ function normalizeNullableString(value: unknown): string | null | undefined {
   return typeof value === 'string' ? value : null;
 }
 
+function normalizeCodexWriteMode(value: unknown): CodexApiKeyWriteMode | null | undefined {
+  if (value == null) return value as null | undefined;
+  return value === 'standard' || value === 'auth_json' ? value : null;
+}
+
 function normalizeApiKeyFunPrefillPayload(value: unknown): ApiKeyFunPrefillPayload | null {
   if (!value || typeof value !== 'object') return null;
   const input = value as Partial<Record<keyof ApiKeyFunPrefillPayload, unknown>>;
@@ -56,12 +63,14 @@ function normalizeApiKeyFunPrefillPayload(value: unknown): ApiKeyFunPrefillPaylo
     return null;
   }
 
+  const codexWriteMode = normalizeCodexWriteMode(input.codexWriteMode);
   const apiKeyName = normalizeNullableString(input.apiKeyName);
   const providerName = normalizeNullableString(input.providerName);
   const baseUrl = normalizeNullableString(input.baseUrl);
   const sourceTag = normalizeNullableString(input.sourceTag);
   const modelCatalog = normalizeStringArray(input.modelCatalog);
   if (
+    codexWriteMode === null && input.codexWriteMode != null ||
     apiKeyName === null && input.apiKeyName != null ||
     providerName === null && input.providerName != null ||
     baseUrl === null && input.baseUrl != null ||
@@ -74,6 +83,7 @@ function normalizeApiKeyFunPrefillPayload(value: unknown): ApiKeyFunPrefillPaylo
   return {
     target: input.target,
     apiKey: input.apiKey,
+    codexWriteMode,
     apiKeyName,
     providerName,
     baseUrl,
