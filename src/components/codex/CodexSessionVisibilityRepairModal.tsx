@@ -264,7 +264,6 @@ export function CodexSessionVisibilityRepairModal({
     !selectedInstanceId ||
     (effectiveScope === "selected" && uniqueSelectedSessionIds.length === 0);
   const hasPreview = previewSummary !== null;
-  const hasPlannedRepair = (previewSummary?.mutatedInstanceCount ?? 0) > 0;
 
   useEffect(() => {
     if (!open) {
@@ -584,8 +583,8 @@ export function CodexSessionVisibilityRepairModal({
                 options={instanceOptions}
                 onChange={(value) => {
                   setSelectedInstanceId(value);
-                  clearPreview();
                   setError(null);
+                  clearPreview();
                 }}
                 disabled={running || loadingInstances || instanceOptions.length === 0}
                 placeholder={
@@ -743,12 +742,14 @@ export function CodexSessionVisibilityRepairModal({
           <button
             className="btn btn-primary"
             onClick={() => void handleRepair()}
-            disabled={startDisabled || !hasPlannedRepair}
+            disabled={startDisabled}
           >
             <RefreshCw size={14} className={repairing ? "icon-spin" : undefined} />
             {repairing
               ? t("codex.sessionManager.repairModal.running", "正在修复...")
-              : t("codex.sessionManager.repairModal.confirmRepair", "确认修复")}
+              : hasPreview
+                ? t("codex.sessionManager.repairModal.confirmRepair", "确认修复")
+                : t("codex.sessionManager.repairModal.start", "开始修复")}
           </button>
         </div>
       </div>

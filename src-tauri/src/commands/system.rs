@@ -50,29 +50,7 @@ pub struct NetworkConfig {
     pub global_proxy_no_proxy: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClaudeDesktopLaunchCandidate {
-    #[serde(alias = "targetType")]
-    pub target_type: String,
-    pub label: String,
-    pub target: String,
-    pub source: String,
-    #[serde(alias = "supportsMultiInstance")]
-    pub supports_multi_instance: bool,
-}
-
 /// 通用设置配置（前端使用）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppLaunchCandidate {
-    #[serde(alias = "targetType")]
-    pub target_type: String,
-    pub label: String,
-    pub target: String,
-    pub source: String,
-    #[serde(alias = "supportsMultiInstance")]
-    pub supports_multi_instance: bool,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneralConfig {
     /// 界面语言
@@ -117,6 +95,9 @@ pub struct GeneralConfig {
     pub qoder_auto_refresh_minutes: i32,
     /// Trae 自动刷新间隔（分钟），-1 表示禁用
     pub trae_auto_refresh_minutes: i32,
+    pub trae_solo_auto_refresh_minutes: i32,
+    pub trae_cn_auto_refresh_minutes: i32,
+    pub trae_solo_cn_auto_refresh_minutes: i32,
     /// 窗口关闭行为: "ask", "minimize", "quit"
     pub close_behavior: String,
     /// 窗口最小化行为（macOS）: "dock_and_tray", "tray_only"
@@ -125,10 +106,6 @@ pub struct GeneralConfig {
     pub hide_dock_icon: bool,
     /// 菜单栏图标样式（macOS）: "template", "color"
     pub tray_icon_style: String,
-    /// 冷启动启动页面：页面 ID 或 last_closed
-    pub startup_page: String,
-    /// 上次主窗口关闭/隐藏时所在页面
-    pub last_closed_page: String,
     /// 是否在启动时显示悬浮卡片
     pub floating_card_show_on_startup: bool,
     /// 是否在启动后自动最小化主窗口
@@ -157,10 +134,8 @@ pub struct GeneralConfig {
     pub codex_app_path: String,
     /// Claude 桌面应用启动路径（为空则使用默认路径）
     pub claude_app_path: String,
-    pub gemini_app_path: String,
     /// Claude 桌面应用扫描范围（每行一个目录）
     pub claude_app_scan_roots: String,
-    pub app_scan_roots: HashMap<String, String>,
     /// 切换 Codex 后需联动重启的指定应用路径
     pub codex_specified_app_path: String,
     /// Zed 启动路径（为空则使用默认路径）
@@ -181,6 +156,14 @@ pub struct GeneralConfig {
     pub qoder_app_path: String,
     /// Trae 启动路径（为空则使用默认路径）
     pub trae_app_path: String,
+    /// Trae Windows 应用扫描范围（每行一个目录）
+    pub trae_solo_app_path: String,
+    pub trae_cn_app_path: String,
+    pub trae_solo_cn_app_path: String,
+    pub trae_app_scan_roots: String,
+    pub trae_solo_app_scan_roots: String,
+    pub trae_cn_app_scan_roots: String,
+    pub trae_solo_cn_app_scan_roots: String,
     /// WorkBuddy 启动路径（为空则使用默认路径）
     pub workbuddy_app_path: String,
     /// 切换 Codex 时是否自动重启 OpenCode
@@ -197,6 +180,8 @@ pub struct GeneralConfig {
     pub openclaw_auth_overwrite_on_switch: bool,
     /// 切换 Codex 时是否自动启动/重启 Codex App
     pub codex_launch_on_switch: bool,
+    /// 切换 Antigravity IDE 时是否自动启动/重启应用
+    pub antigravity_launch_on_switch: bool,
     /// 切换 Codex 时是否自动重启指定应用
     pub codex_restart_specified_app_on_switch: bool,
     /// 是否在 Codex 总览中显示 API 服务入口
@@ -287,6 +272,12 @@ pub struct GeneralConfig {
     pub trae_quota_alert_enabled: bool,
     /// Trae 配额预警阈值（百分比）
     pub trae_quota_alert_threshold: i32,
+    pub trae_solo_quota_alert_enabled: bool,
+    pub trae_solo_quota_alert_threshold: i32,
+    pub trae_cn_quota_alert_enabled: bool,
+    pub trae_cn_quota_alert_threshold: i32,
+    pub trae_solo_cn_quota_alert_enabled: bool,
+    pub trae_solo_cn_quota_alert_threshold: i32,
     /// 是否启用 WorkBuddy 配额预警通知
     pub workbuddy_quota_alert_enabled: bool,
     /// WorkBuddy 配额预警阈值（百分比）
@@ -948,12 +939,6 @@ fn sanitize_startup_wakeup_delay_seconds(raw: i32) -> i32 {
     raw.clamp(0, MAX_STARTUP_WAKEUP_DELAY_SECONDS)
 }
 
-fn normalize_page_config_value(raw: Option<String>, fallback: &str) -> String {
-    raw.map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| fallback.to_string())
-}
-
 fn normalize_auto_switch_account_scope_mode(raw: &str) -> String {
     if raw.trim().to_lowercase() == AUTO_SWITCH_ACCOUNT_SCOPE_SELECTED {
         AUTO_SWITCH_ACCOUNT_SCOPE_SELECTED.to_string()
@@ -1011,7 +996,7 @@ fn resolve_downloads_dir() -> Result<PathBuf, String> {
 }
 
 fn get_auto_backup_dir_path() -> Result<PathBuf, String> {
-    Ok(modules::app_data::get_data_dir()?.join(AUTO_BACKUP_DIR_NAME))
+    Ok(modules::account::get_data_dir()?.join(AUTO_BACKUP_DIR_NAME))
 }
 
 fn ensure_auto_backup_dir_path() -> Result<PathBuf, String> {
@@ -1466,7 +1451,7 @@ fn open_path_in_system(path: &Path) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn open_data_folder() -> Result<(), String> {
-    let path = modules::app_data::get_data_dir()?;
+    let path = modules::account::get_data_dir()?;
     open_path_in_system(path.as_path())
 }
 
@@ -1963,6 +1948,8 @@ pub fn save_network_config(
         global_proxy_enabled: next_global_proxy_enabled,
         global_proxy_url: next_global_proxy_url,
         global_proxy_no_proxy: next_global_proxy_no_proxy,
+        diagnostics_error_reporting_enabled: current.diagnostics_error_reporting_enabled,
+        diagnostics_error_reporting_debug: current.diagnostics_error_reporting_debug,
         // 保留其他设置不变
         language: current.language,
         default_terminal: current.default_terminal,
@@ -1985,12 +1972,13 @@ pub fn save_network_config(
         workbuddy_auto_refresh_minutes: current.workbuddy_auto_refresh_minutes,
         qoder_auto_refresh_minutes: current.qoder_auto_refresh_minutes,
         trae_auto_refresh_minutes: current.trae_auto_refresh_minutes,
+        trae_solo_auto_refresh_minutes: current.trae_solo_auto_refresh_minutes,
+        trae_cn_auto_refresh_minutes: current.trae_cn_auto_refresh_minutes,
+        trae_solo_cn_auto_refresh_minutes: current.trae_solo_cn_auto_refresh_minutes,
         close_behavior: current.close_behavior,
         minimize_behavior: current.minimize_behavior,
         hide_dock_icon: current.hide_dock_icon,
         tray_icon_style: current.tray_icon_style,
-        startup_page: current.startup_page,
-        last_closed_page: current.last_closed_page,
         floating_card_show_on_startup: current.floating_card_show_on_startup,
         startup_minimized: current.startup_minimized,
         floating_card_always_on_top: current.floating_card_always_on_top,
@@ -2023,9 +2011,7 @@ pub fn save_network_config(
         antigravity_app_path: current.antigravity_app_path,
         codex_app_path: current.codex_app_path,
         claude_app_path: current.claude_app_path,
-        gemini_app_path: current.gemini_app_path,
         claude_app_scan_roots: current.claude_app_scan_roots,
-        app_scan_roots: current.app_scan_roots,
         codex_specified_app_path: current.codex_specified_app_path,
         zed_app_path: current.zed_app_path,
         vscode_app_path: current.vscode_app_path,
@@ -2036,6 +2022,13 @@ pub fn save_network_config(
         codebuddy_cn_app_path: current.codebuddy_cn_app_path,
         qoder_app_path: current.qoder_app_path,
         trae_app_path: current.trae_app_path,
+        trae_solo_app_path: current.trae_solo_app_path,
+        trae_cn_app_path: current.trae_cn_app_path,
+        trae_solo_cn_app_path: current.trae_solo_cn_app_path,
+        trae_app_scan_roots: current.trae_app_scan_roots,
+        trae_solo_app_scan_roots: current.trae_solo_app_scan_roots,
+        trae_cn_app_scan_roots: current.trae_cn_app_scan_roots,
+        trae_solo_cn_app_scan_roots: current.trae_solo_cn_app_scan_roots,
         workbuddy_app_path: current.workbuddy_app_path,
         opencode_sync_on_switch: current.opencode_sync_on_switch,
         opencode_auth_overwrite_on_switch: current.opencode_auth_overwrite_on_switch,
@@ -2044,6 +2037,7 @@ pub fn save_network_config(
         ghcp_launch_on_switch: current.ghcp_launch_on_switch,
         openclaw_auth_overwrite_on_switch: current.openclaw_auth_overwrite_on_switch,
         codex_launch_on_switch: current.codex_launch_on_switch,
+        antigravity_launch_on_switch: current.antigravity_launch_on_switch,
         codex_restart_specified_app_on_switch: current.codex_restart_specified_app_on_switch,
         codex_local_access_entry_visible: current.codex_local_access_entry_visible,
         top_right_ad_visible: current.top_right_ad_visible,
@@ -2090,6 +2084,12 @@ pub fn save_network_config(
         qoder_quota_alert_threshold: current.qoder_quota_alert_threshold,
         trae_quota_alert_enabled: current.trae_quota_alert_enabled,
         trae_quota_alert_threshold: current.trae_quota_alert_threshold,
+        trae_solo_quota_alert_enabled: current.trae_solo_quota_alert_enabled,
+        trae_solo_quota_alert_threshold: current.trae_solo_quota_alert_threshold,
+        trae_cn_quota_alert_enabled: current.trae_cn_quota_alert_enabled,
+        trae_cn_quota_alert_threshold: current.trae_cn_quota_alert_threshold,
+        trae_solo_cn_quota_alert_enabled: current.trae_solo_cn_quota_alert_enabled,
+        trae_solo_cn_quota_alert_threshold: current.trae_solo_cn_quota_alert_threshold,
         workbuddy_quota_alert_enabled: current.workbuddy_quota_alert_enabled,
         workbuddy_quota_alert_threshold: current.workbuddy_quota_alert_threshold,
     };
@@ -2226,6 +2226,39 @@ fn is_command_available(cmd: &str) -> bool {
     command.status().map(|s| s.success()).unwrap_or(false)
 }
 
+/// 获取诊断上报配置
+#[tauri::command]
+pub fn get_diagnostics_config() -> modules::diagnostics::DiagnosticsConfig {
+    modules::diagnostics::get_diagnostics_config()
+}
+
+/// 保存诊断上报配置
+#[tauri::command]
+pub fn save_diagnostics_config(
+    error_reporting_enabled: bool,
+    error_reporting_debug: Option<bool>,
+) -> Result<(), String> {
+    modules::diagnostics::save_diagnostics_config(error_reporting_enabled, error_reporting_debug)
+}
+
+/// 记录前端启动阶段，只写本地日志，不触发远端上报
+#[tauri::command]
+pub fn diagnostics_frontend_stage(stage: String, detail: Option<serde_json::Value>) {
+    modules::diagnostics::record_frontend_stage(stage, detail);
+}
+
+/// 标记前端已完成启动
+#[tauri::command]
+pub fn diagnostics_frontend_ready(stage: Option<String>) {
+    modules::diagnostics::mark_frontend_ready(stage);
+}
+
+/// 捕获前端诊断事件并异步上报
+#[tauri::command]
+pub fn diagnostics_capture_event(event: modules::diagnostics::DiagnosticsClientEvent) {
+    modules::diagnostics::capture_client_event(event);
+}
+
 /// 获取通用设置配置
 #[tauri::command]
 pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String> {
@@ -2275,12 +2308,13 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         workbuddy_auto_refresh_minutes: user_config.workbuddy_auto_refresh_minutes,
         qoder_auto_refresh_minutes: user_config.qoder_auto_refresh_minutes,
         trae_auto_refresh_minutes: user_config.trae_auto_refresh_minutes,
+        trae_solo_auto_refresh_minutes: user_config.trae_solo_auto_refresh_minutes,
+        trae_cn_auto_refresh_minutes: user_config.trae_cn_auto_refresh_minutes,
+        trae_solo_cn_auto_refresh_minutes: user_config.trae_solo_cn_auto_refresh_minutes,
         close_behavior: close_behavior_str.to_string(),
         minimize_behavior: minimize_behavior_str.to_string(),
         hide_dock_icon: user_config.hide_dock_icon,
         tray_icon_style: user_config.tray_icon_style.as_str().to_string(),
-        startup_page: user_config.startup_page,
-        last_closed_page: user_config.last_closed_page,
         floating_card_show_on_startup: user_config.floating_card_show_on_startup,
         startup_minimized: user_config.startup_minimized,
         floating_card_always_on_top: user_config.floating_card_always_on_top,
@@ -2299,9 +2333,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         antigravity_app_path: user_config.antigravity_app_path,
         codex_app_path: user_config.codex_app_path,
         claude_app_path: user_config.claude_app_path,
-        gemini_app_path: user_config.gemini_app_path,
         claude_app_scan_roots: user_config.claude_app_scan_roots,
-        app_scan_roots: user_config.app_scan_roots,
         codex_specified_app_path: user_config.codex_specified_app_path,
         zed_app_path: user_config.zed_app_path,
         vscode_app_path: user_config.vscode_app_path,
@@ -2312,6 +2344,13 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         codebuddy_cn_app_path: user_config.codebuddy_cn_app_path,
         qoder_app_path: user_config.qoder_app_path,
         trae_app_path: user_config.trae_app_path,
+        trae_solo_app_path: user_config.trae_solo_app_path,
+        trae_cn_app_path: user_config.trae_cn_app_path,
+        trae_solo_cn_app_path: user_config.trae_solo_cn_app_path,
+        trae_app_scan_roots: user_config.trae_app_scan_roots,
+        trae_solo_app_scan_roots: user_config.trae_solo_app_scan_roots,
+        trae_cn_app_scan_roots: user_config.trae_cn_app_scan_roots,
+        trae_solo_cn_app_scan_roots: user_config.trae_solo_cn_app_scan_roots,
         workbuddy_app_path: user_config.workbuddy_app_path,
         opencode_sync_on_switch: user_config.opencode_sync_on_switch,
         opencode_auth_overwrite_on_switch: user_config.opencode_auth_overwrite_on_switch,
@@ -2320,6 +2359,7 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         ghcp_launch_on_switch: user_config.ghcp_launch_on_switch,
         openclaw_auth_overwrite_on_switch: user_config.openclaw_auth_overwrite_on_switch,
         codex_launch_on_switch: user_config.codex_launch_on_switch,
+        antigravity_launch_on_switch: user_config.antigravity_launch_on_switch,
         codex_restart_specified_app_on_switch: user_config.codex_restart_specified_app_on_switch,
         codex_local_access_entry_visible: user_config.codex_local_access_entry_visible,
         top_right_ad_visible: user_config.top_right_ad_visible,
@@ -2366,6 +2406,12 @@ pub fn get_general_config(app: tauri::AppHandle) -> Result<GeneralConfig, String
         qoder_quota_alert_threshold: user_config.qoder_quota_alert_threshold,
         trae_quota_alert_enabled: user_config.trae_quota_alert_enabled,
         trae_quota_alert_threshold: user_config.trae_quota_alert_threshold,
+        trae_solo_quota_alert_enabled: user_config.trae_solo_quota_alert_enabled,
+        trae_solo_quota_alert_threshold: user_config.trae_solo_quota_alert_threshold,
+        trae_cn_quota_alert_enabled: user_config.trae_cn_quota_alert_enabled,
+        trae_cn_quota_alert_threshold: user_config.trae_cn_quota_alert_threshold,
+        trae_solo_cn_quota_alert_enabled: user_config.trae_solo_cn_quota_alert_enabled,
+        trae_solo_cn_quota_alert_threshold: user_config.trae_solo_cn_quota_alert_threshold,
         workbuddy_quota_alert_enabled: user_config.workbuddy_quota_alert_enabled,
         workbuddy_quota_alert_threshold: user_config.workbuddy_quota_alert_threshold,
     };
@@ -2417,12 +2463,13 @@ pub fn save_general_config(
     workbuddy_auto_refresh_minutes: Option<i32>,
     qoder_auto_refresh_minutes: Option<i32>,
     trae_auto_refresh_minutes: Option<i32>,
+    trae_solo_auto_refresh_minutes: Option<i32>,
+    trae_cn_auto_refresh_minutes: Option<i32>,
+    trae_solo_cn_auto_refresh_minutes: Option<i32>,
     close_behavior: String,
     minimize_behavior: Option<String>,
     hide_dock_icon: Option<bool>,
     tray_icon_style: Option<String>,
-    startup_page: Option<String>,
-    last_closed_page: Option<String>,
     floating_card_show_on_startup: Option<bool>,
     startup_minimized: Option<bool>,
     floating_card_always_on_top: Option<bool>,
@@ -2437,9 +2484,7 @@ pub fn save_general_config(
     antigravity_app_path: String,
     codex_app_path: String,
     claude_app_path: Option<String>,
-    gemini_app_path: Option<String>,
     claude_app_scan_roots: Option<String>,
-    app_scan_roots: Option<HashMap<String, String>>,
     codex_specified_app_path: Option<String>,
     zed_app_path: Option<String>,
     vscode_app_path: String,
@@ -2450,6 +2495,13 @@ pub fn save_general_config(
     codebuddy_cn_app_path: Option<String>,
     qoder_app_path: Option<String>,
     trae_app_path: Option<String>,
+    trae_solo_app_path: Option<String>,
+    trae_cn_app_path: Option<String>,
+    trae_solo_cn_app_path: Option<String>,
+    trae_app_scan_roots: Option<String>,
+    trae_solo_app_scan_roots: Option<String>,
+    trae_cn_app_scan_roots: Option<String>,
+    trae_solo_cn_app_scan_roots: Option<String>,
     workbuddy_app_path: Option<String>,
     opencode_sync_on_switch: bool,
     opencode_auth_overwrite_on_switch: Option<bool>,
@@ -2458,6 +2510,7 @@ pub fn save_general_config(
     ghcp_launch_on_switch: Option<bool>,
     openclaw_auth_overwrite_on_switch: Option<bool>,
     codex_launch_on_switch: bool,
+    antigravity_launch_on_switch: Option<bool>,
     codex_restart_specified_app_on_switch: Option<bool>,
     codex_local_access_entry_visible: Option<bool>,
     top_right_ad_visible: Option<bool>,
@@ -2503,6 +2556,12 @@ pub fn save_general_config(
     qoder_quota_alert_threshold: Option<i32>,
     trae_quota_alert_enabled: Option<bool>,
     trae_quota_alert_threshold: Option<i32>,
+    trae_solo_quota_alert_enabled: Option<bool>,
+    trae_solo_quota_alert_threshold: Option<i32>,
+    trae_cn_quota_alert_enabled: Option<bool>,
+    trae_cn_quota_alert_threshold: Option<i32>,
+    trae_solo_cn_quota_alert_enabled: Option<bool>,
+    trae_solo_cn_quota_alert_threshold: Option<i32>,
     workbuddy_quota_alert_enabled: Option<bool>,
     workbuddy_quota_alert_threshold: Option<i32>,
 ) -> Result<(), String> {
@@ -2513,33 +2572,9 @@ pub fn save_general_config(
     let normalized_claude_path = claude_app_path
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.claude_app_path.clone());
-    let normalized_gemini_path = gemini_app_path
-        .map(|value| value.trim().to_string())
-        .unwrap_or_else(|| current.gemini_app_path.clone());
     let normalized_claude_app_scan_roots = claude_app_scan_roots
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.claude_app_scan_roots.clone());
-    let mut normalized_app_scan_roots: HashMap<String, String> = app_scan_roots
-        .unwrap_or_else(|| current.app_scan_roots.clone())
-        .into_iter()
-        .filter_map(|(key, value)| {
-            let key = key.trim().to_string();
-            let value = value.trim().to_string();
-            if key.is_empty() || value.is_empty() {
-                None
-            } else {
-                Some((key, value))
-            }
-        })
-        .collect();
-    if normalized_claude_app_scan_roots.is_empty() {
-        normalized_app_scan_roots.remove("claude");
-    } else {
-        normalized_app_scan_roots.insert(
-            "claude".to_string(),
-            normalized_claude_app_scan_roots.clone(),
-        );
-    }
     let normalized_codex_specified_app_path = codex_specified_app_path
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.codex_specified_app_path.clone());
@@ -2572,6 +2607,27 @@ pub fn save_general_config(
     let normalized_trae_path = trae_app_path
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.trae_app_path.clone());
+    let normalized_trae_solo_path = trae_solo_app_path
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_solo_app_path.clone());
+    let normalized_trae_cn_path = trae_cn_app_path
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_cn_app_path.clone());
+    let normalized_trae_solo_cn_path = trae_solo_cn_app_path
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_solo_cn_app_path.clone());
+    let normalized_trae_app_scan_roots = trae_app_scan_roots
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_app_scan_roots.clone());
+    let normalized_trae_solo_app_scan_roots = trae_solo_app_scan_roots
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_solo_app_scan_roots.clone());
+    let normalized_trae_cn_app_scan_roots = trae_cn_app_scan_roots
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_cn_app_scan_roots.clone());
+    let normalized_trae_solo_cn_app_scan_roots = trae_solo_cn_app_scan_roots
+        .map(|value| value.trim().to_string())
+        .unwrap_or_else(|| current.trae_solo_cn_app_scan_roots.clone());
     let normalized_workbuddy_path = workbuddy_app_path
         .map(|value| value.trim().to_string())
         .unwrap_or_else(|| current.workbuddy_app_path.clone());
@@ -2596,9 +2652,6 @@ pub fn save_general_config(
         .as_deref()
         .map(TrayIconStyle::from_str)
         .unwrap_or(current.tray_icon_style);
-    let startup_page_value = normalize_page_config_value(startup_page, &current.startup_page);
-    let last_closed_page_value =
-        normalize_page_config_value(last_closed_page, &current.last_closed_page);
     let floating_card_show_on_startup_value =
         floating_card_show_on_startup.unwrap_or(current.floating_card_show_on_startup);
     let startup_minimized_value = startup_minimized.unwrap_or(current.startup_minimized);
@@ -2607,6 +2660,7 @@ pub fn save_general_config(
     let app_auto_launch_enabled_value =
         app_auto_launch_enabled.unwrap_or(current.app_auto_launch_enabled);
     let token_keeper_enabled_value = token_keeper_enabled.unwrap_or(current.token_keeper_enabled);
+    let token_keeper_enabled_changed = current.token_keeper_enabled != token_keeper_enabled_value;
     let antigravity_startup_wakeup_enabled_value =
         antigravity_startup_wakeup_enabled.unwrap_or(current.antigravity_startup_wakeup_enabled);
     let antigravity_startup_wakeup_delay_seconds_value = sanitize_startup_wakeup_delay_seconds(
@@ -2652,6 +2706,8 @@ pub fn save_general_config(
         global_proxy_enabled: current.global_proxy_enabled,
         global_proxy_url: current.global_proxy_url,
         global_proxy_no_proxy: current.global_proxy_no_proxy,
+        diagnostics_error_reporting_enabled: current.diagnostics_error_reporting_enabled,
+        diagnostics_error_reporting_debug: current.diagnostics_error_reporting_debug,
         // 更新通用设置
         language: normalized_language.clone(),
         default_terminal: default_terminal.unwrap_or(current.default_terminal),
@@ -2686,12 +2742,16 @@ pub fn save_general_config(
             .unwrap_or(current.qoder_auto_refresh_minutes),
         trae_auto_refresh_minutes: trae_auto_refresh_minutes
             .unwrap_or(current.trae_auto_refresh_minutes),
+        trae_solo_auto_refresh_minutes: trae_solo_auto_refresh_minutes
+            .unwrap_or(current.trae_solo_auto_refresh_minutes),
+        trae_cn_auto_refresh_minutes: trae_cn_auto_refresh_minutes
+            .unwrap_or(current.trae_cn_auto_refresh_minutes),
+        trae_solo_cn_auto_refresh_minutes: trae_solo_cn_auto_refresh_minutes
+            .unwrap_or(current.trae_solo_cn_auto_refresh_minutes),
         close_behavior: close_behavior_enum,
         minimize_behavior: minimize_behavior_enum,
         hide_dock_icon: hide_dock_icon_value,
         tray_icon_style: tray_icon_style_value,
-        startup_page: startup_page_value,
-        last_closed_page: last_closed_page_value,
         floating_card_show_on_startup: floating_card_show_on_startup_value,
         startup_minimized: startup_minimized_value,
         floating_card_always_on_top: floating_card_always_on_top_value,
@@ -2708,9 +2768,7 @@ pub fn save_general_config(
         antigravity_app_path: normalized_antigravity_path,
         codex_app_path: normalized_codex_path,
         claude_app_path: normalized_claude_path,
-        gemini_app_path: normalized_gemini_path,
         claude_app_scan_roots: normalized_claude_app_scan_roots,
-        app_scan_roots: normalized_app_scan_roots,
         codex_specified_app_path: normalized_codex_specified_app_path,
         zed_app_path: normalized_zed_path,
         vscode_app_path: normalized_vscode_path,
@@ -2721,6 +2779,13 @@ pub fn save_general_config(
         codebuddy_cn_app_path: normalized_codebuddy_cn_path,
         qoder_app_path: normalized_qoder_path,
         trae_app_path: normalized_trae_path,
+        trae_solo_app_path: normalized_trae_solo_path,
+        trae_cn_app_path: normalized_trae_cn_path,
+        trae_solo_cn_app_path: normalized_trae_solo_cn_path,
+        trae_app_scan_roots: normalized_trae_app_scan_roots,
+        trae_solo_app_scan_roots: normalized_trae_solo_app_scan_roots,
+        trae_cn_app_scan_roots: normalized_trae_cn_app_scan_roots,
+        trae_solo_cn_app_scan_roots: normalized_trae_solo_cn_app_scan_roots,
         workbuddy_app_path: normalized_workbuddy_path,
         opencode_sync_on_switch: next_opencode_sync_on_switch,
         opencode_auth_overwrite_on_switch: next_opencode_auth_overwrite_on_switch,
@@ -2730,6 +2795,8 @@ pub fn save_general_config(
         openclaw_auth_overwrite_on_switch: openclaw_auth_overwrite_on_switch
             .unwrap_or(current.openclaw_auth_overwrite_on_switch),
         codex_launch_on_switch,
+        antigravity_launch_on_switch: antigravity_launch_on_switch
+            .unwrap_or(current.antigravity_launch_on_switch),
         codex_restart_specified_app_on_switch: codex_restart_specified_app_on_switch
             .unwrap_or(current.codex_restart_specified_app_on_switch),
         codex_local_access_entry_visible: codex_local_access_entry_visible
@@ -2827,6 +2894,18 @@ pub fn save_general_config(
             .unwrap_or(current.trae_quota_alert_enabled),
         trae_quota_alert_threshold: trae_quota_alert_threshold
             .unwrap_or(current.trae_quota_alert_threshold),
+        trae_solo_quota_alert_enabled: trae_solo_quota_alert_enabled
+            .unwrap_or(current.trae_solo_quota_alert_enabled),
+        trae_solo_quota_alert_threshold: trae_solo_quota_alert_threshold
+            .unwrap_or(current.trae_solo_quota_alert_threshold),
+        trae_cn_quota_alert_enabled: trae_cn_quota_alert_enabled
+            .unwrap_or(current.trae_cn_quota_alert_enabled),
+        trae_cn_quota_alert_threshold: trae_cn_quota_alert_threshold
+            .unwrap_or(current.trae_cn_quota_alert_threshold),
+        trae_solo_cn_quota_alert_enabled: trae_solo_cn_quota_alert_enabled
+            .unwrap_or(current.trae_solo_cn_quota_alert_enabled),
+        trae_solo_cn_quota_alert_threshold: trae_solo_cn_quota_alert_threshold
+            .unwrap_or(current.trae_solo_cn_quota_alert_threshold),
         workbuddy_quota_alert_enabled: workbuddy_quota_alert_enabled
             .unwrap_or(current.workbuddy_quota_alert_enabled),
         workbuddy_quota_alert_threshold: workbuddy_quota_alert_threshold
@@ -2850,6 +2929,13 @@ pub fn save_general_config(
     };
 
     config::save_user_config(&new_config)?;
+
+    if token_keeper_enabled_changed {
+        modules::provider_token_keeper::notify_config_changed(
+            app.clone(),
+            token_keeper_enabled_value,
+        );
+    }
 
     if current_app_auto_launch_enabled != app_auto_launch_enabled_value {
         apply_app_auto_launch_enabled(&app, app_auto_launch_enabled_value)?;
@@ -2928,11 +3014,13 @@ pub fn set_app_path(app: String, path: String) -> Result<(), String> {
         "windsurf" => current.windsurf_app_path = normalized_path,
         "kiro" => current.kiro_app_path = normalized_path,
         "cursor" => current.cursor_app_path = normalized_path,
-        "gemini" => current.gemini_app_path = normalized_path,
         "codebuddy" => current.codebuddy_app_path = normalized_path,
         "codebuddy_cn" => current.codebuddy_cn_app_path = normalized_path,
         "qoder" => current.qoder_app_path = normalized_path,
         "trae" => current.trae_app_path = normalized_path,
+        "trae_solo" => current.trae_solo_app_path = normalized_path,
+        "trae_cn" => current.trae_cn_app_path = normalized_path,
+        "trae_solo_cn" => current.trae_solo_cn_app_path = normalized_path,
         "workbuddy" => current.workbuddy_app_path = normalized_path,
         "opencode" => current.opencode_app_path = normalized_path,
         _ => return Err("未知应用类型".to_string()),
@@ -2941,148 +3029,112 @@ pub fn set_app_path(app: String, path: String) -> Result<(), String> {
     Ok(())
 }
 
-fn normalize_app_path_target(app: &str) -> Result<String, String> {
-    match app.trim() {
-        "antigravity" | "antigravity_ide" => Ok("antigravity".to_string()),
-        "antigravity_legacy" => Ok("antigravity_legacy".to_string()),
-        "codex" => Ok("codex".to_string()),
-        "claude" => Ok("claude".to_string()),
-        "vscode" => Ok("vscode".to_string()),
-        "opencode" => Ok("opencode".to_string()),
-        "windsurf" => Ok("windsurf".to_string()),
-        "kiro" => Ok("kiro".to_string()),
-        "cursor" => Ok("cursor".to_string()),
-        "gemini" => Ok("gemini".to_string()),
-        "codebuddy" => Ok("codebuddy".to_string()),
-        "codebuddy_cn" => Ok("codebuddy_cn".to_string()),
-        "qoder" => Ok("qoder".to_string()),
-        "trae" => Ok("trae".to_string()),
-        "workbuddy" => Ok("workbuddy".to_string()),
-        "zed" => Ok("zed".to_string()),
-        _ => Err("鏈煡搴旂敤绫诲瀷".to_string()),
-    }
-}
-
-fn app_launch_candidate_label(app: &str) -> &'static str {
-    match app {
-        "antigravity" | "antigravity_ide" => "Antigravity IDE",
-        "antigravity_legacy" => "Antigravity",
-        "codex" => "Codex",
-        "claude" => "Claude Desktop",
-        "vscode" => "VS Code",
-        "opencode" => "OpenCode",
-        "windsurf" => "Windsurf",
-        "kiro" => "Kiro",
-        "cursor" => "Cursor",
-        "gemini" => "Gemini Cli",
-        "codebuddy" => "CodeBuddy",
-        "codebuddy_cn" => "CodeBuddy CN",
-        "qoder" => "Qoder",
-        "trae" => "Trae",
-        "workbuddy" => "WorkBuddy",
-        "zed" => "Zed",
-        _ => "App",
-    }
-}
-
 #[tauri::command]
 pub fn set_claude_app_scan_roots(scan_roots: String) -> Result<(), String> {
     let current = config::get_user_config();
     let normalized = scan_roots.trim().to_string();
-    let mut app_scan_roots = current.app_scan_roots.clone();
-    if normalized.is_empty() {
-        app_scan_roots.remove("claude");
-    } else {
-        app_scan_roots.insert("claude".to_string(), normalized.clone());
-    }
-    if current.claude_app_scan_roots == normalized && current.app_scan_roots == app_scan_roots {
+    if current.claude_app_scan_roots == normalized {
         return Ok(());
     }
     let new_config = UserConfig {
         claude_app_scan_roots: normalized,
-        app_scan_roots,
         ..current
     };
     config::save_user_config(&new_config)
 }
 
 #[tauri::command]
-pub fn set_app_scan_roots(app: String, scan_roots: String) -> Result<(), String> {
-    let app = normalize_app_path_target(&app)?;
+pub fn set_trae_app_scan_roots(app: Option<String>, scan_roots: String) -> Result<(), String> {
     let current = config::get_user_config();
     let normalized = scan_roots.trim().to_string();
-    let mut app_scan_roots = current.app_scan_roots.clone();
-    if normalized.is_empty() {
-        app_scan_roots.remove(&app);
-    } else {
-        app_scan_roots.insert(app.clone(), normalized.clone());
-    }
-    let claude_app_scan_roots = if app == "claude" {
-        normalized
-    } else {
-        current.claude_app_scan_roots.clone()
-    };
-    if current.app_scan_roots == app_scan_roots
-        && current.claude_app_scan_roots == claude_app_scan_roots
-    {
-        return Ok(());
-    }
-    let new_config = UserConfig {
-        app_scan_roots,
-        claude_app_scan_roots,
-        ..current
+    let target = app
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("trae");
+    let new_config = match target {
+        "trae" => {
+            if current.trae_app_scan_roots == normalized {
+                return Ok(());
+            }
+            UserConfig {
+                trae_app_scan_roots: normalized,
+                ..current
+            }
+        }
+        "trae_solo" => {
+            if current.trae_solo_app_scan_roots == normalized {
+                return Ok(());
+            }
+            UserConfig {
+                trae_solo_app_scan_roots: normalized,
+                ..current
+            }
+        }
+        "trae_cn" => {
+            if current.trae_cn_app_scan_roots == normalized {
+                return Ok(());
+            }
+            UserConfig {
+                trae_cn_app_scan_roots: normalized,
+                ..current
+            }
+        }
+        "trae_solo_cn" => {
+            if current.trae_solo_cn_app_scan_roots == normalized {
+                return Ok(());
+            }
+            UserConfig {
+                trae_solo_cn_app_scan_roots: normalized,
+                ..current
+            }
+        }
+        _ => return Err("鏈煡搴旂敤绫诲瀷".to_string()),
     };
     config::save_user_config(&new_config)
 }
 
 #[tauri::command]
 pub fn set_codex_launch_on_switch(enabled: bool) -> Result<(), String> {
-    modules::platform_adapter::call_codex(
-        "settings.setLaunchOnSwitch",
-        serde_json::json!({ "enabled": enabled }),
-    )
+    let current = config::get_user_config();
+    if current.codex_launch_on_switch == enabled {
+        return Ok(());
+    }
+    let new_config = UserConfig {
+        codex_launch_on_switch: enabled,
+        ..current
+    };
+    config::save_user_config(&new_config)
 }
 
 #[tauri::command]
 pub fn set_codex_local_access_entry_visible(enabled: bool) -> Result<(), String> {
-    modules::platform_adapter::call_codex(
-        "settings.setLocalAccessEntryVisible",
-        serde_json::json!({ "enabled": enabled }),
-    )
+    let current = config::get_user_config();
+    if current.codex_local_access_entry_visible == enabled {
+        return Ok(());
+    }
+    let new_config = UserConfig {
+        codex_local_access_entry_visible: enabled,
+        ..current
+    };
+    config::save_user_config(&new_config)
 }
 
 #[tauri::command]
 pub fn detect_app_path(app: String, force: Option<bool>) -> Result<Option<String>, String> {
     let force = force.unwrap_or(false);
     match app.as_str() {
-        "windsurf" => modules::platform_adapter::call_windsurf(
-            "runtime.detectLaunchPath",
-            serde_json::json!({ "force": force }),
-        ),
-        "kiro" => modules::platform_adapter::call_kiro(
-            "runtime.detectLaunchPath",
-            serde_json::json!({ "force": force }),
-        ),
-        "cursor" => modules::platform_adapter::call_cursor(
-            "runtime.detectLaunchPath",
-            serde_json::json!({ "force": force }),
-        ),
-        "claude" => {
-            if !modules::platform_package::is_platform_package_installed("claude_manager") {
-                return Ok(None);
-            }
-            modules::platform_adapter::call_claude_manager(
-                "runtime.detectLaunchPath",
-                serde_json::json!({ "force": force }),
-            )
-        }
+        "windsurf" => Ok(modules::windsurf_instance::detect_and_save_windsurf_launch_path(force)),
+        "kiro" => Ok(modules::kiro_instance::detect_and_save_kiro_launch_path(
+            force,
+        )),
+        "cursor" => Ok(modules::cursor_instance::detect_and_save_cursor_launch_path(force)),
+        "claude" => Ok(modules::claude_instance::detect_and_save_claude_launch_path(force)),
         "antigravity" | "antigravity_ide" | "antigravity_legacy" | "codex" | "zed" | "vscode"
-        | "gemini" | "codebuddy" | "codebuddy_cn" | "qoder" | "trae" | "opencode" | "workbuddy" => {
-            Ok(modules::process::detect_and_save_app_path(
-                app.as_str(),
-                force,
-            ))
-        }
+        | "codebuddy" | "codebuddy_cn" | "qoder" | "trae" | "trae_solo" | "trae_cn"
+        | "trae_solo_cn" | "opencode" | "workbuddy" => Ok(
+            modules::process::detect_and_save_app_path(app.as_str(), force),
+        ),
         _ => Err("未知应用类型".to_string()),
     }
 }
@@ -3090,99 +3142,47 @@ pub fn detect_app_path(app: String, force: Option<bool>) -> Result<Option<String
 #[tauri::command]
 pub fn scan_claude_desktop_launch_targets(
     scan_roots: Option<String>,
-) -> Result<Vec<ClaudeDesktopLaunchCandidate>, String> {
-    if !modules::platform_package::is_platform_package_installed("claude_manager") {
-        return Ok(Vec::new());
-    }
-    modules::platform_adapter::call_claude_manager(
-        "runtime.scanLaunchTargets",
-        serde_json::json!({ "scanRoots": scan_roots }),
-    )
+) -> Result<Vec<modules::claude_instance::ClaudeDesktopLaunchCandidate>, String> {
+    let roots = scan_roots
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    Ok(modules::claude_instance::scan_claude_desktop_launch_targets(roots))
 }
 
 #[tauri::command]
 pub fn scan_app_launch_targets(
     app: String,
     scan_roots: Option<String>,
-) -> Result<Vec<AppLaunchCandidate>, String> {
-    let app = normalize_app_path_target(&app)?;
+) -> Result<Vec<modules::process::AppLaunchCandidate>, String> {
+    match app.as_str() {
+        "antigravity" | "antigravity_ide" | "antigravity_legacy" | "codex" | "claude"
+        | "vscode" | "windsurf" | "kiro" | "cursor" | "codebuddy" | "codebuddy_cn" | "qoder"
+        | "trae" | "trae_solo" | "trae_cn" | "trae_solo_cn" | "workbuddy" | "zed" | "opencode" => {}
+        _ => return Err("未知应用类型".to_string()),
+    }
+
+    let roots = scan_roots
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
     if app == "claude" {
-        return scan_claude_desktop_launch_targets(scan_roots).map(|items| {
-            items
+        return Ok(
+            modules::claude_instance::scan_claude_desktop_launch_targets(roots)
                 .into_iter()
-                .map(|candidate| AppLaunchCandidate {
+                .map(|candidate| modules::process::AppLaunchCandidate {
                     target_type: candidate.target_type,
                     label: candidate.label,
                     target: candidate.target,
                     source: candidate.source,
                     supports_multi_instance: candidate.supports_multi_instance,
                 })
-                .collect()
-        });
+                .collect(),
+        );
     }
 
-    let mut candidates = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-    let mut push_candidate = |target: String, source: &str| {
-        let target = target.trim().to_string();
-        if target.is_empty() {
-            return;
-        }
-        let key = target.to_lowercase();
-        if !seen.insert(key) {
-            return;
-        }
-        candidates.push(AppLaunchCandidate {
-            target_type: "exe".to_string(),
-            label: app_launch_candidate_label(&app).to_string(),
-            target,
-            source: source.to_string(),
-            supports_multi_instance: true,
-        });
-    };
-
-    match app.as_str() {
-        "windsurf" => {
-            if let Ok(Some(path)) = modules::platform_adapter::call_windsurf::<Option<String>>(
-                "runtime.detectLaunchPath",
-                serde_json::json!({ "force": true }),
-            ) {
-                push_candidate(path, "adapter");
-            }
-        }
-        "kiro" => {
-            if let Ok(Some(path)) = modules::platform_adapter::call_kiro::<Option<String>>(
-                "runtime.detectLaunchPath",
-                serde_json::json!({ "force": true }),
-            ) {
-                push_candidate(path, "adapter");
-            }
-        }
-        "cursor" => {
-            if let Ok(Some(path)) = modules::platform_adapter::call_cursor::<Option<String>>(
-                "runtime.detectLaunchPath",
-                serde_json::json!({ "force": true }),
-            ) {
-                push_candidate(path, "adapter");
-            }
-        }
-        _ => {}
-    }
-
-    for candidate in modules::process::scan_app_launch_targets(&app, scan_roots.as_deref()) {
-        let key = candidate.target.to_lowercase();
-        if seen.insert(key) {
-            candidates.push(AppLaunchCandidate {
-                target_type: candidate.target_type,
-                label: candidate.label,
-                target: candidate.target,
-                source: candidate.source,
-                supports_multi_instance: candidate.supports_multi_instance,
-            });
-        }
-    }
-
-    Ok(candidates)
+    modules::process::scan_app_launch_targets(app.as_str(), roots)
 }
 
 #[tauri::command]
@@ -3218,36 +3218,6 @@ pub async fn get_antigravity_installed_version_info(
 pub fn set_wakeup_override(enabled: bool) -> Result<(), String> {
     websocket::broadcast_wakeup_override(enabled);
     Ok(())
-}
-
-#[tauri::command]
-pub fn save_last_closed_page(page: String) -> Result<(), String> {
-    let current = config::get_user_config();
-    let normalized_page = normalize_page_config_value(Some(page), "dashboard");
-    if current.last_closed_page == normalized_page {
-        return Ok(());
-    }
-
-    let new_config = UserConfig {
-        last_closed_page: normalized_page,
-        ..current
-    };
-    config::save_user_config(&new_config)
-}
-
-#[tauri::command]
-pub fn save_startup_page(page: String) -> Result<(), String> {
-    let current = config::get_user_config();
-    let normalized_page = normalize_page_config_value(Some(page), "dashboard");
-    if current.startup_page == normalized_page {
-        return Ok(());
-    }
-
-    let new_config = UserConfig {
-        startup_page: normalized_page,
-        ..current
-    };
-    config::save_user_config(&new_config)
 }
 
 /// 执行窗口关闭操作

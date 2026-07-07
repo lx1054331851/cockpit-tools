@@ -225,9 +225,7 @@
     "deleteTagWarning": "确定要从所有账号中移除标签 ",
     "expand": "展开",
     "processing": "处理中...",
-    "selectAll": "全选",
-    "pause": "暂停",
-    "resume": "继续"
+    "selectAll": "全选"
   },
   "floatingCard": {
     "selectPlatform": "切换平台",
@@ -303,6 +301,9 @@
     },
     "qoder": "Qoder",
     "trae": "Trae",
+    "traeSolo": "TRAE SOLO",
+    "traeCn": "Trae CN",
+    "traeSoloCn": "TRAE SOLO CN",
     "codebuddyCn": "CodeBuddy CN",
     "switchClassicLayoutEntry": "切换到经典布局",
     "switchClassicLayoutTitle": "切换至经典侧边栏布局",
@@ -514,103 +515,7 @@
     "customIconDeleteConfirm": "确认删除这个自定义图标吗？",
     "editChildPlatform": "编辑子级平台",
     "setAsDefaultInGroup": "设为分组内默认平台",
-    "removeFromGroup": "移出分组",
-    "packageNotInstalled": "未下载 · {{size}}",
-    "packageInstalled": "已安装 v{{version}} · {{size}}",
-    "packageUpdateAvailable": "可更新 {{version}} · {{size}}",
-    "packageIncompatible": "主应用版本不兼容",
-    "packageError": "状态异常",
-    "packageOperating": "处理中",
-    "packageDownload": "下载",
-    "packageRepair": "修复",
-    "packageUpdate": "更新",
-    "packageReload": "重载",
-    "packageUninstall": "卸载",
-    "packageInstallRequired": "未安装",
-    "packageBundledShort": "内置",
-    "packageBundledStatus": "随主应用提供",
-    "packageBundledDesc": "此平台随主应用提供，安装和更新跟随主应用版本。",
-    "packageInstallAndOpen": "安装并打开",
-    "packageRepairAndOpen": "修复并打开",
-    "packageUpdateAndOpen": "更新并打开",
-    "packageInstallConfirmTitle": "安装 {{platform}} 平台包",
-    "packageInstallConfirmDesc": "{{platform}} 需要先下载平台包后才能打开。版本 {{version}}，大小 {{size}}。",
-    "packageInstallNotReady": "平台包已处理，但运行组件尚未就绪",
-    "packageInstallCardTitle": "{{platform}} 平台包未安装",
-    "packageInstallCardDesc": "下载版本 {{version}}，大小 {{size}}。安装完成后会自动打开此平台。",
-    "packageUpdateAvailableShort": "可更新",
-    "packageRepairRequired": "需修复",
-    "packageIncompatibleShort": "不兼容",
-    "packageCheckUpdate": "检查更新",
-    "packageCheckUpdateShort": "检查",
-    "packageChangelog": "更新日志",
-    "packageChangelogShort": "日志",
-    "packageInstallFromLocalZip": "从本地包安装...",
-    "packageUpdateFromLocalZip": "从本地包更新...",
-    "packageLocalZipShort": "本地包",
-    "packageLocalZipFilter": "平台包 ZIP",
-    "packageLocalZipInstallConfirmTitle": "从本地包安装 {{platform}}",
-    "packageLocalZipUpdateConfirmTitle": "从本地包更新 {{platform}}",
-    "packageLocalZipInstallConfirmDesc": "将从本地 ZIP 安装 {{platform}} 平台包。账号数据不会删除；后续检查更新仍会使用远端索引。",
-    "packageLocalZipUpdateConfirmDesc": "将用本地 ZIP 覆盖当前 {{platform}} 平台运行组件。账号数据不会删除；后续检查更新仍会使用远端索引。",
-    "packageLocalZipInstallAction": "安装本地包",
-    "packageLocalZipUpdateAction": "更新本地包",
-    "packageChangelogTitle": "{{platform}} 更新日志",
-    "packageChangelogEntryEmpty": "此版本暂无说明。",
-    "packageChangelogEmpty": "暂无更新日志。",
-    "packageCurrentVersion": "当前 {{version}}",
-    "packageLatestVersion": "最新 {{version}}",
-    "packageUninstallConfirmTitle": "卸载 {{platform}} 平台包",
-    "packageUninstallConfirmDesc": "将移除 {{platform}} 的平台包和运行组件，占用 {{size}}；已保存账号数据不会删除。",
-    "packageUpdateConfirmTitle": "更新 {{platform}} 平台包",
-    "packageUpdateConfirmDesc": "将下载并切换到 {{platform}} 平台包 {{version}}，大小 {{size}}。",
-    "packageRepairConfirmTitle": "修复 {{platform}} 平台包",
-    "packageRepairConfirmDesc": "将重新下载并校验 {{platform}} 平台包 {{version}}，大小 {{size}}。",
-    "packageReloadConfirmTitle": "重载 {{platform}} 平台包",
-    "packageReloadConfirmDesc": "将重新构建本地 {{platform}} 平台包并切换到最新开发包；已保存账号数据不会删除。",
-    "packageReloadProgressRebuilding": "正在重建本地平台包",
-    "packageProgressWaiting": "等待开始处理",
-    "packageProgressWorking": "正在处理平台包",
-    "packageProgressResolving": "正在解析平台包来源",
-    "packageProgressDownloading": "正在下载平台包",
-    "packageProgressVerifying": "正在校验平台包",
-    "packageProgressExtracting": "正在解压平台包",
-    "packageProgressInstalling": "正在切换运行组件",
-    "packageProgressUninstalling": "正在移除平台包",
-    "packageProgressCompleted": "已完成",
-    "packageProgressFailed": "处理失败",
-    "packageProgressDownloaded": "已下载 {{downloaded}} / {{total}}",
-    "packageProgressDownloadedUnknown": "已下载 {{downloaded}}",
-    "packageDownloadFailedRetryable": "平台包下载失败，可能是网络或代理暂时不可用。请检查网络后重试。",
-    "packageDownloadSourceMissing": "当前系统没有可用的平台包源，请稍后检查更新或切换到支持的安装包。",
-    "packageDownloadVerifyFailed": "平台包校验失败，请重新下载；如果持续失败，请等待平台包重新发布。",
-    "packageOperationFailedFriendly": "平台包处理失败，请稍后重试。",
-    "packageOperationCanceled": "已取消平台包操作。",
-    "packageOperationRetryHint": "可以点击下方按钮重试。",
-    "packagePageRepairTitle": "{{platform}} 平台包需要修复",
-    "packagePageInstallTitle": "{{platform}} 平台包未安装",
-    "packagePageInstallDesc": "可直接在此页面安装，也可使用右上角的平台包操作安装或修复后再管理账号。安装前不会加载账号、OAuth、切号或后台刷新逻辑。",
-    "packageDashboardStateDesc": "打开 {{platform}} 页面后，可直接安装，也可在右上角更新、修复或查看更新日志。",
-    "packageOpenPlatformPage": "打开平台页面",
-    "packageVersionHistory": "版本历史",
-    "packageVersionHistoryShort": "版本",
-    "packageVersionHistoryTitle": "{{platform}} 版本历史",
-    "packageVersionHistoryLoading": "正在加载版本历史",
-    "packageVersionHistoryEmpty": "暂无可安装版本。",
-    "packageVersionHistoryRetry": "重试",
-    "packageVersionHistoryLoadFailed": "版本历史加载失败",
-    "packageVersionInstalledBadge": "已安装",
-    "packageVersionLatestBadge": "最新",
-    "packageVersionIncompatibleBadge": "不兼容",
-    "packageVersionCurrentSystem": "当前系统",
-    "packageVersionMinCore": "需要主应用 {{version}}+",
-    "packageVersionInstallAction": "安装",
-    "packageVersionReinstallAction": "重新安装",
-    "packageVersionDowngradeAction": "回退",
-    "packageVersionUpdateAction": "更新",
-    "packageVersionInstallConfirmTitle": "安装 {{platform}} 平台包 {{version}}",
-    "packageVersionInstallConfirmDesc": "将切换到 {{platform}} 平台包 {{version}}，大小 {{size}}。账号数据不会删除，后续仍可从版本历史切换回来。",
-    "packageVersionReinstallConfirmDesc": "将重新下载并校验 {{platform}} 平台包 {{version}}，大小 {{size}}。账号数据不会删除。"
+    "removeFromGroup": "移出分组"
   },
   "privacy": {
     "hideSensitive": "隐藏邮箱",
@@ -793,7 +698,6 @@
       "allAlreadyRunning": "所有实例已在运行",
       "noneRunning": "当前没有运行中的实例",
       "syncThreadsNeedTwo": "至少需要两个实例才能同步线程",
-      "loadTimeout": "加载实例超时，请重试。",
       "speedUpdated": "速度已更新"
     },
     "runningDialog": {
@@ -951,9 +855,7 @@
         "unresolvedRefs": "{{count}} 个账号绑定未匹配，已跳过",
         "disabledTasks": "{{count}} 个任务因缺少账号已自动禁用",
         "restartRequired": "网络服务配置已恢复，部分变更需重启应用后生效",
-        "partialAccountFailure": "部分账号导入失败：{{error}}",
-        "codexSessionsImported": "Codex 会话已导入 {{imported}} 条，跳过 {{skipped}} 条",
-        "codexSessionsMissingTargets": "{{count}} 个 Codex 源实例在本机没有对应目标实例"
+        "partialAccountFailure": "部分账号导入失败：{{error}}"
       },
       "errors": {
         "selectionRequired": "请至少选择一项数据类型",
@@ -1081,13 +983,6 @@
       "floatingCardAlwaysOnTopDesc": "新打开的悬浮卡片窗口默认保持置顶",
       "appAutoLaunch": "开机自启动 Cockpit Tools",
       "appAutoLaunchDesc": "系统登录后自动启动应用",
-      "tokenKeeper": "账号授权保活",
-      "tokenKeeperDesc": "开启后后台会延迟并分批刷新快过期的账号授权；关闭后不再自动保活，只保留手动刷新、切号和导入。",
-      "platformQuickSettingsTitle": "平台设置入口",
-      "platformQuickSettingsDesc": "各平台设置已迁移到对应平台页，可从这里快速打开。",
-      "platformQuickSettingsItemDesc": "平台页设置",
-      "openPlatformSettings": "打开",
-      "platformQuickSettingsOpenAria": "打开 {{platform}} 设置",
       "startupWakeupDisabled": "关闭",
       "startupWakeupImmediate": "立即唤醒",
       "startupWakeupDelayed": "延时唤醒",
@@ -1205,8 +1100,12 @@
       "zedPathSelect": "选择",
       "zedPathReset": "重置默认",
       "traeAutoRefresh": "Trae 自动刷新配额",
+      "platformAutoRefresh": "{{platform}} 自动刷新配额",
       "traeAutoRefreshDesc": "后台自动更新频率",
       "traeAppPath": "Trae 启动路径",
+      "traeSoloAppPath": "TRAE SOLO 启动路径",
+      "traeCnAppPath": "Trae CN 启动路径",
+      "traeSoloCnAppPath": "TRAE SOLO CN 启动路径",
       "traeAppPathDesc": "留空则使用默认路径",
       "traeAppPathPlaceholder": "默认路径",
       "traePathSelect": "选择",
@@ -1251,7 +1150,10 @@
       "claudeAutoRefreshDesc": "后台自动更新 Claude 账号配额缓存",
       "claudeAppPath": "Claude Desktop 启动目标",
       "claudeAppPathDesc": "默认实例可使用 Microsoft Store 应用目标；多开实例请选择真实 Claude.exe。",
-      "platformQuickSettingsEntryTitle": "{{platform}}设置入口"
+      "antigravityLaunchOnSwitch": "切换时启动 Antigravity",
+      "antigravityLaunchOnSwitchDesc": "关闭后切号只写入 Antigravity 默认账号数据，不会关闭、启动或重启应用。",
+      "tokenKeeper": "后台授权保活",
+      "tokenKeeperDesc": "仅在授权快过期时分批刷新账号 Token，降低大量账号场景下的后台请求压力。"
     },
     "network": {
       "apiTitle": "反重力驾驶舱 API",
@@ -1924,7 +1826,8 @@
     "installFailed": "系统安装失败，请稍后重试或手动下载安装。",
     "restartRequiredAfterInstall": "更新已安装，请手动重启应用完成切换。",
     "stoppingApiService": "正在关闭 API 服务...",
-    "stopApiServiceFailed": "无法关闭 API 服务，请先停用后重试。"
+    "stopApiServiceFailed": "无法关闭 API 服务，请先停用后重试。",
+    "stopApiServiceFailedContinue": "API 服务未正常关闭，将继续重启..."
   },
   "closeDialog": {
     "title": "关闭窗口",
@@ -1933,8 +1836,7 @@
     "minimizeDesc": "应用将在后台继续运行",
     "quit": "退出应用",
     "quitDesc": "完全关闭应用程序",
-    "remember": "记住我的选择，不再询问",
-    "actionFailed": "操作失败：{{error}}"
+    "remember": "记住我的选择，不再询问"
   },
   "group_settings": {
     "title": "分组管理",
@@ -2078,7 +1980,7 @@
     "accountNote": {
       "title": "账号备注",
       "label": "账号备注",
-      "desc": "给 {{account}} 填写 2FA、密码、手机号和其他备注。",
+      "desc": "给 {{account}} 填写密码、2FA、邮件地址、手机号和其他备注。",
       "twoFactorSecretLabel": "2FA 秘钥",
       "twoFactorSecretShort": "2FA",
       "twoFactorSecretPlaceholder": "Base32 secret 或 otpauth:// 链接",
@@ -2092,13 +1994,30 @@
       "phoneNumberLabel": "手机号",
       "phoneShort": "手机",
       "phoneNumberPlaceholder": "绑定手机号",
+      "mailUrlLabel": "邮件地址",
+      "mailUrlPlaceholder": "填写可打开的邮件查询网页地址",
+      "mailPreviewRefresh": "刷新邮件",
+      "mailPreviewOpen": "浏览器查看",
+      "mailPreviewLoading": "读取邮件中...",
+      "mailPreviewNoCode": "未匹配到连续 6 位验证码",
+      "mailPreviewFetchFailed": "读取邮件失败：{{error}}",
+      "mailPreviewUrlRequired": "请输入邮件地址",
+      "mailPreviewUrlInvalid": "邮件地址格式无效，请输入完整的 http:// 或 https:// 地址",
+      "mailPreviewUnsupportedProtocol": "邮件地址仅支持 http 或 https 协议",
+      "mailPreviewHttpFailed": "邮件地址请求失败：HTTP {{status}}",
+      "mailPreviewCode": "最近一条邮箱验证码",
+      "mailPreviewStatusInitial": "获取于 {{time}}",
+      "mailPreviewStatusChanged": "新验证码 · {{time}}",
+      "mailPreviewStatusUnchanged": "未变化 · {{time}}",
+      "mailPreviewTruncated": "内容已截断",
+      "mailOpenFailed": "打开邮件地址失败：{{error}}",
       "otherNoteLabel": "其他备注",
       "otherNoteShort": "备注",
       "placeholder": "其他交付备注、辅助邮箱或账号说明",
-      "exportSensitiveNotice": "导出内容包含 2FA 秘钥、密码或手机号，请只保存到可信位置。",
+      "exportSensitiveNotice": "导出内容包含 2FA 秘钥、密码、手机号或邮件地址，请只保存到可信位置。",
       "exportSensitiveIncluded": "包含敏感备注",
       "exportSensitiveExcluded": "已排除敏感备注",
-      "exportSensitiveToggleHint": "控制导出 JSON 是否包含 2FA 秘钥、密码和手机号。",
+      "exportSensitiveToggleHint": "控制导出 JSON 是否包含 2FA 秘钥、密码、手机号和邮件地址。",
       "show": "显示",
       "hide": "隐藏",
       "emptyTitle": "填写账号备注",
@@ -2106,6 +2025,18 @@
       "addShort": "加备注",
       "saved": "账号备注已保存",
       "saveFailed": "保存账号备注失败：{{error}}"
+    },
+    "pendingAuth": {
+      "badge": "待授权",
+      "emailRequired": "请输入账号邮箱",
+      "saving": "正在保存待授权账号...",
+      "saved": "待授权账号已保存",
+      "saveFailed": "保存待授权账号失败：{{error}}",
+      "emailLabel": "待授权账号",
+      "emailPlaceholder": "输入 OpenAI 账号邮箱",
+      "saveDraft": "保存待授权卡片",
+      "authorizeAction": "授权添加",
+      "cardHint": "备注已保存，完成 OAuth 后即可使用"
     },
     "localAccess": {
       "title": "API 服务",
@@ -2144,7 +2075,6 @@
       "footerHint": "监听范围：{{scope}}",
       "memberOnlyLocal": "本机/局域网",
       "manageAccounts": "管理账号",
-      "saveTimeout": "保存 API 服务集合超时，请稍后重试。",
       "rotateKey": "重置密钥",
       "rotateConfirmMessage": "重置后当前 API 服务密钥会立即失效，正在进行中的请求可能不可用。确认继续吗？",
       "apiKeysTitle": "客户端 Key",
@@ -2534,7 +2464,6 @@
       "add": "新增供应商",
       "managePresets": "模型预设",
       "loadFailed": "加载模型供应商失败：{{error}}",
-      "loadTimeout": "加载模型供应商超时，请重试。",
       "emptyTitle": "暂无模型供应商",
       "emptyDesc": "点击右上角“新增供应商”开始维护。",
       "baseUrl": "Base URL",
@@ -2824,6 +2753,7 @@
     "quota": {
       "hourly": "5小时配额",
       "weekly": "周配额",
+      "additional": "额外额度",
       "weeklyBlocksHourly": "周额度为 0，5小时额度已不可用",
       "reset": "重置",
       "resetCredits": "重置 {{count}}",
@@ -2848,57 +2778,6 @@
       "resetCreditRecordsLoadFailed": "加载重置记录失败：{{error}}",
       "resetCreditGrantedAt": "发放",
       "resetCreditExpiresAt": "到期"
-    },
-    "referralInvite": {
-      "inviteFriendShort": "邀请好友",
-      "inviteCoworkerShort": "邀请同事",
-      "inviteResetTitle": "邀请成功可获得 {{count}} 次重置机会",
-      "inviteCreditsTitle": "邀请成功可获得 {{count}} credits",
-      "limitReachedTitle": "仍可邀请，但当前账号不会获得奖励",
-      "notEligible": "当前账号暂不显示 Codex 邀请活动。",
-      "titlePersonal": "邀请好友",
-      "titleWorkspace": "邀请同事",
-      "limitReachedDesc": "你仍然可以发送邀请，但当前奖励名额已用完，本次邀请不会获得重置机会。",
-      "resetDesc": "对方加入并发送第一条消息后，双方都会获得 {{count}} 次重置机会，可在 30 天内兑换。",
-      "creditsDesc": "对方加入并发送第一条消息后，双方都会获得 {{count}} credits。",
-      "successTitle": "邀请已发送",
-      "successResetDesc": "对方加入 Codex 并发送第一条消息后，双方都会获得重置机会。",
-      "successCreditsDesc": "对方加入 Codex 并发送第一条消息后，双方都会获得 credits。",
-      "emailLabel": "邮箱",
-      "emailPlaceholder": "输入邮箱",
-      "maxReached": "已达上限",
-      "maxEmailsHint": "一次最多发送 {{count}} 个邮箱，可用逗号、分号或空格分隔。",
-      "removeEmail": "移除 {{email}}",
-      "invalidEmailsError": "请修正这些邮箱：{{emails}}",
-      "maxEmailsError": "一次最多发送 {{count}} 个邀请邮箱。",
-      "noEmailsError": "请先填写至少一个邀请邮箱。",
-      "consentRequired": "发送前请确认已获得对方同意。",
-      "consentSingle": "我已获得此人同意发送邀请",
-      "consentMultiple": "我已获得这些人同意发送邀请",
-      "limitReachedCardTitle": "奖励名额已用完",
-      "limitReachedCardDesc": "可以继续邀请别人使用 Codex，但当前账号不会获得本次活动奖励。",
-      "eligibilityCriteria": "资格条件",
-      "rules": {
-        "maxInvites": "活动期间最多可发送 {{count}} 个邀请。",
-        "notSelf": "不能给自己发送邀请。",
-        "inactiveMonths": "受邀者须在过去 {{count}} 个月内未使用过 Codex。",
-        "noActiveInvite": "受邀者不能已拥有有效的邀请。"
-      },
-      "rulesLoadFailed": "资格条件加载失败：{{error}}",
-      "viewFullTerms": "查看完整条款",
-      "send": "发送",
-      "sent": "邀请已发送",
-      "done": "完成",
-      "eligibilityLoading": "正在获取邀请资格...",
-      "eligibilityLoadFailed": "邀请资格加载失败：{{error}}",
-      "unsupportedApiKey": "当前账号是 API Key 账号，官方邀请活动只对 OAuth/ChatGPT 登录账号开放。",
-      "unsupportedStructure": "当前账号缺少 personal/workspace 账号结构信息，因此不会请求官方邀请资格。",
-      "unavailableTitle": "当前不可邀请原因",
-      "debugUnknown": "未返回",
-      "debugShouldShow": "官方 should_show",
-      "debugReasonCode": "原因代码",
-      "debugRemainingReferrals": "剩余邀请数",
-      "debugAccountStructure": "账号结构"
     },
     "usage": {
       "open": "查看 OpenAI 用量",
@@ -2948,7 +2827,9 @@
       "filterWithin24h": "24小时内 ({{count}})",
       "filterWithin7d": "7天内 ({{count}})",
       "filterWithin30d": "30天内 ({{count}})",
-      "filterMissing": "未获得 ({{count}})"
+      "filterMissing": "未获得 ({{count}})",
+      "accessTokenOnlyUsable": "Token 可用",
+      "accessTokenOnlyUsableDetail": "订阅信息接口受限，但配额与 Codex 使用正常"
     },
     "view": {
       "compact": "紧凑视图"
@@ -2988,7 +2869,6 @@
       "subtitle": "安排 Codex 唤醒任务、测试链路并查看历史记录。",
       "heroTitle": "Codex 唤醒任务",
       "heroSubtitle": "为 OAuth Codex 账号安排定时唤醒、手动测试链路，并集中查看触发历史。",
-      "loadTimeout": "加载 Codex 唤醒任务超时，请重试。",
       "runtimeReady": "官方直连已就绪",
       "runtimeMissing": "官方直连不可用",
       "runtimeCardTitle": "执行方式",
@@ -3013,9 +2893,6 @@
       "copied": "已复制",
       "addTask": "添加任务",
       "testNow": "测试唤醒",
-      "fullQuotaAction": "唤醒账号",
-      "fullQuotaActionTitle": "打开账号唤醒测试，账号默认按 5h 额度从高到低排序。",
-      "fullQuotaNoAccounts": "当前列表没有可唤醒的 OAuth 账号。",
       "enableAll": "开启所有任务",
       "disableAll": "关闭所有任务",
       "refreshRuntime": "重新检测",
@@ -3086,6 +2963,16 @@
       "accountSearchPlaceholder": "搜索邮箱...",
       "accountFilterEmpty": "没有匹配的账号",
       "accountFilteredCount": "当前筛选 {{count}} 个账号",
+      "fullQuotaAction": "唤醒账号",
+      "fullQuotaActionTitle": "打开账号唤醒测试，账号默认按 5h 额度从高到低排序。",
+      "fullQuotaNoAccounts": "当前列表没有可唤醒的 OAuth 账号。",
+      "fullQuotaAccountsLabel": "选择要唤醒的账号",
+      "accountSort": {
+        "default": "默认顺序",
+        "hourly": "按5h额度",
+        "weekly": "按周额度",
+        "email": "按邮箱"
+      },
       "testTitle": "测试 Codex 唤醒",
       "testAccountsLabel": "测试账号",
       "testAccountsRequired": "请至少选择一个测试账号",
@@ -3166,14 +3053,6 @@
         "medium": "中",
         "high": "高",
         "xhigh": "超高"
-      },
-      "fullQuotaTestTitle": "唤醒账号",
-      "fullQuotaAccountsLabel": "选择要唤醒的账号",
-      "accountSort": {
-        "default": "默认顺序",
-        "hourly": "按5h额度",
-        "weekly": "按周额度",
-        "email": "按邮箱"
       }
     },
     "sessionManager": {
@@ -3185,11 +3064,15 @@
         "copyToInstance": "复制到实例",
         "repairVisibility": "修复可见性",
         "restoreSessions": "恢复会话",
+        "exportSessions": "导出会话",
+        "importSessions": "导入会话",
         "copySessionId": "复制会话 ID",
+        "openLocation": "打开位置",
         "selectAllSessions": "全选全部会话",
         "clearSelectedSessions": "取消全选",
         "expand": "展开",
-        "collapse": "收起"
+        "collapse": "收起",
+        "trash": "废纸篓"
       },
       "confirm": {
         "title": "移到废纸篓",
@@ -3227,11 +3110,25 @@
       "locationRunning": "（运行中）",
       "untitled": "未命名会话",
       "restoreModal": {
-        "title": "恢复会话",
-        "hint": "恢复会把 rollout 文件、session_index 条目和会话文件时间放回原实例，并触发官方 Codex 重建会话索引。",
+        "title": "废纸篓",
+        "hint": "废纸篓中的会话可以恢复到原实例，也可以永久删除以释放磁盘空间。",
         "emptyTitle": "废纸篓里还没有会话",
         "emptyDesc": "已移到废纸篓的会话会显示在这里。",
-        "restoreAction": "恢复选中会话"
+        "restoreAction": "恢复选中会话",
+        "summary": "共 {{count}} 条，{{size}}",
+        "selectedSummary": "已选 {{count}} 条，{{size}}",
+        "selectAll": "全选",
+        "clearSelected": "取消选择",
+        "emptyTrash": "清空废纸篓",
+        "itemSize": "大小 {{size}}",
+        "deleteOne": "永久删除",
+        "deleteSelected": "永久删除选中",
+        "pickDeleteOne": "请至少选择一条要永久删除的会话",
+        "deleteOneConfirm": "确定要永久删除这个会话吗？删除后无法恢复，预计释放 {{size}}。",
+        "deleteSelectedConfirm": "确定要永久删除选中的 {{count}} 条会话吗？删除后无法恢复，预计释放 {{size}}。",
+        "permanentDeleteTitle": "永久删除",
+        "permanentDeleteAction": "永久删除",
+        "emptyTrashConfirm": "确定要清空废纸篓吗？其中 {{count}} 条会话将被永久删除且无法恢复，预计释放 {{size}}。"
       },
       "targetModal": {
         "title": "复制到实例",
@@ -3241,6 +3138,23 @@
         "selectedCount": "已选择 {{count}} 条会话",
         "existingCount": "目标已存在 {{count}} 条",
         "confirm": "复制会话"
+      },
+      "importModal": {
+        "title": "导入会话",
+        "hint": "会话包只导入 rollout 文件和 session_index 条目，不包含账号、Token、API Key 或应用配置；目标实例已有同 ID 会话时会跳过。",
+        "noTarget": "未发现可导入的 Codex 实例",
+        "noPackage": "请先选择会话包",
+        "pickOne": "请至少选择一条可导入会话",
+        "totalCount": "会话包 {{count}} 条",
+        "readyCount": "可导入 {{count}} 条",
+        "selectReady": "选择可导入",
+        "previewing": "正在预览会话包...",
+        "existsIn": "已存在于：{{names}}",
+        "statusReady": "可导入",
+        "statusDuplicate": "已存在",
+        "statusConflict": "冲突",
+        "statusInvalid": "无效",
+        "confirm": "导入选中会话"
       },
       "repairModal": {
         "running": "正在修复...",
@@ -3299,6 +3213,67 @@
         "preview": "预览变更",
         "previewFailedWithError": "预览会话修复失败：{{error}}",
         "confirmRepair": "确认修复"
+      },
+      "transferModal": {
+        "exportTitle": "导出会话",
+        "importTitle": "导入会话",
+        "minimize": "最小化",
+        "reopen": "查看进度",
+        "clear": "清除",
+        "runningSummary": "正在处理 {{current}}/{{total}}",
+        "completedSummary": "任务已完成",
+        "failedSummary": "任务失败",
+        "current": "{{current}} / {{total}}",
+        "phase": {
+          "exportPrepare": "正在准备导出...",
+          "exportCollect": "正在收集会话...",
+          "exportHash": "正在校验会话文件...",
+          "exportWrite": "正在写入会话包...",
+          "importPrepare": "正在准备导入...",
+          "importRead": "正在读取会话包...",
+          "importWrite": "正在写入目标实例...",
+          "importRebuild": "正在刷新官方会话索引...",
+          "done": "任务已完成"
+        }
+      },
+      "exportModal": {
+        "title": "导出会话",
+        "hint": "导出前可先确认会话列表、来源实例和文件大小；会话包只包含 rollout 文件和 session_index 条目，不包含账号、Token、API Key 或应用配置。",
+        "previewing": "正在预览会话...",
+        "selectedCount": "已选择 {{count}} 条",
+        "exportableCount": "可导出 {{count}} 条",
+        "missingCount": "缺失 {{count}} 条",
+        "totalSize": "总大小 {{size}}",
+        "exportPath": "导出位置",
+        "pathUnset": "尚未选择导出位置",
+        "choosePath": "选择位置",
+        "missingNotice": "{{count}} 条会话已不在当前实例集合中，导出时会跳过。",
+        "sourceInstance": "来源：{{name}}",
+        "emptyTitle": "没有可导出的会话",
+        "noPreview": "请先完成导出预览",
+        "noExportable": "没有可导出的会话",
+        "pickPath": "请选择导出位置",
+        "confirm": "确认导出",
+        "selectedExportCount": "已选 {{selected}} / 可导出 {{total}}",
+        "selectedSize": "已选大小 {{selected}} / 总计 {{total}}",
+        "removedNotice": "已从本次导出列表移出 {{count}} 条",
+        "restoreRemoved": "恢复列表",
+        "sourceLabel": "来源",
+        "allSources": "全部来源",
+        "selectionLabel": "选择",
+        "filterAll": "全部",
+        "filterSelected": "已选",
+        "filterUnselected": "未选",
+        "visibleCount": "当前显示 {{visible}} / {{total}}",
+        "selectVisible": "选中筛选",
+        "clearVisible": "取消筛选",
+        "keepVisibleOnly": "仅保留筛选",
+        "removeVisible": "移出筛选",
+        "removeUnchecked": "移出未选",
+        "selectItem": "选择导出会话",
+        "removeItem": "移出",
+        "emptyFilteredTitle": "当前筛选无会话",
+        "emptyFilteredDesc": "调整搜索、来源或选择状态后再试。"
       }
     },
     "groups": {
@@ -3390,10 +3365,8 @@
         "pricingReset": "重置",
         "pricingSaved": "价格设置已保存",
         "pricingInvalid": "价格必须是大于或等于 0 的数字",
-        "pricingVersion": "当前价格版本 v{{version}}",
-        "pricingRepriceHistory": "重算历史估值",
-        "pricingRepriceHint": "按当前价格版本刷新请求日志和统计里的估算金额。",
-        "pricingRepriceSuccess": "历史请求估值已按当前价格重算"
+        "pricingReprice": "重算历史估值",
+        "pricingRepriced": "历史估值已按当前价格重算"
       },
       "keys": {
         "policyTitle": "模型策略",
@@ -3528,7 +3501,11 @@
       "selectedCount": "已选 {{count}}/{{total}}",
       "selectAllAccounts": "选择全部账号",
       "selectReady": "选择正常账号",
-      "clearSelection": "取消选择"
+      "clearSelection": "取消选择",
+      "hiddenTask": "Codex 批量导入任务",
+      "taskRunning": "正在处理 {{current}} / {{total}}",
+      "taskPreview": "已生成 {{total}} 条预览",
+      "reopen": "查看任务"
     },
     "autoRepairMode": {
       "label": "自动修复逻辑",
@@ -3544,7 +3521,14 @@
       "failed": "部分失败",
       "completed": "删除完成",
       "preparing": "正在准备删除任务...",
-      "retryFailed": "重试失败项"
+      "retryFailed": "重试失败项",
+      "pause": "暂停",
+      "resume": "继续",
+      "clear": "清理",
+      "summary": "已处理 {{completed}} / {{total}}，失败 {{failed}}",
+      "started": "已开始删除 {{count}} 个 Codex 账号",
+      "pollFailed": "刷新批量删除进度失败：{{error}}",
+      "actionFailed": "批量删除操作失败：{{error}}"
     }
   },
   "codebuddy": {
@@ -3921,6 +3905,18 @@
     "claude": {
       "appPath": "Claude 路径",
       "appTargetPlaceholder": "Claude.exe 路径或 shell:AppsFolder\\..."
+    },
+    "traeSolo": {
+      "title": "TRAE SOLO 设置",
+      "appPath": "TRAE SOLO 路径"
+    },
+    "traeCn": {
+      "title": "Trae CN 设置",
+      "appPath": "Trae CN 路径"
+    },
+    "traeSoloCn": {
+      "title": "TRAE SOLO CN 设置",
+      "appPath": "TRAE SOLO CN 路径"
     }
   },
   "quotaAlert": {
@@ -4384,20 +4380,20 @@
         "4": "故障",
         "5": "日志",
         "6": "日志目录",
-        "7": "app-YYYY-MM-DD.log"
+        "7": "app.log日志"
       },
       "outcomes": {
         "0": "批量导入账号，快速迁移环境。",
         "1": "导出 JSON 做备份或跨设备迁移。",
         "2": "通过错误提示和文件修复指引定位问题。",
-        "3": "可通过数据目录下 logs 的 app-YYYY-MM-DD.log 与 platform-<platform>-YYYY-MM-DD.log 快速定位运行异常。"
+        "3": "可通过数据目录下 logs 的 app.log* 快速定位运行异常。"
       },
       "steps": {
         "0": "批量操作前先导出一次当前数据作为快照。",
         "1": "在列表页通过“显示/隐藏邮箱”切换隐私视图。",
         "2": "遇到文件损坏提示时，按弹窗指引打开目录修复。",
         "3": "排障时先进入“设置 -> 数据目录 -> 打开”，进入 logs 文件夹。",
-        "4": "优先查看最新的 app-YYYY-MM-DD.log；平台问题优先选择对应 platform-<platform>-YYYY-MM-DD.log。",
+        "4": "优先查看最新的 app.log 或 app.log.*（按日期滚动的日志文件）。",
         "5": "提交反馈时建议附上：发生时间、平台、复现步骤、关键报错日志（前后 20 行）。"
       },
       "summary": "覆盖日常维护能力：JSON 导入导出、邮箱脱敏显示、异常处理与恢复流程。",
@@ -4657,17 +4653,21 @@
   "trae": {
     "title": "Trae 账号管理",
     "empty": {
-      "description": "点击“添加账号”开始管理您的 Trae 账号，也可以从本机 Trae 数据或 JSON 文件导入。"
+      "description": "点击“添加账号”开始管理您的 Trae 账号，也可以从本机 Trae 数据或 JSON 文件导入。",
+      "descriptionWithPlatform": "点击“添加账号”开始管理您的 {{platform}} 账号，也可以从本机 {{platform}} 数据或 JSON 文件导入。"
     },
     "addModal": {
-      "title": "添加 Trae 账号"
+      "title": "添加 Trae 账号",
+      "titleWithPlatform": "添加 {{platform}} 账号"
     },
     "oauth": {
-      "desc": "点击下方按钮，在浏览器中完成 Trae OAuth 授权登录。"
+      "desc": "点击下方按钮，在浏览器中完成 Trae OAuth 授权登录。",
+      "descWithPlatform": "点击下方按钮，在浏览器中完成 {{platform}} OAuth 授权登录。"
     },
     "import": {
       "localDesc": "支持从本机 Trae 配置目录读取当前登录账号、套餐信息和配额缓存数据。",
-      "jsonTab": "JSON 文件"
+      "jsonTab": "JSON 文件",
+      "localDescWithPlatform": "支持从本机 {{platform}} 配置目录读取当前登录账号、套餐信息和配额缓存数据。"
     },
     "quota": {
       "usedOfTotal": "${{used}} / ${{total}}",
@@ -4693,7 +4693,12 @@
       "title": "Trae 账号接入说明（点击展开/收起）",
       "desc": "支持官方 OAuth 授权、本机导入、JSON 导入与本地注入切号；切号过程按 Trae 客户端真实落盘规则写回。",
       "permission": "权限范围：读取并写入本机 Trae 配置目录中的 storage.json 登录相关字段，用于账号导入、切号注入与套餐信息展示；所有数据仅在本机处理。",
-      "network": "网络范围：OAuth 登录、令牌刷新和套餐查询会请求 Trae 官方接口；不会向第三方服务上传本地账号文件或原始存储内容。"
+      "network": "网络范围：OAuth 登录、令牌刷新和套餐查询会请求 Trae 官方接口；不会向第三方服务上传本地账号文件或原始存储内容。",
+      "titleWithPlatform": "{{platform}} 账号接入说明（点击展开/收起）",
+      "descWithPlatform": "支持 {{platform}} 官方 OAuth 授权、本机导入、JSON 导入与本地注入切号；切号过程按 {{platform}} 客户端真实落盘规则写回。",
+      "permissionWithPlatform": "权限范围：读取并写入本机 {{platform}} 配置目录中的 storage.json 登录相关字段，用于账号导入、切号注入与套餐信息展示；所有数据仅在本机处理。",
+      "networkGlobal": "网络范围：{{platform}} OAuth 登录、令牌刷新和套餐查询会请求 trae.ai / traeapi.us 官方接口；不会向第三方服务上传本地账号文件或原始存储内容。",
+      "networkCn": "网络范围：{{platform}} OAuth 登录、令牌刷新和套餐查询会请求 trae.cn / trae.com.cn 官方接口；不会向第三方服务上传本地账号文件或原始存储内容。"
     }
   },
   "codebuddyCn": {

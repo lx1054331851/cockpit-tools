@@ -3,7 +3,6 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
@@ -125,6 +124,12 @@ pub struct UserConfig {
     /// Trae 自动刷新间隔（分钟），-1 表示禁用
     #[serde(default = "default_trae_auto_refresh")]
     pub trae_auto_refresh_minutes: i32,
+    #[serde(default = "default_trae_auto_refresh")]
+    pub trae_solo_auto_refresh_minutes: i32,
+    #[serde(default = "default_trae_auto_refresh")]
+    pub trae_cn_auto_refresh_minutes: i32,
+    #[serde(default = "default_trae_auto_refresh")]
+    pub trae_solo_cn_auto_refresh_minutes: i32,
     /// 窗口关闭行为
     #[serde(default = "default_close_behavior")]
     pub close_behavior: CloseWindowBehavior,
@@ -188,18 +193,6 @@ pub struct UserConfig {
     /// Codex 启动路径（为空则使用默认路径）
     #[serde(default = "default_codex_app_path")]
     pub codex_app_path: String,
-    /// 切换 Codex 后需联动重启的指定应用路径
-    #[serde(default = "default_codex_specified_app_path")]
-    pub codex_specified_app_path: String,
-    /// Claude 桌面应用启动路径（为空则使用默认路径）
-    #[serde(default = "default_claude_app_path")]
-    pub claude_app_path: String,
-    #[serde(default = "default_gemini_app_path")]
-    pub gemini_app_path: String,
-    #[serde(default = "default_claude_app_scan_roots")]
-    pub claude_app_scan_roots: String,
-    #[serde(default = "default_app_scan_roots")]
-    pub app_scan_roots: HashMap<String, String>,
     /// Zed 启动路径（为空则使用默认路径）
     #[serde(default = "default_zed_app_path")]
     pub zed_app_path: String,
@@ -227,6 +220,21 @@ pub struct UserConfig {
     /// Trae 启动路径（为空则使用默认路径）
     #[serde(default = "default_trae_app_path")]
     pub trae_app_path: String,
+    #[serde(default = "default_trae_app_path")]
+    pub trae_solo_app_path: String,
+    #[serde(default = "default_trae_app_path")]
+    pub trae_cn_app_path: String,
+    #[serde(default = "default_trae_app_path")]
+    pub trae_solo_cn_app_path: String,
+    /// Trae Windows 应用扫描范围（每行一个目录）
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_app_scan_roots: String,
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_solo_app_scan_roots: String,
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_cn_app_scan_roots: String,
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_solo_cn_app_scan_roots: String,
     /// WorkBuddy 启动路径（为空则使用默认路径）
     #[serde(default = "default_workbuddy_app_path")]
     pub workbuddy_app_path: String,
@@ -251,12 +259,6 @@ pub struct UserConfig {
     /// 切换 Codex 时是否自动启动/重启 Codex App
     #[serde(default = "default_codex_launch_on_switch")]
     pub codex_launch_on_switch: bool,
-    /// 切换 Codex 时是否自动重启指定应用
-    #[serde(default = "default_codex_restart_specified_app_on_switch")]
-    pub codex_restart_specified_app_on_switch: bool,
-    /// 是否在 Codex 总览中显示 API 服务入口
-    #[serde(default = "default_codex_local_access_entry_visible")]
-    pub codex_local_access_entry_visible: bool,
     /// Antigravity 切号是否启用“本地落盘 + 扩展无感”且不重启
     #[serde(default = "default_antigravity_dual_switch_no_restart_enabled")]
     pub antigravity_dual_switch_no_restart_enabled: bool,
@@ -371,6 +373,18 @@ pub struct UserConfig {
     /// Trae 配额预警阈值（百分比）
     #[serde(default = "default_trae_quota_alert_threshold")]
     pub trae_quota_alert_threshold: i32,
+    #[serde(default = "default_trae_quota_alert_enabled")]
+    pub trae_solo_quota_alert_enabled: bool,
+    #[serde(default = "default_trae_quota_alert_threshold")]
+    pub trae_solo_quota_alert_threshold: i32,
+    #[serde(default = "default_trae_quota_alert_enabled")]
+    pub trae_cn_quota_alert_enabled: bool,
+    #[serde(default = "default_trae_quota_alert_threshold")]
+    pub trae_cn_quota_alert_threshold: i32,
+    #[serde(default = "default_trae_quota_alert_enabled")]
+    pub trae_solo_cn_quota_alert_enabled: bool,
+    #[serde(default = "default_trae_quota_alert_threshold")]
+    pub trae_solo_cn_quota_alert_threshold: i32,
     /// 是否启用 WorkBuddy 配额预警通知
     #[serde(default = "default_workbuddy_quota_alert_enabled")]
     pub workbuddy_quota_alert_enabled: bool,
@@ -567,21 +581,6 @@ fn default_antigravity_app_path() -> String {
 fn default_codex_app_path() -> String {
     String::new()
 }
-fn default_codex_specified_app_path() -> String {
-    String::new()
-}
-fn default_claude_app_path() -> String {
-    String::new()
-}
-fn default_gemini_app_path() -> String {
-    String::new()
-}
-fn default_claude_app_scan_roots() -> String {
-    String::new()
-}
-fn default_app_scan_roots() -> HashMap<String, String> {
-    HashMap::new()
-}
 fn default_zed_app_path() -> String {
     String::new()
 }
@@ -609,6 +608,9 @@ fn default_qoder_app_path() -> String {
 fn default_trae_app_path() -> String {
     String::new()
 }
+fn default_trae_app_scan_roots() -> String {
+    String::new()
+}
 fn default_workbuddy_app_path() -> String {
     String::new()
 }
@@ -631,12 +633,6 @@ fn default_openclaw_auth_overwrite_on_switch() -> bool {
     false
 }
 fn default_codex_launch_on_switch() -> bool {
-    true
-}
-fn default_codex_restart_specified_app_on_switch() -> bool {
-    false
-}
-fn default_codex_local_access_entry_visible() -> bool {
     true
 }
 fn default_antigravity_dual_switch_no_restart_enabled() -> bool {
@@ -791,6 +787,9 @@ impl Default for UserConfig {
             workbuddy_auto_refresh_minutes: default_workbuddy_auto_refresh(),
             qoder_auto_refresh_minutes: default_qoder_auto_refresh(),
             trae_auto_refresh_minutes: default_trae_auto_refresh(),
+            trae_solo_auto_refresh_minutes: default_trae_auto_refresh(),
+            trae_cn_auto_refresh_minutes: default_trae_auto_refresh(),
+            trae_solo_cn_auto_refresh_minutes: default_trae_auto_refresh(),
             close_behavior: default_close_behavior(),
             minimize_behavior: default_minimize_behavior(),
             hide_dock_icon: default_hide_dock_icon(),
@@ -813,11 +812,6 @@ impl Default for UserConfig {
             opencode_app_path: default_opencode_app_path(),
             antigravity_app_path: default_antigravity_app_path(),
             codex_app_path: default_codex_app_path(),
-            codex_specified_app_path: default_codex_specified_app_path(),
-            claude_app_path: default_claude_app_path(),
-            gemini_app_path: default_gemini_app_path(),
-            claude_app_scan_roots: default_claude_app_scan_roots(),
-            app_scan_roots: default_app_scan_roots(),
             zed_app_path: default_zed_app_path(),
             vscode_app_path: default_vscode_app_path(),
             windsurf_app_path: default_windsurf_app_path(),
@@ -827,6 +821,13 @@ impl Default for UserConfig {
             codebuddy_cn_app_path: default_codebuddy_cn_app_path(),
             qoder_app_path: default_qoder_app_path(),
             trae_app_path: default_trae_app_path(),
+            trae_solo_app_path: default_trae_app_path(),
+            trae_cn_app_path: default_trae_app_path(),
+            trae_solo_cn_app_path: default_trae_app_path(),
+            trae_app_scan_roots: default_trae_app_scan_roots(),
+            trae_solo_app_scan_roots: default_trae_app_scan_roots(),
+            trae_cn_app_scan_roots: default_trae_app_scan_roots(),
+            trae_solo_cn_app_scan_roots: default_trae_app_scan_roots(),
             workbuddy_app_path: default_workbuddy_app_path(),
             opencode_sync_on_switch: default_opencode_sync_on_switch(),
             opencode_auth_overwrite_on_switch: default_opencode_auth_overwrite_on_switch(),
@@ -836,8 +837,6 @@ impl Default for UserConfig {
             ghcp_launch_on_switch: default_ghcp_launch_on_switch(),
             openclaw_auth_overwrite_on_switch: default_openclaw_auth_overwrite_on_switch(),
             codex_launch_on_switch: default_codex_launch_on_switch(),
-            codex_restart_specified_app_on_switch: default_codex_restart_specified_app_on_switch(),
-            codex_local_access_entry_visible: default_codex_local_access_entry_visible(),
             antigravity_dual_switch_no_restart_enabled:
                 default_antigravity_dual_switch_no_restart_enabled(),
             auto_switch_enabled: default_auto_switch_enabled(),
@@ -878,6 +877,12 @@ impl Default for UserConfig {
             qoder_quota_alert_threshold: default_qoder_quota_alert_threshold(),
             trae_quota_alert_enabled: default_trae_quota_alert_enabled(),
             trae_quota_alert_threshold: default_trae_quota_alert_threshold(),
+            trae_solo_quota_alert_enabled: default_trae_quota_alert_enabled(),
+            trae_solo_quota_alert_threshold: default_trae_quota_alert_threshold(),
+            trae_cn_quota_alert_enabled: default_trae_quota_alert_enabled(),
+            trae_cn_quota_alert_threshold: default_trae_quota_alert_threshold(),
+            trae_solo_cn_quota_alert_enabled: default_trae_quota_alert_enabled(),
+            trae_solo_cn_quota_alert_threshold: default_trae_quota_alert_threshold(),
             workbuddy_quota_alert_enabled: default_workbuddy_quota_alert_enabled(),
             workbuddy_quota_alert_threshold: default_workbuddy_quota_alert_threshold(),
         }
@@ -1010,17 +1015,16 @@ pub fn sync_global_proxy_env(config: &UserConfig) {
 
 /// 获取数据目录路径
 pub fn get_data_dir() -> Result<PathBuf, String> {
-    crate::modules::account::resolve_data_dir()
+    let home = dirs::home_dir().ok_or("无法获取 Home 目录")?;
+    Ok(home.join(DATA_DIR))
 }
 
 /// 获取共享目录路径（供其他模块使用）
 /// 与 get_data_dir 相同，但不返回 Result
 pub fn get_shared_dir() -> PathBuf {
-    get_data_dir().unwrap_or_else(|_| {
-        dirs::home_dir()
-            .map(|h| h.join(DATA_DIR))
-            .unwrap_or_else(|| PathBuf::from(DATA_DIR))
-    })
+    dirs::home_dir()
+        .map(|h| h.join(DATA_DIR))
+        .unwrap_or_else(|| PathBuf::from(DATA_DIR))
 }
 
 /// 获取服务状态文件路径
@@ -1134,20 +1138,6 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             );
         }
 
-        if !obj.contains_key("gemini_app_path") {
-            obj.insert(
-                "gemini_app_path".to_string(),
-                json!(default_gemini_app_path()),
-            );
-        }
-
-        if !obj.contains_key("app_scan_roots") {
-            obj.insert(
-                "app_scan_roots".to_string(),
-                json!(default_app_scan_roots()),
-            );
-        }
-
         if !obj.contains_key("qoder_auto_refresh_minutes") {
             let inherited_refresh = obj
                 .get("gemini_auto_refresh_minutes")
@@ -1200,6 +1190,20 @@ pub fn load_user_config() -> Result<UserConfig, String> {
                 "trae_auto_refresh_minutes".to_string(),
                 json!(inherited_refresh),
             );
+        }
+        let inherited_trae_refresh = obj
+            .get("trae_auto_refresh_minutes")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32)
+            .unwrap_or_else(default_trae_auto_refresh);
+        for key in [
+            "trae_solo_auto_refresh_minutes",
+            "trae_cn_auto_refresh_minutes",
+            "trae_solo_cn_auto_refresh_minutes",
+        ] {
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), json!(inherited_trae_refresh));
+            }
         }
 
         if !obj.contains_key("hide_dock_icon") {
@@ -1260,13 +1264,6 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "codex_startup_wakeup_delay_seconds".to_string(),
                 json!(default_codex_startup_wakeup_delay_seconds()),
-            );
-        }
-
-        if !obj.contains_key("codex_local_access_entry_visible") {
-            obj.insert(
-                "codex_local_access_entry_visible".to_string(),
-                json!(default_codex_local_access_entry_visible()),
             );
         }
 
@@ -1563,6 +1560,33 @@ pub fn load_user_config() -> Result<UserConfig, String> {
                 json!(legacy_threshold),
             );
         }
+        let inherited_trae_quota_enabled = obj
+            .get("trae_quota_alert_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(legacy_enabled);
+        let inherited_trae_quota_threshold = obj
+            .get("trae_quota_alert_threshold")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32)
+            .unwrap_or(legacy_threshold);
+        for key in [
+            "trae_solo_quota_alert_enabled",
+            "trae_cn_quota_alert_enabled",
+            "trae_solo_cn_quota_alert_enabled",
+        ] {
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), json!(inherited_trae_quota_enabled));
+            }
+        }
+        for key in [
+            "trae_solo_quota_alert_threshold",
+            "trae_cn_quota_alert_threshold",
+            "trae_solo_cn_quota_alert_threshold",
+        ] {
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), json!(inherited_trae_quota_threshold));
+            }
+        }
         if !obj.contains_key("workbuddy_quota_alert_enabled") {
             obj.insert(
                 "workbuddy_quota_alert_enabled".to_string(),
@@ -1659,15 +1683,6 @@ pub fn get_user_config() -> UserConfig {
         .read()
         .map(|state| state.user_config.clone())
         .unwrap_or_default()
-}
-
-pub fn reload_user_config_from_disk() -> Result<UserConfig, String> {
-    let config = load_user_config()?;
-    if let Ok(mut state) = get_runtime_state().write() {
-        state.user_config = config.clone();
-    }
-    sync_global_proxy_env(&config);
-    Ok(config)
 }
 
 /// 获取用户配置的首选端口

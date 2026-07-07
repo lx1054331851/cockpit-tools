@@ -59,7 +59,7 @@ function persistTopRightAdState(state: TopRightAdState): void {
       JSON.stringify({ savedAt: Date.now(), state: normalizeTopRightAdState(state) }),
     );
   } catch {
-    // Cache writes are best effort only.
+    // 缓存写入失败不影响主流程。
   }
 }
 
@@ -78,10 +78,10 @@ export const useTopRightAdStore = create<TopRightAdStoreState>((set, get) => ({
       persistTopRightAdState(nextState);
       return nextState;
     } catch (error) {
-      console.error('Failed to load top right ad state:', error);
-      set({ state: get().state, loading: false, initialized: true });
-      return get().state;
+      console.error('加载右上角广告位失败:', error);
+      const currentState = get().state;
+      set({ state: currentState, loading: false, initialized: true });
+      return currentState;
     }
   },
 }));
-

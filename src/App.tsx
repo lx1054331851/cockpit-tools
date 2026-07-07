@@ -20,7 +20,7 @@ import { SideNav } from './components/layout/SideNav';
 import { GlobalModal } from './components/GlobalModal';
 import { TopCenterPromoBanner } from './components/TopCenterPromoBanner';
 import type { QuickSettingsType } from './components/QuickSettingsPopover';
-import { Page } from './types/navigation';
+import type { Page } from './types/navigation';
 import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { useEasterEggTrigger } from './hooks/useEasterEggTrigger';
 import { useGlobalModal } from './hooks/useGlobalModal';
@@ -41,7 +41,6 @@ import { useWorkbuddyAccountStore } from './stores/useWorkbuddyAccountStore';
 import { useZedAccountStore } from './stores/useZedAccountStore';
 import { useSideNavLayoutStore } from './stores/useSideNavLayoutStore';
 import { usePlatformLayoutStore } from './stores/usePlatformLayoutStore';
-import { usePlatformPackageStore } from './stores/usePlatformPackageStore';
 import { useTopRightAdStore } from './stores/useTopRightAdStore';
 import { useSponsorStore } from './stores/useSponsorStore';
 import { useRemoteConfigStore } from './stores/useRemoteConfigStore';
@@ -67,19 +66,12 @@ import {
 } from './utils/externalProviderImport';
 import { runAutoBackupCycle } from './services/scheduledBackupService';
 import { prepareCodexLocalAccessForRestart } from './services/codexLocalAccessService';
-import {
-  applyStartupTheme,
-  persistStartupAppearance,
-  type StartupTheme,
-} from './utils/startupAppearance';
 
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
 );
-const AntigravitySuitePage = lazy(() =>
-  import('./pages/AntigravitySuitePage').then((module) => ({
-    default: module.AntigravitySuitePage,
-  })),
+const AccountsPage = lazy(() =>
+  import('./pages/AccountsPage').then((module) => ({ default: module.AccountsPage })),
 );
 const CodexAccountsPage = lazy(() =>
   import('./pages/CodexAccountsPage').then((module) => ({ default: module.CodexAccountsPage })),
@@ -124,6 +116,14 @@ const WorkbuddyAccountsPage = lazy(() =>
 );
 const ZedAccountsPage = lazy(() =>
   import('./pages/ZedAccountsPage').then((module) => ({ default: module.ZedAccountsPage })),
+);;
+const WakeupTasksPage = lazy(() =>
+  import('./pages/WakeupTasksPage').then((module) => ({ default: module.WakeupTasksPage })),
+);
+const WakeupVerificationPage = lazy(() =>
+  import('./pages/WakeupVerificationPage').then((module) => ({
+    default: module.WakeupVerificationPage,
+  })),
 );
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
@@ -136,6 +136,9 @@ const ManualPage = lazy(() =>
 );
 const ApiKeyFunPage = lazy(() =>
   import('./pages/ApiKeyFunPage').then((module) => ({ default: module.ApiKeyFunPage })),
+);
+const InstancesPage = lazy(() =>
+  import('./pages/InstancesPage').then((module) => ({ default: module.InstancesPage })),
 );
 const PlatformLayoutModal = lazy(() =>
   import('./components/PlatformLayoutModal').then((module) => ({
@@ -158,11 +161,50 @@ const LogViewerModal = lazy(() =>
   import('./components/LogViewerModal').then((module) => ({ default: module.LogViewerModal })),
 );
 
+const ACTIVE_PAGE_STORAGE_KEY = 'agtools.active_page';
+const RENDERABLE_PAGE_VALUES: readonly Page[] = [
+  'dashboard',
+  'api-relay',
+  'overview',
+  'codex',
+  'claude',
+  'claude-cli',
+  'codex-api-service',
+  'github-copilot',
+  'windsurf',
+  'kiro',
+  'cursor',
+  'gemini',
+  'codebuddy',
+  'codebuddy-cn',
+  'qoder',
+  'trae',
+  'trae-solo',
+  'trae-cn',
+  'trae-solo-cn',
+  'workbuddy',
+  'zed',
+  'instances',
+  'wakeup',
+  'verification',
+  '2fa',
+  'manual',
+  'settings',
+];
+const RENDERABLE_PAGE_SET = new Set<string>(RENDERABLE_PAGE_VALUES);
+
+function normalizeStoredActivePage(value: string | null): Page | null {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+  return RENDERABLE_PAGE_SET.has(normalized) ? (normalized as Page) : null;
+}
+
 
 interface GeneralConfigTheme {
   theme: string;
   ui_scale?: number;
-  top_right_ad_visible?: boolean;
 }
 
 interface GeneralConfigLanguage {
@@ -174,17 +216,25 @@ interface GeneralConfig extends GeneralConfigTheme, GeneralConfigLanguage {
   antigravity_app_path: string;
   codex_app_path: string;
   codex_launch_on_switch: boolean;
+  top_right_ad_visible?: boolean;
   vscode_app_path: string;
   windsurf_app_path: string;
   kiro_app_path: string;
   cursor_app_path: string;
   claude_app_path: string;
   claude_app_scan_roots: string;
-  app_scan_roots?: Record<string, string>;
   codebuddy_app_path: string;
   codebuddy_cn_app_path: string;
   qoder_app_path: string;
   trae_app_path: string;
+  trae_solo_app_path: string;
+  trae_cn_app_path: string;
+  trae_solo_cn_app_path: string;
+  trae_app_scan_roots: string;
+  trae_solo_app_scan_roots: string;
+  trae_cn_app_scan_roots: string;
+  trae_solo_cn_app_scan_roots: string;
+  workbuddy_app_path: string;
   zed_app_path: string;
 }
 
@@ -201,6 +251,10 @@ type AppPathMissingDetail = {
     | 'codebuddy_cn'
     | 'qoder'
     | 'trae'
+    | 'trae_solo'
+    | 'trae_cn'
+    | 'trae_solo_cn'
+    | 'workbuddy'
     | 'zed';
   retry?:
     | { kind: 'default'; runtimeTarget?: string }
@@ -224,6 +278,40 @@ function isClaudeWindowsAppLaunchTarget(value: string): boolean {
 const WAKEUP_ENABLED_KEY = 'agtools.wakeup.enabled';
 const TASKS_STORAGE_KEY = 'agtools.wakeup.tasks';
 const WAKEUP_FORCE_DISABLE_MIGRATION_KEY = 'agtools.wakeup.migration.force_disable_0_8_14';
+
+function isTraePlatformApp(app: string): app is 'trae' | 'trae_solo' | 'trae_cn' | 'trae_solo_cn' {
+  return app === 'trae' || app === 'trae_solo' || app === 'trae_cn' || app === 'trae_solo_cn';
+}
+
+type TraePlatformApp = 'trae' | 'trae_solo' | 'trae_cn' | 'trae_solo_cn';
+
+function getTraeAppPath(config: GeneralConfig, app: TraePlatformApp): string {
+  switch (app) {
+    case 'trae_solo':
+      return config.trae_solo_app_path;
+    case 'trae_cn':
+      return config.trae_cn_app_path;
+    case 'trae_solo_cn':
+      return config.trae_solo_cn_app_path;
+    case 'trae':
+    default:
+      return config.trae_app_path;
+  }
+}
+
+function getTraeAppScanRoots(config: GeneralConfig, app: TraePlatformApp): string {
+  switch (app) {
+    case 'trae_solo':
+      return config.trae_solo_app_scan_roots;
+    case 'trae_cn':
+      return config.trae_cn_app_scan_roots;
+    case 'trae_solo_cn':
+      return config.trae_solo_cn_app_scan_roots;
+    case 'trae':
+    default:
+      return config.trae_app_scan_roots;
+  }
+}
 const TOP_RIGHT_AD_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const REMOTE_CONFIG_FALLBACK_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 const EXTERNAL_IMPORT_DEDUPE_WINDOW_MS = 30 * 1000;
@@ -378,6 +466,12 @@ function normalizeQuotaAlertPlatform(platform: string | undefined): QuotaAlertPl
     case 'qoder':
       return 'qoder';
     case 'trae':
+    case 'trae-solo':
+    case 'trae_solo':
+    case 'trae-cn':
+    case 'trae_cn':
+    case 'trae-solo-cn':
+    case 'trae_solo_cn':
       return 'trae';
     case 'zed':
       return 'zed';
@@ -523,7 +617,30 @@ function MainApp() {
   const sideNavClassicFirstSyncDone = useSideNavLayoutStore((state) => state.classicFirstSyncDone);
   const markSideNavClassicFirstSyncDone = useSideNavLayoutStore((state) => state.markClassicFirstSyncDone);
   const syncSidebarEntriesFromDashboard = usePlatformLayoutStore((state) => state.syncSidebarEntriesFromDashboard);
-  const [page, setPage] = useState<Page>('dashboard');
+  const [page, setPage] = useState<Page>(() => {
+    try {
+      const saved = normalizeStoredActivePage(localStorage.getItem(ACTIVE_PAGE_STORAGE_KEY));
+      if (saved) {
+        return saved;
+      }
+      localStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
+    } catch {}
+    return 'dashboard';
+  });
+
+  useEffect(() => {
+    try {
+      const normalized = normalizeStoredActivePage(page);
+      if (normalized) {
+        localStorage.setItem(ACTIVE_PAGE_STORAGE_KEY, normalized);
+      } else {
+        localStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
+        setPage('dashboard');
+      }
+    } catch (e) {
+      console.warn('Failed to save active page to localStorage:', e);
+    }
+  }, [page]);
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const [updateNotificationKey, setUpdateNotificationKey] = useState(0);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
@@ -541,13 +658,13 @@ function MainApp() {
   const [appPathActionError, setAppPathActionError] = useState('');
   const [appPathCodexLaunchOnSwitch, setAppPathCodexLaunchOnSwitch] = useState(true);
   const [appPathCodexLaunchSetting, setAppPathCodexLaunchSetting] = useState(false);
-  const appPathMissingSessionRef = useRef(0);
   const [versionJumpInfo, setVersionJumpInfo] = useState<{
     previous_version: string;
     current_version: string;
     release_notes: string;
     release_notes_zh: string;
   } | null>(null);
+  const [showVersionJumpNotification, setShowVersionJumpNotification] = useState(false);
   const [updateRuntimeInfo, setUpdateRuntimeInfo] = useState<UpdateRuntimeInfo | null>(null);
   const [updateRuntimeInfoLoaded, setUpdateRuntimeInfoLoaded] = useState(false);
   const [updateNotificationInfo, setUpdateNotificationInfo] = useState<UpdateInfo | null>(null);
@@ -572,14 +689,14 @@ function MainApp() {
   const updateCheckRequestIdRef = useRef(0);
   const externalImportHandledAtRef = useRef<Map<string, number>>(new Map());
   const { showModal, closeModal } = useGlobalModal();
+  const topRightAdState = useTopRightAdStore((state) => state.state);
   const fetchTopRightAdState = useTopRightAdStore((state) => state.fetchState);
   const sponsorModuleState = useSponsorStore((state) => state.state);
   const fetchSponsorModuleState = useSponsorStore((state) => state.fetchState);
   const sponsorModuleInitialized = useSponsorStore((state) => state.initialized);
   const fetchRemoteConfigState = useRemoteConfigStore((state) => state.fetchState);
-  const refreshPlatformPackages = usePlatformPackageStore((state) => state.refresh);
-  const codexRuntimeReady = usePlatformPackageStore((state) => state.canOpenPlatform('codex'));
   const sponsorEntryVisible = Boolean(sponsorModuleState.sponsorModule);
+  const [topRightAdVisible, setTopRightAdVisible] = useState(true);
   const trayRefreshInFlightRef = useRef(false);
   const openPlatformLayoutModal = useCallback(() => {
     setPlatformLayoutRequestedGroupId(null);
@@ -588,28 +705,6 @@ function MainApp() {
   const openBreakout = useCallback(() => {
     setHasBreakoutSession(true);
     setShowBreakout(true);
-  }, []);
-  const setPageWithRuntimeGate = useCallback((nextPage: Page) => {
-    setPage(nextPage);
-  }, []);
-  const isAppPathMissingSessionActive = useCallback((session: number) => (
-    appPathMissingSessionRef.current === session
-  ), []);
-  const openAppPathMissingModal = useCallback((detail: AppPathMissingDetail) => {
-    appPathMissingSessionRef.current += 1;
-    setAppPathActionError('');
-    setAppPathSetting(false);
-    setAppPathDetecting(false);
-    setAppPathCodexLaunchSetting(false);
-    setAppPathMissing(detail);
-  }, []);
-  const dismissAppPathMissingModal = useCallback(() => {
-    appPathMissingSessionRef.current += 1;
-    setAppPathMissing(null);
-    setAppPathActionError('');
-    setAppPathSetting(false);
-    setAppPathDetecting(false);
-    setAppPathCodexLaunchSetting(false);
   }, []);
   const ensureExternalImportVersionCompatible = useCallback(
     async (payload: ExternalProviderImportPayload): Promise<boolean> => {
@@ -696,12 +791,12 @@ function MainApp() {
       minAppVersion: normalized.minAppVersion ?? null,
       source: normalized.source ?? null,
     });
-    setPageWithRuntimeGate(normalized.page);
+    setPage(normalized.page);
     window.setTimeout(() => {
       console.info('[ExternalImport][App] 分发前端外部导入事件');
       dispatchExternalProviderImportEvent(normalized);
     }, 0);
-  }, [ensureExternalImportVersionCompatible, setPageWithRuntimeGate]);
+  }, [ensureExternalImportVersionCompatible]);
   const handleBreakoutMinimize = useCallback(() => {
     setShowBreakout(false);
   }, []);
@@ -739,24 +834,6 @@ function MainApp() {
   useEffect(() => {
     initWakeupNotificationListener();
   }, []);
-
-  useEffect(() => {
-    void refreshPlatformPackages().catch((error) => {
-      console.error('Failed to refresh platform packages:', error);
-    });
-  }, [refreshPlatformPackages]);
-
-  useEffect(() => {
-    const handlePackageChanged = () => {
-      void refreshPlatformPackages().catch((error) => {
-        console.error('Failed to refresh platform packages after change:', error);
-      });
-    };
-    window.addEventListener('agtools:platform-package-changed', handlePackageChanged);
-    return () => {
-      window.removeEventListener('agtools:platform-package-changed', handlePackageChanged);
-    };
-  }, [refreshPlatformPackages]);
 
   useEffect(() => {
     let disposed = false;
@@ -808,6 +885,24 @@ function MainApp() {
   useEffect(() => {
     void fetchTopRightAdState();
   }, [fetchTopRightAdState]);
+
+  useEffect(() => {
+    const loadTopRightAdVisible = async () => {
+      try {
+        const config = await invoke<GeneralConfig>('get_general_config');
+        setTopRightAdVisible(config.top_right_ad_visible ?? true);
+      } catch (error) {
+        console.error('Failed to load top-right ad visibility config:', error);
+        setTopRightAdVisible(true);
+      }
+    };
+
+    void loadTopRightAdVisible();
+    window.addEventListener('config-updated', loadTopRightAdVisible);
+    return () => {
+      window.removeEventListener('config-updated', loadTopRightAdVisible);
+    };
+  }, []);
 
   useEffect(() => {
     void fetchSponsorModuleState();
@@ -925,11 +1020,17 @@ function MainApp() {
         `应用重启前已关闭 Codex API 服务监听: enabled=${Boolean(state.collection?.enabled)}, running=${state.running}`,
       );
     } catch (error) {
+      const compactError = sanitizeUpdaterErrorMessage(error);
       writeUpdateLog(
         'warn',
-        `应用重启前关闭 Codex API 服务监听失败，已中止本次重启: error=${sanitizeUpdaterErrorMessage(error)}`,
+        `应用重启前关闭 Codex API 服务监听失败，将继续重启: error=${compactError}`,
       );
-      throw error;
+      setUpdateRetryStatus(
+        t(
+          'update_notification.stopApiServiceFailedContinue',
+          'API 服务未正常关闭，将继续重启...',
+        ),
+      );
     }
   }, [t, writeUpdateLog]);
 
@@ -1616,6 +1717,14 @@ function MainApp() {
       );
 
     if (!shouldOpenUpdateDetails) {
+      if (versionJumpInfo) {
+        (
+          window as Window & {
+            __agtoolsVersionJumpModalRequestedAt?: number;
+          }
+        ).__agtoolsVersionJumpModalRequestedAt = performance.now();
+        setShowVersionJumpNotification(true);
+      }
       return;
     }
 
@@ -1624,7 +1733,7 @@ function MainApp() {
     }
 
     openUpdateNotificationDetails();
-  }, [openUpdateNotificationDetails, updateAction.state, updateRemindersEnabled]);
+  }, [openUpdateNotificationDetails, updateAction.state, updateRemindersEnabled, versionJumpInfo]);
 
   const handleSkipUpdateVersion = useCallback(async () => {
     const targetVersion = updateNotificationInfo?.latest_version;
@@ -1702,23 +1811,24 @@ function MainApp() {
     const targetPage = getQuotaAlertTargetPage(platform);
     const targetType = getQuotaAlertQuickSettingsType(platform);
     closeModal();
-    setPageWithRuntimeGate(targetPage);
+    setPage(targetPage);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent('quick-settings:open', { detail: { type: targetType } }));
       });
     });
-  }, [closeModal, setPageWithRuntimeGate]);
+  }, [closeModal]);
 
   useEffect(() => {
     let cleanup: (() => void) | null = null;
 
     const applyTheme = (newTheme: string) => {
-      const normalizedTheme: StartupTheme =
-        newTheme === 'light' || newTheme === 'dark' || newTheme === 'system'
-          ? newTheme
-          : 'system';
-      applyStartupTheme(normalizedTheme);
+      if (newTheme === 'system') {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', newTheme);
+      }
     };
 
     const applyUiScale = async (rawScale?: number) => {
@@ -1755,11 +1865,6 @@ function MainApp() {
         const config = await invoke<GeneralConfigTheme>('get_general_config');
         applyTheme(config.theme);
         void applyUiScale(config.ui_scale);
-        persistStartupAppearance({
-          theme: config.theme as StartupTheme,
-          uiScale: config.ui_scale,
-          topRightAdVisible: config.top_right_ad_visible,
-        });
         if (config.theme === 'system') {
           cleanup = watchSystemTheme();
         }
@@ -2297,9 +2402,10 @@ function MainApp() {
             }
           ).__agtoolsVersionJumpModalRequestedAt = performance.now();
           setVersionJumpInfo(jumpInfo);
+          setShowVersionJumpNotification(true);
           requestAnimationFrame(() => {
             console.log(
-              `[StartupPerf][VersionJump] first frame after setVersionJumpInfo in ${(performance.now() - versionJumpStartedAt).toFixed(2)}ms`,
+              `[StartupPerf][VersionJump] first frame after opening version jump modal in ${(performance.now() - versionJumpStartedAt).toFixed(2)}ms`,
             );
           });
         }
@@ -2419,19 +2525,9 @@ function MainApp() {
                   try {
                     const targetAccountId = payload.recommended_account_id as string;
                     if (platform === 'codex') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('codex')) {
-                        setPageWithRuntimeGate('codex');
-                        closeModal();
-                        return;
-                      }
                       await useCodexAccountStore.getState().switchAccount(targetAccountId);
                       setPage('codex');
                     } else if (platform === 'claude') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('claude_manager')) {
-                        setPageWithRuntimeGate('claude');
-                        closeModal();
-                        return;
-                      }
                       await useClaudeAccountStore.getState().switchAccount(targetAccountId);
                       setPage('claude');
                     } else if (platform === 'github_copilot') {
@@ -2450,48 +2546,23 @@ function MainApp() {
                       await useGeminiAccountStore.getState().switchAccount(targetAccountId);
                       setPage('gemini');
                     } else if (platform === 'codebuddy') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('codebuddy')) {
-                        setPageWithRuntimeGate('codebuddy');
-                        closeModal();
-                        return;
-                      }
                       await useCodebuddyAccountStore.getState().switchAccount(targetAccountId);
                       setPage('codebuddy');
                     } else if (platform === 'codebuddy_cn') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('codebuddy_cn')) {
-                        setPageWithRuntimeGate('codebuddy-cn');
-                        closeModal();
-                        return;
-                      }
                       await useCodebuddyCnAccountStore.getState().switchAccount(targetAccountId);
                       setPage('codebuddy-cn');
                     } else if (platform === 'qoder') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('qoder')) {
-                        setPageWithRuntimeGate('qoder');
-                        closeModal();
-                        return;
-                      }
                       await useQoderAccountStore.getState().switchAccount(targetAccountId);
                       setPage('qoder');
                     } else if (platform === 'trae') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('trae')) {
-                        setPageWithRuntimeGate('trae');
-                        closeModal();
-                        return;
-                      }
                       await useTraeAccountStore.getState().switchAccount(targetAccountId);
                       setPage('trae');
                     } else if (platform === 'workbuddy') {
-                      if (!usePlatformPackageStore.getState().canOpenPlatform('workbuddy')) {
-                        setPageWithRuntimeGate('workbuddy');
-                        closeModal();
-                        return;
-                      }
                       await useWorkbuddyAccountStore.getState().switchAccount(targetAccountId);
                       setPage('workbuddy');
                     } else if (platform === 'zed') {
                       await useZedAccountStore.getState().switchAccount(targetAccountId);
-                      setPageWithRuntimeGate('zed');
+                      setPage('zed');
                     } else {
                       await useAccountStore.getState().switchAccount(targetAccountId);
                       setPage('overview');
@@ -2532,7 +2603,7 @@ function MainApp() {
         unlisten();
       }
     };
-  }, [closeModal, openQuickSettingsForPlatform, setPageWithRuntimeGate, showModal, t]);
+  }, [closeModal, openQuickSettingsForPlatform, showModal, t]);
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
@@ -2727,39 +2798,9 @@ function MainApp() {
       try {
         await Promise.all(
           refreshTasks.map(({ command, errorMessage }) =>
-            ((command === 'refresh_current_quota'
-              && !(
-                usePlatformPackageStore.getState().canOpenPlatform('antigravity')
-                || usePlatformPackageStore.getState().canOpenPlatform('antigravity_ide')
-              ))
-              || (command === 'refresh_current_codex_quota'
-              && !usePlatformPackageStore.getState().canOpenPlatform('codex'))
-              || (command === 'refresh_all_zed_tokens'
-              && !usePlatformPackageStore.getState().canOpenPlatform('zed'))
-              || (command === 'refresh_all_claude_quotas'
-                && !usePlatformPackageStore.getState().canOpenPlatform('claude_manager'))
-              || (command === 'refresh_all_github_copilot_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('github-copilot'))
-              || (command === 'refresh_all_windsurf_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('windsurf'))
-              || (command === 'refresh_all_kiro_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('kiro'))
-              || (command === 'refresh_all_cursor_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('cursor'))
-              || (command === 'refresh_all_gemini_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('gemini'))
-              || (command === 'refresh_all_codebuddy_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('codebuddy'))
-              || (command === 'refresh_all_codebuddy_cn_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('codebuddy_cn'))
-              || (command === 'refresh_all_qoder_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('qoder'))
-              || (command === 'refresh_all_trae_tokens'
-                && !usePlatformPackageStore.getState().canOpenPlatform('trae')))
-              ? Promise.resolve()
-              : invoke(command).catch((error) => {
-                  console.error(errorMessage, error);
-                }),
+            invoke(command).catch((error) => {
+              console.error(errorMessage, error);
+            }),
           ),
         );
       } finally {
@@ -2780,20 +2821,6 @@ function MainApp() {
       if (!payload || typeof payload !== 'object') return;
       const detail = payload as AppPathMissingDetail;
       if (
-        detail.app === 'codex' &&
-        !usePlatformPackageStore.getState().canOpenPlatform('codex')
-      ) {
-        setPageWithRuntimeGate('codex');
-        return;
-      }
-      if (
-        detail.app === 'claude' &&
-        !usePlatformPackageStore.getState().canOpenPlatform('claude_manager')
-      ) {
-        setPageWithRuntimeGate('claude');
-        return;
-      }
-      if (
         detail.app !== 'antigravity' &&
         detail.app !== 'codex' &&
         detail.app !== 'claude' &&
@@ -2804,12 +2831,13 @@ function MainApp() {
         detail.app !== 'codebuddy' &&
         detail.app !== 'codebuddy_cn' &&
         detail.app !== 'qoder' &&
-        detail.app !== 'trae' &&
+        !isTraePlatformApp(detail.app) &&
+        detail.app !== 'workbuddy' &&
         detail.app !== 'zed'
       ) {
         return;
       }
-      openAppPathMissingModal(detail);
+      setAppPathMissing(detail);
     };
 
     listen('app:path_missing', (event) => {
@@ -2828,7 +2856,7 @@ function MainApp() {
       }
       window.removeEventListener('app-path-missing', handleWindowEvent as EventListener);
     };
-  }, [openAppPathMissingModal]);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -2845,6 +2873,7 @@ function MainApp() {
       };
     }
     setAppPathActionError('');
+    setAppLaunchCandidates([]);
     (async () => {
       try {
         const config = await invoke<GeneralConfig>('get_general_config');
@@ -2867,8 +2896,10 @@ function MainApp() {
                 ? config.codebuddy_cn_app_path
               : appPathMissing.app === 'qoder'
                 ? config.qoder_app_path
-              : appPathMissing.app === 'trae'
-                ? config.trae_app_path
+              : isTraePlatformApp(appPathMissing.app)
+                ? getTraeAppPath(config, appPathMissing.app)
+              : appPathMissing.app === 'workbuddy'
+                ? config.workbuddy_app_path
               : appPathMissing.app === 'zed'
                 ? config.zed_app_path
               : config.antigravity_app_path;
@@ -2880,9 +2911,11 @@ function MainApp() {
             isClaudeWindowsAppLaunchTarget(normalizedPath);
           setAppPathDraft(shouldClearClaudeDefaultTarget ? '' : normalizedPath);
           setAppPathScanRootsDraft(
-            config.app_scan_roots?.[appPathMissing.app] ||
-              (appPathMissing.app === 'claude' ? config.claude_app_scan_roots : '') ||
-              '',
+            appPathMissing.app === 'claude'
+              ? config.claude_app_scan_roots || ''
+              : isTraePlatformApp(appPathMissing.app)
+                ? getTraeAppScanRoots(config, appPathMissing.app) || ''
+                : '',
           );
           setAppPathCodexLaunchOnSwitch(config.codex_launch_on_switch ?? true);
         }
@@ -2896,56 +2929,55 @@ function MainApp() {
   }, [appPathMissing]);
 
   const handlePickMissingAppPath = async () => {
-    if (!appPathMissing || appPathSetting) return;
-    const session = appPathMissingSessionRef.current;
+    if (appPathSetting) return;
     try {
       const selected = await open({
         multiple: false,
         directory: false,
       });
       const path = Array.isArray(selected) ? selected[0] : selected;
-      if (path && isAppPathMissingSessionActive(session)) {
+      if (path) {
         setAppPathActionError('');
         setAppPathDraft(path);
+        setAppLaunchCandidates([]);
       }
     } catch (error) {
       console.error('选择应用路径失败:', error);
     }
   };
 
-  const handlePickMissingClaudeScanRoot = async () => {
-    if (!appPathMissing || appPathSetting || appPathDetecting) return;
-    const session = appPathMissingSessionRef.current;
+  const handlePickMissingAppScanRoot = async () => {
+    if (appPathSetting || appPathDetecting) return;
     try {
       const selected = await open({
         multiple: false,
         directory: true,
       });
       const path = Array.isArray(selected) ? selected[0] : selected;
-      if (path && isAppPathMissingSessionActive(session)) {
+      if (path) {
         setAppPathActionError('');
         setAppPathScanRootsDraft(path);
+        setAppLaunchCandidates([]);
       }
     } catch (error) {
       console.error('选择 Claude 扫描范围失败:', error);
     }
   };
 
-  const handleClearMissingClaudeScanRoot = () => {
+  const handleClearMissingAppScanRoot = () => {
     if (appPathSetting || appPathDetecting) return;
     setAppPathActionError('');
     setAppPathScanRootsDraft('');
+    setAppLaunchCandidates([]);
   };
 
   const handleSaveMissingAppPath = async () => {
     if (!appPathMissing || appPathSetting || appPathDetecting) return;
-    const missing = appPathMissing;
-    const session = appPathMissingSessionRef.current;
     const path = appPathDraft.trim();
     if (!path) return;
     if (
-      missing.app === 'claude' &&
-      missing.retry?.kind === 'instance' &&
+      appPathMissing.app === 'claude' &&
+      appPathMissing.retry?.kind === 'instance' &&
       isClaudeWindowsAppLaunchTarget(path)
     ) {
       setAppPathActionError(
@@ -2959,51 +2991,43 @@ function MainApp() {
     setAppPathSetting(true);
     setAppPathActionError('');
     try {
-      const app = missing.app;
-      const retry = missing.retry;
+      const app = appPathMissing.app;
+      const retry = appPathMissing.retry;
       const antigravityInstanceStartCommand =
-        app === 'antigravity' && retry?.runtimeTarget === 'antigravity'
+        app === 'antigravity' && retry?.runtimeTarget !== 'antigravity_ide'
           ? 'antigravity_legacy_start_instance'
           : 'start_instance';
       await invoke('set_app_path', { app, path });
-      if (!isAppPathMissingSessionActive(session)) return;
-      await invoke('set_app_scan_roots', {
-        app,
-        scanRoots: appPathScanRootsDraft.trim(),
-      });
-      if (!isAppPathMissingSessionActive(session)) return;
+      if (app === 'claude') {
+        await invoke('set_claude_app_scan_roots', {
+          scanRoots: appPathScanRootsDraft.trim(),
+        });
+      } else if (isTraePlatformApp(app)) {
+        await invoke('set_trae_app_scan_roots', {
+          app,
+          scanRoots: appPathScanRootsDraft.trim(),
+        });
+      }
       if (retry?.kind === 'switchAccount' && retry.accountId && app === 'zed') {
         await useZedAccountStore.getState().switchAccount(retry.accountId);
-        if (!isAppPathMissingSessionActive(session)) return;
-        setPageWithRuntimeGate('zed');
+        setPage('zed');
       } else if (retry?.kind === 'switchAccount' && retry.accountId && app === 'claude') {
-        if (!usePlatformPackageStore.getState().canOpenPlatform('claude_manager')) return;
         await useClaudeAccountStore.getState().switchAccount(retry.accountId);
-        if (!isAppPathMissingSessionActive(session)) return;
         await useClaudeAccountStore.getState().fetchCurrentAccountId();
-        if (!isAppPathMissingSessionActive(session)) return;
         setPage('claude');
       } else if (retry?.kind === 'switchAccount' && retry.accountId) {
         await invoke('switch_account', {
           accountId: retry.accountId,
           runtimeTarget: retry.runtimeTarget,
         });
-        if (!isAppPathMissingSessionActive(session)) return;
-        const runtimeTarget =
-          retry.runtimeTarget === 'antigravity' || retry.runtimeTarget === 'antigravity_ide'
-            ? retry.runtimeTarget
-            : undefined;
         await Promise.allSettled([
           useAccountStore.getState().fetchAccounts(),
-          useAccountStore.getState().fetchCurrentAccount(runtimeTarget),
+          useAccountStore.getState().fetchCurrentAccount(),
         ]);
-        if (!isAppPathMissingSessionActive(session)) return;
       } else if (retry?.kind === 'instance' && retry.instanceId) {
         if (app === 'codex') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('codex')) return;
           await invoke('codex_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'claude') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('claude_manager')) return;
           await invoke('claude_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'vscode') {
           await invoke('github_copilot_start_instance', { instanceId: retry.instanceId });
@@ -3012,40 +3036,26 @@ function MainApp() {
         } else if (app === 'kiro') {
           await invoke('kiro_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'cursor') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('cursor')) return;
           await invoke('cursor_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'codebuddy') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('codebuddy')) return;
           await invoke('codebuddy_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'codebuddy_cn') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('codebuddy_cn')) return;
           await invoke('codebuddy_cn_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'qoder') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('qoder')) return;
           await invoke('qoder_start_instance', { instanceId: retry.instanceId });
-        } else if (app === 'trae') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('trae')) return;
-          await invoke('trae_start_instance', { instanceId: retry.instanceId });
+        } else if (isTraePlatformApp(app)) {
+          await invoke('trae_start_instance', { platformId: app, instanceId: retry.instanceId });
+        } else if (app === 'workbuddy') {
+          await invoke('workbuddy_start_instance', { instanceId: retry.instanceId });
         } else if (app === 'zed') {
           await invoke('zed_start_default_session');
         } else {
-          if (app === 'antigravity') {
-            const runtimeTarget =
-              retry?.runtimeTarget === 'antigravity'
-                || retry?.runtimeTarget === 'antigravity_ide'
-                ? retry.runtimeTarget
-                : 'antigravity_ide';
-            if (!usePlatformPackageStore.getState().canOpenPlatform(runtimeTarget)) return;
-          }
           await invoke(antigravityInstanceStartCommand, { instanceId: retry.instanceId });
         }
-        if (!isAppPathMissingSessionActive(session)) return;
       } else {
         if (app === 'codex') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('codex')) return;
           await invoke('codex_start_instance', { instanceId: '__default__' });
         } else if (app === 'claude') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('claude_manager')) return;
           await invoke('claude_start_instance', { instanceId: '__default__' });
         } else if (app === 'vscode') {
           await invoke('github_copilot_start_instance', { instanceId: '__default__' });
@@ -3054,38 +3064,26 @@ function MainApp() {
         } else if (app === 'kiro') {
           await invoke('kiro_start_instance', { instanceId: '__default__' });
         } else if (app === 'cursor') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('cursor')) return;
           await invoke('cursor_start_instance', { instanceId: '__default__' });
         } else if (app === 'codebuddy') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('codebuddy')) return;
           await invoke('codebuddy_start_instance', { instanceId: '__default__' });
         } else if (app === 'codebuddy_cn') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('codebuddy_cn')) return;
           await invoke('codebuddy_cn_start_instance', { instanceId: '__default__' });
         } else if (app === 'qoder') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('qoder')) return;
           await invoke('qoder_start_instance', { instanceId: '__default__' });
-        } else if (app === 'trae') {
-          if (!usePlatformPackageStore.getState().canOpenPlatform('trae')) return;
-          await invoke('trae_start_instance', { instanceId: '__default__' });
+        } else if (isTraePlatformApp(app)) {
+          await invoke('trae_start_instance', { platformId: app, instanceId: '__default__' });
+        } else if (app === 'workbuddy') {
+          await invoke('workbuddy_start_instance', { instanceId: '__default__' });
         } else if (app === 'zed') {
           await invoke('zed_start_default_session');
         } else {
-          if (app === 'antigravity') {
-            const runtimeTarget =
-              retry?.runtimeTarget === 'antigravity'
-                || retry?.runtimeTarget === 'antigravity_ide'
-                ? retry.runtimeTarget
-                : 'antigravity_ide';
-            if (!usePlatformPackageStore.getState().canOpenPlatform(runtimeTarget)) return;
-          }
           await invoke(antigravityInstanceStartCommand, { instanceId: '__default__' });
         }
-        if (!isAppPathMissingSessionActive(session)) return;
       }
-      dismissAppPathMissingModal();
+      setAppPathMissing(null);
+      setAppPathSetting(false);
     } catch (error) {
-      if (!isAppPathMissingSessionActive(session)) return;
       console.error('设置应用路径失败:', error);
       setAppPathActionError(String(error));
       setAppPathSetting(false);
@@ -3094,22 +3092,23 @@ function MainApp() {
 
   const handleResetMissingAppPath = async () => {
     if (!appPathMissing || appPathSetting || appPathDetecting) return;
-    const missing = appPathMissing;
-    const session = appPathMissingSessionRef.current;
-    if (missing.app) {
+    const scanApp =
+      appPathMissing.app === 'antigravity' && appPathMissing.retry?.runtimeTarget !== 'antigravity_ide'
+        ? 'antigravity_legacy'
+        : appPathMissing.app === 'antigravity' && appPathMissing.retry?.runtimeTarget === 'antigravity_ide'
+          ? 'antigravity_ide'
+          : appPathMissing.app;
+
+    if (isWindowsPlatform()) {
       setAppPathDetecting(true);
       setAppPathActionError('');
       try {
-        const candidates = await invoke<AppLaunchCandidate[]>(
-          'scan_app_launch_targets',
-          {
-            app: missing.app,
-            scanRoots: appPathScanRootsDraft.trim() || null,
-          },
-        );
-        if (!isAppPathMissingSessionActive(session)) return;
+        const candidates = await invoke<AppLaunchCandidate[]>('scan_app_launch_targets', {
+          app: scanApp,
+          scanRoots: appPathScanRootsDraft.trim() || null,
+        });
         setAppLaunchCandidates(candidates);
-        if (missing.app === 'claude' && missing.retry?.kind === 'instance') {
+        if (appPathMissing.app === 'claude' && appPathMissing.retry?.kind === 'instance') {
           const exeCandidate = candidates.find((candidate) => candidate.supports_multi_instance);
           if (exeCandidate) {
             setAppPathDraft(exeCandidate.target);
@@ -3121,75 +3120,63 @@ function MainApp() {
               ),
             );
           }
+        } else if (candidates.length > 0) {
+          setAppPathDraft(candidates[0].target);
         }
-        if (candidates.length === 0) {
+        if (candidates.length === 0 && appPathMissing.app !== 'claude') {
+          setAppPathActionError(
+            t('appPath.missing.scanEmptyGeneric', '未扫描到 {{app}}，请手动选择路径或调整扫描范围。', {
+              app: appPathMissingAppName,
+            }),
+          );
+        } else if (candidates.length === 0) {
           setAppPathActionError(
             t('appPath.missing.claudeScanEmpty', '未扫描到 Claude Desktop，请手动选择 Claude.exe 或调整扫描范围。'),
           );
         }
       } catch (error) {
-        if (!isAppPathMissingSessionActive(session)) return;
         console.error('扫描 Claude Desktop 启动目标失败:', error);
         setAppPathActionError(String(error));
       } finally {
-        if (isAppPathMissingSessionActive(session)) {
-          setAppPathDetecting(false);
-        }
+        setAppPathDetecting(false);
       }
       return;
     }
     setAppPathDetecting(true);
-    setAppPathActionError('');
     try {
-      const detectApp =
-        missing.app === 'antigravity' && missing.retry?.runtimeTarget === 'antigravity'
-          ? 'antigravity_legacy'
-          : missing.app === 'antigravity' && missing.retry?.runtimeTarget === 'antigravity_ide'
-            ? 'antigravity_ide'
-            : missing.app;
       const detected = await invoke<string | null>('detect_app_path', {
-        app: detectApp,
+        app: scanApp,
         force: true,
       });
-      if (!isAppPathMissingSessionActive(session)) return;
       setAppPathActionError('');
       setAppPathDraft((detected || '').trim());
     } catch (error) {
-      if (!isAppPathMissingSessionActive(session)) return;
       console.error('自动探测应用路径失败:', error);
-      setAppPathActionError(String(error));
     } finally {
-      if (isAppPathMissingSessionActive(session)) {
-        setAppPathDetecting(false);
-      }
+      setAppPathDetecting(false);
     }
   };
 
   const handleToggleCodexLaunchInMissingPath = async (enabled: boolean) => {
     if (!appPathMissing || appPathMissing.app !== 'codex') return;
     if (appPathSetting || appPathDetecting || appPathCodexLaunchSetting) return;
-    const session = appPathMissingSessionRef.current;
     setAppPathCodexLaunchSetting(true);
     setAppPathActionError('');
     try {
       await invoke('set_codex_launch_on_switch', { enabled });
-      if (!isAppPathMissingSessionActive(session)) return;
       setAppPathCodexLaunchOnSwitch(enabled);
       if (!enabled) {
-        dismissAppPathMissingModal();
+        setAppPathMissing(null);
       }
     } catch (error) {
-      if (!isAppPathMissingSessionActive(session)) return;
       console.error('更新 Codex 自动启动配置失败:', error);
       setAppPathActionError(String(error));
     } finally {
-      if (isAppPathMissingSessionActive(session)) {
-        setAppPathCodexLaunchSetting(false);
-      }
+      setAppPathCodexLaunchSetting(false);
     }
   };
 
-  const handleSelectClaudeLaunchCandidate = (candidate: AppLaunchCandidate) => {
+  const handleSelectAppLaunchCandidate = (candidate: AppLaunchCandidate) => {
     if (
       appPathMissing?.app === 'claude' &&
       appPathMissing.retry?.kind === 'instance' &&
@@ -3237,11 +3224,14 @@ function MainApp() {
             case 'codebuddy-cn':
             case 'qoder':
             case 'trae':
+            case 'trae-solo':
+            case 'trae-cn':
+            case 'trae-solo-cn':
             case 'workbuddy':
             case 'zed':
             case 'manual':
             case 'settings':
-              setPageWithRuntimeGate(target as Page);
+              setPage(target as Page);
               break;
             default:
               break;
@@ -3253,7 +3243,7 @@ function MainApp() {
         unlisten();
       }
     };
-  }, [setPageWithRuntimeGate]);
+  }, []);
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
@@ -3305,14 +3295,14 @@ function MainApp() {
     const handleRequestNavigate = (e: Event) => {
       const custom = e as CustomEvent<Page>;
       if (custom.detail) {
-        setPageWithRuntimeGate(custom.detail);
+        setPage(custom.detail);
       }
     };
     window.addEventListener('app-request-navigate', handleRequestNavigate as EventListener);
     return () => {
       window.removeEventListener('app-request-navigate', handleRequestNavigate as EventListener);
     };
-  }, [setPageWithRuntimeGate]);
+  }, []);
 
   useEffect(() => {
     const handleOpenPlatformLayout = (e: Event) => {
@@ -3356,13 +3346,13 @@ function MainApp() {
                 ? 'CodeBuddy CN'
               : appPathMissing.app === 'qoder'
                 ? 'Qoder'
-              : appPathMissing.app === 'trae'
+              : isTraePlatformApp(appPathMissing.app)
                 ? 'Trae'
-              : appPathMissing.app === 'zed'
-                ? 'Zed'
-              : appPathMissing.app === 'antigravity' && appPathMissingRuntimeTarget === 'antigravity'
-                ? 'Antigravity'
-                : 'Antigravity IDE'
+              : appPathMissing.app === 'workbuddy'
+                ? 'WorkBuddy'
+              : appPathMissing.app === 'antigravity' && appPathMissingRuntimeTarget === 'antigravity_ide'
+                ? 'Antigravity IDE'
+                : 'Antigravity'
     : '';
 
   const appPathMissingPathLabel = appPathMissing
@@ -3384,10 +3374,8 @@ function MainApp() {
                 ? t('quickSettings.codebuddyCn.appPath', 'CodeBuddy CN 路径')
               : appPathMissing.app === 'qoder'
                 ? t('quickSettings.qoder.appPath', 'Qoder 路径')
-              : appPathMissing.app === 'trae'
+              : isTraePlatformApp(appPathMissing.app)
                 ? t('quickSettings.trae.appPath', 'Trae 路径')
-              : appPathMissing.app === 'zed'
-                ? t('quickSettings.zed.appPath', 'Zed 路径')
               : t('quickSettings.antigravity.appPath', '启动路径')
     : t('quickSettings.antigravity.appPath', '启动路径');
   const appPathMissingBusy = appPathSetting || appPathDetecting || appPathCodexLaunchSetting;
@@ -3427,10 +3415,15 @@ function MainApp() {
       {/* 版本跳跃通知（更新后首次启动） */}
       {versionJumpInfo && (
         <Suspense fallback={null}>
-          <VersionJumpNotification
-            info={versionJumpInfo}
-            onClose={() => setVersionJumpInfo(null)}
-          />
+          {showVersionJumpNotification && (
+            <VersionJumpNotification
+              info={versionJumpInfo}
+              onClose={() => {
+                setShowVersionJumpNotification(false);
+                setVersionJumpInfo(null);
+              }}
+            />
+          )}
         </Suspense>
       )}
       <GlobalModal />
@@ -3438,10 +3431,7 @@ function MainApp() {
       {/* 关闭确认对话框 */}
       {showCloseDialog && (
         <Suspense fallback={null}>
-          <CloseConfirmDialog
-            onClose={() => setShowCloseDialog(false)}
-            onAction={(action, remember) => invoke('handle_window_close', { action, remember })}
-          />
+          <CloseConfirmDialog onClose={() => setShowCloseDialog(false)} />
         </Suspense>
       )}
 
@@ -3462,8 +3452,9 @@ function MainApp() {
               <span className="qs-title">{t('appPath.missing.title', '未找到应用程序路径')}</span>
               <button
                 className="qs-close"
-                onClick={dismissAppPathMissingModal}
+                onClick={() => setAppPathMissing(null)}
                 aria-label={t('common.close', '关闭')}
+                disabled={appPathMissingBusy}
               >
                 <X size={16} />
               </button>
@@ -3516,7 +3507,7 @@ function MainApp() {
                   <FolderOpen size={15} />
                   <span>{appPathMissingPathLabel}</span>
                 </div>
-                {(
+                {isWindowsPlatform() ? (
                   <div className="app-path-missing-scan-roots">
                     <label>{t('appPath.missing.scanRoots', '扫描范围')}</label>
                     <div className="app-path-missing-scan-root-row">
@@ -3534,14 +3525,14 @@ function MainApp() {
                       <div className="qs-path-actions">
                         <button
                           className="qs-btn"
-                          onClick={handlePickMissingClaudeScanRoot}
+                          onClick={handlePickMissingAppScanRoot}
                           disabled={appPathMissingBusy}
                         >
                           {t('settings.general.codexPathSelect', '选择')}
                         </button>
                         <button
                           className="qs-btn"
-                          onClick={handleClearMissingClaudeScanRoot}
+                          onClick={handleClearMissingAppScanRoot}
                           disabled={appPathMissingBusy || !appPathScanRootsDraft.trim()}
                         >
                           {t('common.clear', '清除')}
@@ -3549,7 +3540,7 @@ function MainApp() {
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
                 <div className="qs-path-control">
                   <input
                     type="text"
@@ -3581,7 +3572,9 @@ function MainApp() {
                       title={
                         appPathDetecting
                           ? t('common.loading', '加载中...')
-                          : (
+                          : isWindowsPlatform()
+                            ? t('appPath.missing.scanApps', '鎵弿搴旂敤')
+                            : (
                             appPathMissing.app === 'vscode'
                               ? t('settings.general.vscodePathReset', '重置默认')
                               : appPathMissing.app === 'windsurf'
@@ -3596,15 +3589,13 @@ function MainApp() {
                                       ? t('settings.general.codebuddyPathReset', '重置默认')
                                     : appPathMissing.app === 'qoder'
                                       ? t('settings.general.qoderPathReset', '重置默认')
-                                    : appPathMissing.app === 'trae'
+                                    : isTraePlatformApp(appPathMissing.app)
                                       ? t('settings.general.traePathReset', '重置默认')
-                                    : appPathMissing.app === 'zed'
-                                      ? t('settings.general.zedPathReset', '重置默认')
                                     : t('settings.general.codexPathReset', '重置默认')
                           )
                       }
                     >
-                      {appPathMissing.app === 'claude' ? (
+                      {isWindowsPlatform() ? (
                         appPathDetecting
                           ? t('common.loading', '加载中...')
                           : t('appPath.missing.scanApps', '扫描应用')
@@ -3614,7 +3605,7 @@ function MainApp() {
                     </button>
                   </div>
                 </div>
-                {(
+                {isWindowsPlatform() ? (
                   <>
                     {appLaunchCandidates.length > 0 ? (
                       <div className="app-path-candidate-list">
@@ -3625,16 +3616,14 @@ function MainApp() {
                             className={`app-path-candidate-item${
                               appPathDraft.trim() === candidate.target ? ' selected' : ''
                             }`}
-                            onClick={() => handleSelectClaudeLaunchCandidate(candidate)}
+                            onClick={() => handleSelectAppLaunchCandidate(candidate)}
                             disabled={
                               appPathMissingBusy ||
-                              (appPathMissing.app === 'claude' &&
-                                claudeMultiInstanceNeedsExe &&
-                                !candidate.supports_multi_instance)
+                              (claudeMultiInstanceNeedsExe && !candidate.supports_multi_instance)
                             }
                           >
                             <div className="app-path-candidate-main">
-                              <span>{candidate.label || appPathMissing.app}</span>
+                              <span>{candidate.label || appPathMissingAppName}</span>
                               <span className="app-path-candidate-badge">
                                 {candidate.target_type === 'windows_app'
                                   ? t('appPath.missing.windowsApp', 'Microsoft Store')
@@ -3642,7 +3631,7 @@ function MainApp() {
                               </span>
                             </div>
                             <div className="app-path-candidate-target">{candidate.target}</div>
-                            {appPathMissing.app === 'claude' && !candidate.supports_multi_instance ? (
+                            {!candidate.supports_multi_instance ? (
                               <div className="app-path-candidate-note">
                                 {t(
                                   'appPath.missing.defaultOnly',
@@ -3655,7 +3644,7 @@ function MainApp() {
                       </div>
                     ) : null}
                   </>
-                )}
+                ) : null}
                 {appPathActionError ? (
                   <p className="app-path-missing-error">
                     {t('messages.switchFailed', { error: appPathActionError })}
@@ -3667,7 +3656,8 @@ function MainApp() {
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={dismissAppPathMissingModal}
+                onClick={() => setAppPathMissing(null)}
+                disabled={appPathMissingBusy}
               >
                 {t('common.cancel', '取消')}
               </button>
@@ -3740,19 +3730,19 @@ function MainApp() {
               onNavigate={setPage}
               onOpenPlatformLayout={openPlatformLayoutModal}
               onEasterEggTriggerClick={handleBreakoutEntryTriggerClick}
-              topCenterBanner={<TopCenterPromoBanner reserveWhenEmpty={false} />}
+              topCenterBanner={
+                topRightAdVisible && topRightAdState.ads.length > 0 ? (
+                  <TopCenterPromoBanner reserveWhenEmpty={false} />
+                ) : null
+              }
             />
           )}
           {page === 'api-relay' && <ApiKeyFunPage />}
-          {page === 'overview' && <AntigravitySuitePage initialTab="overview" onNavigate={setPage} />}
+          {page === 'overview' && <AccountsPage onNavigate={setPage} />}
           {page === 'codex' && <CodexAccountsPage />}
           {page === 'claude' && <ClaudeAccountsPage subPlatform="desktop" />}
           {page === 'claude-cli' && <ClaudeAccountsPage subPlatform="cli" />}
-          {page === 'codex-api-service' && (
-            codexRuntimeReady
-              ? <CodexApiServicePage />
-              : <CodexAccountsPage />
-          )}
+          {page === 'codex-api-service' && <CodexApiServicePage />}
           {page === 'github-copilot' && <GitHubCopilotAccountsPage />}
           {page === 'windsurf' && <WindsurfAccountsPage />}
           {page === 'kiro' && <KiroAccountsPage />}
@@ -3761,12 +3751,15 @@ function MainApp() {
           {page === 'codebuddy' && <CodebuddyAccountsPage />}
           {page === 'codebuddy-cn' && <CodebuddyCnAccountsPage />}
           {page === 'qoder' && <QoderAccountsPage />}
-          {page === 'trae' && <TraeAccountsPage />}
+          {page === 'trae' && <TraeAccountsPage platformId="trae" />}
+          {page === 'trae-solo' && <TraeAccountsPage platformId="trae_solo" />}
+          {page === 'trae-cn' && <TraeAccountsPage platformId="trae_cn" />}
+          {page === 'trae-solo-cn' && <TraeAccountsPage platformId="trae_solo_cn" />}
           {page === 'workbuddy' && <WorkbuddyAccountsPage />}
           {page === 'zed' && <ZedAccountsPage />}
-          {page === 'instances' && <AntigravitySuitePage initialTab="instances" onNavigate={setPage} />}
-          {page === 'wakeup' && <AntigravitySuitePage initialTab="wakeup" onNavigate={setPage} />}
-          {page === 'verification' && <AntigravitySuitePage initialTab="verification" onNavigate={setPage} />}
+          {page === 'instances' && <InstancesPage onNavigate={setPage} />}
+          {page === 'wakeup' && <WakeupTasksPage onNavigate={setPage} />}
+          {page === 'verification' && <WakeupVerificationPage onNavigate={setPage} />}
           {page === '2fa' && <TwoFactorAuthPage />}
           {page === 'manual' && (
             <ManualPage

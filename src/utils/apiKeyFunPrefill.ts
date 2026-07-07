@@ -70,12 +70,12 @@ function normalizeApiKeyFunPrefillPayload(value: unknown): ApiKeyFunPrefillPaylo
   const sourceTag = normalizeNullableString(input.sourceTag);
   const modelCatalog = normalizeStringArray(input.modelCatalog);
   if (
-    codexWriteMode === null && input.codexWriteMode != null ||
-    apiKeyName === null && input.apiKeyName != null ||
-    providerName === null && input.providerName != null ||
-    baseUrl === null && input.baseUrl != null ||
-    sourceTag === null && input.sourceTag != null ||
-    modelCatalog === null && input.modelCatalog != null
+    (codexWriteMode === null && input.codexWriteMode != null) ||
+    (apiKeyName === null && input.apiKeyName != null) ||
+    (providerName === null && input.providerName != null) ||
+    (baseUrl === null && input.baseUrl != null) ||
+    (sourceTag === null && input.sourceTag != null) ||
+    (modelCatalog === null && input.modelCatalog != null)
   ) {
     return null;
   }
@@ -173,30 +173,12 @@ export function dispatchApiKeyFunPrefillEvent(payload: ApiKeyFunPrefillPayload):
 
 export function consumeApiKeyFunPrefill(
   target: ApiKeyFunPrefillTarget,
-  event?: Event,
 ): ApiKeyFunPrefillPayload | null {
-  const eventPayload = normalizeApiKeyFunPrefillPayload(
-    event instanceof CustomEvent ? event.detail : null,
-  );
-  if (eventPayload?.target === target) {
-    pendingPrefill = null;
-    clearSharedPendingPrefill();
-    return eventPayload;
+  const payload = pendingPrefill ?? readSharedPendingPrefill();
+  if (!payload || payload.target !== target) {
+    return null;
   }
-
-  if (pendingPrefill?.target === target) {
-    const payload = pendingPrefill;
-    pendingPrefill = null;
-    clearSharedPendingPrefill();
-    return payload;
-  }
-
-  const sharedPayload = readSharedPendingPrefill();
-  if (sharedPayload?.target === target) {
-    pendingPrefill = null;
-    clearSharedPendingPrefill();
-    return sharedPayload;
-  }
-
-  return null;
+  pendingPrefill = null;
+  clearSharedPendingPrefill();
+  return payload;
 }

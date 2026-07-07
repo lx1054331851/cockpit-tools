@@ -18,23 +18,59 @@ static TRAE_INSTANCE_STORE_LOCK: std::sync::LazyLock<Mutex<()>> =
 
 const TRAE_INSTANCES_FILE: &str = "trae_instances.json";
 
+fn instances_file_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> &'static str {
+    match platform {
+        crate::modules::trae_account::TraePlatformKind::Trae => TRAE_INSTANCES_FILE,
+        crate::modules::trae_account::TraePlatformKind::TraeSolo => "trae_solo_instances.json",
+        crate::modules::trae_account::TraePlatformKind::TraeCn => "trae_cn_instances.json",
+        crate::modules::trae_account::TraePlatformKind::TraeSoloCn => "trae_solo_cn_instances.json",
+    }
+}
+
 fn instances_path() -> Result<PathBuf, String> {
+    instances_path_for_platform(crate::modules::trae_account::TraePlatformKind::Trae)
+}
+
+fn instances_path_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> Result<PathBuf, String> {
     let data_dir = modules::account::get_data_dir()?;
-    Ok(data_dir.join(TRAE_INSTANCES_FILE))
+    Ok(data_dir.join(instances_file_for_platform(platform)))
 }
 
 pub fn load_instance_store() -> Result<InstanceStore, String> {
-    let path = instances_path()?;
-    instance_store::load_instance_store(&path, TRAE_INSTANCES_FILE)
+    load_instance_store_for_platform(crate::modules::trae_account::TraePlatformKind::Trae)
+}
+
+pub fn load_instance_store_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> Result<InstanceStore, String> {
+    let path = instances_path_for_platform(platform)?;
+    instance_store::load_instance_store(&path, instances_file_for_platform(platform))
 }
 
 pub fn save_instance_store(store: &InstanceStore) -> Result<(), String> {
-    let path = instances_path()?;
-    instance_store::save_instance_store(&path, TRAE_INSTANCES_FILE, store)
+    save_instance_store_for_platform(crate::modules::trae_account::TraePlatformKind::Trae, store)
+}
+
+pub fn save_instance_store_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+    store: &InstanceStore,
+) -> Result<(), String> {
+    let path = instances_path_for_platform(platform)?;
+    instance_store::save_instance_store(&path, instances_file_for_platform(platform), store)
 }
 
 pub fn load_default_settings() -> Result<DefaultInstanceSettings, String> {
-    let store = load_instance_store()?;
+    load_default_settings_for_platform(crate::modules::trae_account::TraePlatformKind::Trae)
+}
+
+pub fn load_default_settings_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> Result<DefaultInstanceSettings, String> {
+    let store = load_instance_store_for_platform(platform)?;
     Ok(store.default_settings)
 }
 
@@ -43,10 +79,24 @@ pub fn update_default_settings(
     extra_args: Option<String>,
     follow_local_account: Option<bool>,
 ) -> Result<DefaultInstanceSettings, String> {
+    update_default_settings_for_platform(
+        crate::modules::trae_account::TraePlatformKind::Trae,
+        bind_account_id,
+        extra_args,
+        follow_local_account,
+    )
+}
+
+pub fn update_default_settings_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+    bind_account_id: Option<Option<String>>,
+    extra_args: Option<String>,
+    follow_local_account: Option<bool>,
+) -> Result<DefaultInstanceSettings, String> {
     let _lock = TRAE_INSTANCE_STORE_LOCK
         .lock()
         .map_err(|_| "无法获取实例锁")?;
-    let mut store = load_instance_store()?;
+    let mut store = load_instance_store_for_platform(platform)?;
     let settings = &mut store.default_settings;
 
     // Trae 实例暂不支持“跟随当前账号”。
@@ -64,21 +114,72 @@ pub fn update_default_settings(
     }
 
     let updated = settings.clone();
-    save_instance_store(&store)?;
+    save_instance_store_for_platform(platform, &store)?;
     Ok(updated)
 }
 
 pub fn get_default_trae_user_data_dir() -> Result<PathBuf, String> {
-    crate::modules::trae_account::get_default_trae_data_dir()
+    get_default_trae_user_data_dir_for_platform(
+        crate::modules::trae_account::TraePlatformKind::Trae,
+    )
+}
+
+pub fn get_default_trae_user_data_dir_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> Result<PathBuf, String> {
+    crate::modules::trae_account::get_default_trae_data_dir_for_platform(platform)
 }
 
 pub fn get_default_instances_root_dir() -> Result<PathBuf, String> {
-    crate::modules::account::resolve_instances_dir("trae")
+    get_default_instances_root_dir_for_platform(
+        crate::modules::trae_account::TraePlatformKind::Trae,
+    )
+}
+
+pub fn get_default_instances_root_dir_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> Result<PathBuf, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let home = dirs::home_dir().ok_or("无法获取用户主目录")?;
+        return Ok(home
+            .join(".antigravity_cockpit")
+            .join("instances")
+            .join(platform.provider_key()));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let appdata =
+            std::env::var("APPDATA").map_err(|_| "无法获取 APPDATA 环境变量".to_string())?;
+        return Ok(PathBuf::from(appdata)
+            .join(".antigravity_cockpit")
+            .join("instances")
+            .join(platform.provider_key()));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let home = dirs::home_dir().ok_or("无法获取用户主目录")?;
+        return Ok(home
+            .join(".antigravity_cockpit")
+            .join("instances")
+            .join(platform.provider_key()));
+    }
+
+    #[allow(unreachable_code)]
+    Err("Trae 多开实例仅支持 macOS、Windows 和 Linux".to_string())
 }
 
 pub fn get_instance_defaults() -> Result<InstanceDefaults, String> {
-    let root_dir = get_default_instances_root_dir()?;
-    let default_user_data_dir = get_default_trae_user_data_dir()?;
+    get_instance_defaults_for_platform(crate::modules::trae_account::TraePlatformKind::Trae)
+}
+
+pub fn get_instance_defaults_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+) -> Result<InstanceDefaults, String> {
+    let root_dir = get_default_instances_root_dir_for_platform(platform)?;
+    let default_user_data_dir = get_default_trae_user_data_dir_for_platform(platform)?;
     Ok(InstanceDefaults {
         root_dir: root_dir.to_string_lossy().to_string(),
         default_user_data_dir: default_user_data_dir.to_string_lossy().to_string(),
@@ -175,7 +276,6 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
             params.bind_account_id
         },
         launch_mode: crate::models::InstanceLaunchMode::App,
-        app_speed: crate::models::codex::CodexAppSpeed::Standard,
         created_at: Utc::now().timestamp_millis(),
         last_launched_at: None,
         last_pid: None,
@@ -320,11 +420,35 @@ pub struct TraeRunningBoundAccountContext {
     pub storage_path: PathBuf,
 }
 
+fn all_trae_platform_kinds() -> [crate::modules::trae_account::TraePlatformKind; 4] {
+    [
+        crate::modules::trae_account::TraePlatformKind::Trae,
+        crate::modules::trae_account::TraePlatformKind::TraeSolo,
+        crate::modules::trae_account::TraePlatformKind::TraeCn,
+        crate::modules::trae_account::TraePlatformKind::TraeSoloCn,
+    ]
+}
+
 pub fn resolve_running_bound_account_contexts(
 ) -> Result<Vec<TraeRunningBoundAccountContext>, String> {
-    let store = load_instance_store()?;
     let mut contexts = Vec::new();
     let mut seen_ids = BTreeSet::new();
+    for platform in all_trae_platform_kinds() {
+        resolve_running_bound_account_contexts_for_platform(
+            platform,
+            &mut seen_ids,
+            &mut contexts,
+        )?;
+    }
+    Ok(contexts)
+}
+
+fn resolve_running_bound_account_contexts_for_platform(
+    platform: crate::modules::trae_account::TraePlatformKind,
+    seen_ids: &mut BTreeSet<String>,
+    contexts: &mut Vec<TraeRunningBoundAccountContext>,
+) -> Result<(), String> {
+    let store = load_instance_store_for_platform(platform)?;
 
     if store
         .default_settings
@@ -340,7 +464,7 @@ pub fn resolve_running_bound_account_contexts(
             .filter(|value| !value.is_empty())
         {
             if seen_ids.insert(bind.to_string()) {
-                let default_dir = get_default_trae_user_data_dir()?;
+                let default_dir = get_default_trae_user_data_dir_for_platform(platform)?;
                 let storage_path = default_dir
                     .join("User")
                     .join("globalStorage")
@@ -377,5 +501,5 @@ pub fn resolve_running_bound_account_contexts(
         }
     }
 
-    Ok(contexts)
+    Ok(())
 }

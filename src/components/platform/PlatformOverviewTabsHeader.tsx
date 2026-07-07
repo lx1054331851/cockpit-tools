@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, Clock3, FolderOpen, Github, Layers, Server } from 'lucide-react';
+import { Clock3, FolderOpen, Github, Layers, Server } from 'lucide-react';
 import { CodexIcon } from '../icons/CodexIcon';
 import { ClaudeIcon } from '../icons/ClaudeIcon';
 import { WindsurfIcon } from '../icons/WindsurfIcon';
@@ -9,6 +9,7 @@ import { CursorIcon } from '../icons/CursorIcon';
 import { GeminiIcon } from '../icons/GeminiIcon';
 import { CodebuddyIcon } from '../icons/CodebuddyIcon';
 import { QoderIcon } from '../icons/QoderIcon';
+import { TraeCnIcon, TraeIcon, TraeSoloCnIcon, TraeSoloIcon } from '../icons/TraeIcon';
 import { WorkbuddyIcon } from '../icons/WorkbuddyIcon';
 import { ZedIcon } from '../icons/ZedIcon';
 import { ManualHelpIconButton } from '../ManualHelpIconButton';
@@ -27,7 +28,6 @@ export type PlatformOverviewTab = 'overview' | 'wakeup' | 'instances' | 'session
 export type PlatformOverviewHeaderId =
   | 'codex'
   | 'claude'
-  | 'claude_manager'
   | 'zed'
   | 'github-copilot'
   | 'windsurf'
@@ -38,6 +38,9 @@ export type PlatformOverviewHeaderId =
   | 'codebuddy_cn'
   | 'qoder'
   | 'trae'
+  | 'trae_solo'
+  | 'trae_cn'
+  | 'trae_solo_cn'
   | 'workbuddy';
 
 interface PlatformOverviewTabsHeaderProps {
@@ -45,9 +48,6 @@ interface PlatformOverviewTabsHeaderProps {
   active: PlatformOverviewTab;
   onTabChange?: (tab: PlatformOverviewTab) => void;
   tabs?: PlatformOverviewTab[];
-  rightSlot?: ReactNode;
-  hideTabs?: boolean;
-  remoteTabsSlotId?: string;
 }
 
 interface PlatformOverviewConfig {
@@ -67,10 +67,6 @@ const CONFIGS: Record<PlatformOverviewHeaderId, PlatformOverviewConfig> = {
     overviewIcon: <CodexIcon className="tab-icon" />,
   },
   claude: {
-    platformLabel: 'Claude',
-    overviewIcon: <ClaudeIcon className="tab-icon" />,
-  },
-  claude_manager: {
     platformLabel: 'Claude',
     overviewIcon: <ClaudeIcon className="tab-icon" />,
   },
@@ -112,7 +108,19 @@ const CONFIGS: Record<PlatformOverviewHeaderId, PlatformOverviewConfig> = {
   },
   trae: {
     platformLabel: 'Trae',
-    overviewIcon: <Bot className="tab-icon" />,
+    overviewIcon: <TraeIcon className="tab-icon" />,
+  },
+  trae_solo: {
+    platformLabel: 'TRAE SOLO',
+    overviewIcon: <TraeSoloIcon className="tab-icon" />,
+  },
+  trae_cn: {
+    platformLabel: 'Trae CN',
+    overviewIcon: <TraeCnIcon className="tab-icon" />,
+  },
+  trae_solo_cn: {
+    platformLabel: 'TRAE SOLO CN',
+    overviewIcon: <TraeSoloCnIcon className="tab-icon" />,
   },
   workbuddy: {
     platformLabel: 'WorkBuddy',
@@ -125,9 +133,6 @@ export function PlatformOverviewTabsHeader({
   active,
   onTabChange,
   tabs,
-  rightSlot,
-  hideTabs = false,
-  remoteTabsSlotId,
 }: PlatformOverviewTabsHeaderProps) {
   const { t } = useTranslation();
   const { platformGroups } = usePlatformLayoutStore();
@@ -231,13 +236,7 @@ export function PlatformOverviewTabsHeader({
           <ManualHelpIconButton className="platform-header-help" />
         </div>
         <TopCenterPromoBanner />
-        {rightSlot ? (
-          <div className="page-top-strip-right page-top-strip-right-slot">
-            {rightSlot}
-          </div>
-        ) : (
-          <div className="page-top-strip-right-placeholder" aria-hidden="true" />
-        )}
+        <div className="page-top-strip-right-placeholder" aria-hidden="true" />
       </div>
       <div className="page-tabs-row page-tabs-center page-tabs-row-with-leading">
         <div className="page-tabs-leading">
@@ -249,25 +248,18 @@ export function PlatformOverviewTabsHeader({
             extraOptions={extraSwitchOptions}
           />
         </div>
-        {remoteTabsSlotId ? (
-          <div
-            id={remoteTabsSlotId}
-            className="page-tabs filter-tabs platform-remote-tabs-slot"
-          />
-        ) : !hideTabs && (
-          <div className="page-tabs filter-tabs">
-            {tabSpecs.map((tab) => (
-              <button
-                key={tab.key}
-                className={`filter-tab${active === tab.key ? ' active' : ''}`}
-                onClick={() => onTabChange?.(tab.key)}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="page-tabs filter-tabs">
+          {tabSpecs.map((tab) => (
+            <button
+              key={tab.key}
+              className={`filter-tab${active === tab.key ? ' active' : ''}`}
+              onClick={() => onTabChange?.(tab.key)}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </>
   );

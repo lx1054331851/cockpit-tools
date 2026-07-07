@@ -9,11 +9,15 @@ import type {
   CodexInstanceTargetThreadSyncSummary,
   CodexSessionRecord,
   CodexSessionSearchOptions,
-  CodexSessionPermanentDeleteSummary,
   CodexSessionTokenStats,
   CodexSessionTrashSummary,
   CodexTrashedSessionRecord,
   CodexSessionRestoreSummary,
+  CodexSessionTrashDeleteSummary,
+  CodexSessionExportPreview,
+  CodexSessionExportSummary,
+  CodexSessionImportPreview,
+  CodexSessionImportSummary,
   CodexQuickConfig,
   CodexAppSpeed,
 } from "../types/codex";
@@ -239,18 +243,64 @@ export async function restoreSessionsFromTrashAcrossInstances(
   });
 }
 
-export async function deleteSessionsPermanentlyAcrossInstances(
+export async function deleteTrashedSessionsAcrossInstances(
   sessionIds: string[],
-): Promise<CodexSessionPermanentDeleteSummary> {
-  return await invoke("codex_delete_sessions_permanently_across_instances", {
+): Promise<CodexSessionTrashDeleteSummary> {
+  return await invoke("codex_delete_trashed_sessions_across_instances", {
     sessionIds,
   });
 }
 
-export async function deleteTrashedSessionsPermanentlyAcrossInstances(
+export async function emptySessionTrashAcrossInstances(): Promise<CodexSessionTrashDeleteSummary> {
+  return await invoke("codex_empty_session_trash_across_instances");
+}
+
+export async function previewSessionExport(
   sessionIds: string[],
-): Promise<CodexSessionPermanentDeleteSummary> {
-  return await invoke("codex_delete_trashed_sessions_permanently_across_instances", {
+): Promise<CodexSessionExportPreview> {
+  return await invoke("codex_preview_session_export", {
     sessionIds,
+  });
+}
+
+export async function exportSessions(
+  sessionIds: string[],
+  exportPath: string,
+  transferId?: string | null,
+): Promise<CodexSessionExportSummary> {
+  return await invoke("codex_export_sessions", {
+    sessionIds,
+    exportPath,
+    transferId: transferId ?? null,
+  });
+}
+
+export async function previewSessionImport(
+  importFilePath: string,
+  targetInstanceId?: string | null,
+): Promise<CodexSessionImportPreview> {
+  return await invoke("codex_preview_session_import", {
+    importFilePath,
+    targetInstanceId: targetInstanceId ?? null,
+  });
+}
+
+export async function importSessions(
+  importFilePath: string,
+  targetInstanceId: string,
+  sessionIds: string[],
+  transferId?: string | null,
+): Promise<CodexSessionImportSummary> {
+  return await invoke("codex_import_sessions", {
+    importFilePath,
+    targetInstanceId,
+    sessionIds,
+    transferId: transferId ?? null,
+  });
+}
+
+export async function openSessionLocation(sessionId: string): Promise<void> {
+  return await invoke("codex_open_session_location", {
+    sessionId,
   });
 }

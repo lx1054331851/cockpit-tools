@@ -49,9 +49,7 @@ export function AccountSelectionToolbar({
         )}
       </div>
       {hasSelection && actions ? (
-        <div className="codex-overview-selection-actions">
-          {actions}
-        </div>
+        <div className="codex-overview-selection-actions">{actions}</div>
       ) : null}
     </div>
   );

@@ -3,7 +3,6 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
@@ -21,26 +20,6 @@ const SERVER_STATUS_FILE: &str = "server.json";
 
 /// 用户配置文件名
 const USER_CONFIG_FILE: &str = "config.json";
-
-const LOCAL_PROXY_BYPASS_HOSTS: [&str; 5] =
-    ["127.0.0.1", "127.0.0.0/8", "localhost", "::1", "::1/128"];
-
-pub fn merge_local_no_proxy(raw: &str) -> String {
-    let mut values: Vec<String> = raw
-        .split(',')
-        .map(str::trim)
-        .filter(|item| !item.is_empty())
-        .map(str::to_string)
-        .collect();
-
-    for host in LOCAL_PROXY_BYPASS_HOSTS {
-        if !values.iter().any(|item| item.eq_ignore_ascii_case(host)) {
-            values.push(host.to_string());
-        }
-    }
-
-    values.join(",")
-}
 
 /// 服务状态（写入共享文件供其他客户端读取）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,6 +61,12 @@ pub struct UserConfig {
     /// NO_PROXY 白名单（逗号分隔）
     #[serde(default = "default_global_proxy_no_proxy")]
     pub global_proxy_no_proxy: String,
+    /// 是否启用匿名错误诊断上报
+    #[serde(default = "default_diagnostics_error_reporting_enabled")]
+    pub diagnostics_error_reporting_enabled: bool,
+    /// 是否输出错误诊断上报调试日志
+    #[serde(default = "default_diagnostics_error_reporting_debug")]
+    pub diagnostics_error_reporting_debug: bool,
     /// 界面语言
     #[serde(default = "default_language")]
     pub language: String,
@@ -145,6 +130,12 @@ pub struct UserConfig {
     /// Trae 自动刷新间隔（分钟），-1 表示禁用
     #[serde(default = "default_trae_auto_refresh")]
     pub trae_auto_refresh_minutes: i32,
+    #[serde(default = "default_trae_auto_refresh")]
+    pub trae_solo_auto_refresh_minutes: i32,
+    #[serde(default = "default_trae_auto_refresh")]
+    pub trae_cn_auto_refresh_minutes: i32,
+    #[serde(default = "default_trae_auto_refresh")]
+    pub trae_solo_cn_auto_refresh_minutes: i32,
     /// 窗口关闭行为
     #[serde(default = "default_close_behavior")]
     pub close_behavior: CloseWindowBehavior,
@@ -157,12 +148,6 @@ pub struct UserConfig {
     /// 菜单栏图标样式（macOS）
     #[serde(default = "default_tray_icon_style")]
     pub tray_icon_style: TrayIconStyle,
-    /// 冷启动启动页面：页面 ID 或 last_closed
-    #[serde(default = "default_startup_page")]
-    pub startup_page: String,
-    /// 上次主窗口关闭/隐藏时所在页面
-    #[serde(default = "default_last_closed_page")]
-    pub last_closed_page: String,
     /// 是否在启动后自动显示悬浮卡片
     #[serde(default = "default_floating_card_show_on_startup")]
     pub floating_card_show_on_startup: bool,
@@ -259,12 +244,8 @@ pub struct UserConfig {
     /// Claude 桌面应用启动路径（为空则使用默认路径）
     #[serde(default = "default_claude_app_path")]
     pub claude_app_path: String,
-    #[serde(default = "default_gemini_app_path")]
-    pub gemini_app_path: String,
     #[serde(default = "default_claude_app_scan_roots")]
     pub claude_app_scan_roots: String,
-    #[serde(default = "default_app_scan_roots")]
-    pub app_scan_roots: HashMap<String, String>,
     /// 切换 Codex 后需联动重启的指定应用路径
     #[serde(default = "default_codex_specified_app_path")]
     pub codex_specified_app_path: String,
@@ -295,6 +276,21 @@ pub struct UserConfig {
     /// Trae 启动路径（为空则使用默认路径）
     #[serde(default = "default_trae_app_path")]
     pub trae_app_path: String,
+    #[serde(default = "default_trae_app_path")]
+    pub trae_solo_app_path: String,
+    #[serde(default = "default_trae_app_path")]
+    pub trae_cn_app_path: String,
+    #[serde(default = "default_trae_app_path")]
+    pub trae_solo_cn_app_path: String,
+    /// Trae Windows 应用扫描范围（每行一个目录）
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_app_scan_roots: String,
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_solo_app_scan_roots: String,
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_cn_app_scan_roots: String,
+    #[serde(default = "default_trae_app_scan_roots")]
+    pub trae_solo_cn_app_scan_roots: String,
     /// WorkBuddy 启动路径（为空则使用默认路径）
     #[serde(default = "default_workbuddy_app_path")]
     pub workbuddy_app_path: String,
@@ -319,6 +315,9 @@ pub struct UserConfig {
     /// 切换 Codex 时是否自动启动/重启 Codex App
     #[serde(default = "default_codex_launch_on_switch")]
     pub codex_launch_on_switch: bool,
+    /// 切换 Antigravity IDE 时是否自动启动/重启应用
+    #[serde(default = "default_antigravity_launch_on_switch")]
+    pub antigravity_launch_on_switch: bool,
     /// 切换 Codex 时是否自动重启指定应用
     #[serde(default = "default_codex_restart_specified_app_on_switch")]
     pub codex_restart_specified_app_on_switch: bool,
@@ -454,6 +453,18 @@ pub struct UserConfig {
     /// Trae 配额预警阈值（百分比）
     #[serde(default = "default_trae_quota_alert_threshold")]
     pub trae_quota_alert_threshold: i32,
+    #[serde(default = "default_trae_quota_alert_enabled")]
+    pub trae_solo_quota_alert_enabled: bool,
+    #[serde(default = "default_trae_quota_alert_threshold")]
+    pub trae_solo_quota_alert_threshold: i32,
+    #[serde(default = "default_trae_quota_alert_enabled")]
+    pub trae_cn_quota_alert_enabled: bool,
+    #[serde(default = "default_trae_quota_alert_threshold")]
+    pub trae_cn_quota_alert_threshold: i32,
+    #[serde(default = "default_trae_quota_alert_enabled")]
+    pub trae_solo_cn_quota_alert_enabled: bool,
+    #[serde(default = "default_trae_quota_alert_threshold")]
+    pub trae_solo_cn_quota_alert_threshold: i32,
     /// 是否启用 WorkBuddy 配额预警通知
     #[serde(default = "default_workbuddy_quota_alert_enabled")]
     pub workbuddy_quota_alert_enabled: bool,
@@ -552,6 +563,12 @@ fn default_global_proxy_url() -> String {
 fn default_global_proxy_no_proxy() -> String {
     "127.0.0.1,localhost,::1".to_string()
 }
+fn default_diagnostics_error_reporting_enabled() -> bool {
+    true
+}
+fn default_diagnostics_error_reporting_debug() -> bool {
+    false
+}
 fn default_language() -> String {
     "zh-cn".to_string()
 }
@@ -626,12 +643,6 @@ fn default_hide_dock_icon() -> bool {
 }
 fn default_tray_icon_style() -> TrayIconStyle {
     TrayIconStyle::Template
-}
-fn default_startup_page() -> String {
-    "dashboard".to_string()
-}
-fn default_last_closed_page() -> String {
-    "dashboard".to_string()
 }
 fn default_floating_card_show_on_startup() -> bool {
     false
@@ -727,14 +738,8 @@ fn default_codex_app_path() -> String {
 fn default_claude_app_path() -> String {
     String::new()
 }
-fn default_gemini_app_path() -> String {
-    String::new()
-}
 fn default_claude_app_scan_roots() -> String {
     String::new()
-}
-fn default_app_scan_roots() -> HashMap<String, String> {
-    HashMap::new()
 }
 fn default_codex_specified_app_path() -> String {
     String::new()
@@ -766,6 +771,9 @@ fn default_qoder_app_path() -> String {
 fn default_trae_app_path() -> String {
     String::new()
 }
+fn default_trae_app_scan_roots() -> String {
+    String::new()
+}
 fn default_workbuddy_app_path() -> String {
     String::new()
 }
@@ -788,6 +796,9 @@ fn default_openclaw_auth_overwrite_on_switch() -> bool {
     false
 }
 fn default_codex_launch_on_switch() -> bool {
+    true
+}
+fn default_antigravity_launch_on_switch() -> bool {
     true
 }
 fn default_codex_restart_specified_app_on_switch() -> bool {
@@ -943,6 +954,8 @@ impl Default for UserConfig {
             global_proxy_enabled: default_global_proxy_enabled(),
             global_proxy_url: default_global_proxy_url(),
             global_proxy_no_proxy: default_global_proxy_no_proxy(),
+            diagnostics_error_reporting_enabled: default_diagnostics_error_reporting_enabled(),
+            diagnostics_error_reporting_debug: default_diagnostics_error_reporting_debug(),
             language: default_language(),
             default_terminal: default_default_terminal(),
             theme: default_theme(),
@@ -964,12 +977,13 @@ impl Default for UserConfig {
             workbuddy_auto_refresh_minutes: default_workbuddy_auto_refresh(),
             qoder_auto_refresh_minutes: default_qoder_auto_refresh(),
             trae_auto_refresh_minutes: default_trae_auto_refresh(),
+            trae_solo_auto_refresh_minutes: default_trae_auto_refresh(),
+            trae_cn_auto_refresh_minutes: default_trae_auto_refresh(),
+            trae_solo_cn_auto_refresh_minutes: default_trae_auto_refresh(),
             close_behavior: default_close_behavior(),
             minimize_behavior: default_minimize_behavior(),
             hide_dock_icon: default_hide_dock_icon(),
             tray_icon_style: default_tray_icon_style(),
-            startup_page: default_startup_page(),
-            last_closed_page: default_last_closed_page(),
             floating_card_show_on_startup: default_floating_card_show_on_startup(),
             startup_minimized: default_startup_minimized(),
             floating_card_always_on_top: default_floating_card_always_on_top(),
@@ -1003,9 +1017,7 @@ impl Default for UserConfig {
             antigravity_app_path: default_antigravity_app_path(),
             codex_app_path: default_codex_app_path(),
             claude_app_path: default_claude_app_path(),
-            gemini_app_path: default_gemini_app_path(),
             claude_app_scan_roots: default_claude_app_scan_roots(),
-            app_scan_roots: default_app_scan_roots(),
             codex_specified_app_path: default_codex_specified_app_path(),
             zed_app_path: default_zed_app_path(),
             vscode_app_path: default_vscode_app_path(),
@@ -1016,6 +1028,13 @@ impl Default for UserConfig {
             codebuddy_cn_app_path: default_codebuddy_cn_app_path(),
             qoder_app_path: default_qoder_app_path(),
             trae_app_path: default_trae_app_path(),
+            trae_solo_app_path: default_trae_app_path(),
+            trae_cn_app_path: default_trae_app_path(),
+            trae_solo_cn_app_path: default_trae_app_path(),
+            trae_app_scan_roots: default_trae_app_scan_roots(),
+            trae_solo_app_scan_roots: default_trae_app_scan_roots(),
+            trae_cn_app_scan_roots: default_trae_app_scan_roots(),
+            trae_solo_cn_app_scan_roots: default_trae_app_scan_roots(),
             workbuddy_app_path: default_workbuddy_app_path(),
             opencode_sync_on_switch: default_opencode_sync_on_switch(),
             opencode_auth_overwrite_on_switch: default_opencode_auth_overwrite_on_switch(),
@@ -1025,6 +1044,7 @@ impl Default for UserConfig {
             ghcp_launch_on_switch: default_ghcp_launch_on_switch(),
             openclaw_auth_overwrite_on_switch: default_openclaw_auth_overwrite_on_switch(),
             codex_launch_on_switch: default_codex_launch_on_switch(),
+            antigravity_launch_on_switch: default_antigravity_launch_on_switch(),
             codex_restart_specified_app_on_switch: default_codex_restart_specified_app_on_switch(),
             codex_local_access_entry_visible: default_codex_local_access_entry_visible(),
             top_right_ad_visible: default_top_right_ad_visible(),
@@ -1072,6 +1092,12 @@ impl Default for UserConfig {
             qoder_quota_alert_threshold: default_qoder_quota_alert_threshold(),
             trae_quota_alert_enabled: default_trae_quota_alert_enabled(),
             trae_quota_alert_threshold: default_trae_quota_alert_threshold(),
+            trae_solo_quota_alert_enabled: default_trae_quota_alert_enabled(),
+            trae_solo_quota_alert_threshold: default_trae_quota_alert_threshold(),
+            trae_cn_quota_alert_enabled: default_trae_quota_alert_enabled(),
+            trae_cn_quota_alert_threshold: default_trae_quota_alert_threshold(),
+            trae_solo_cn_quota_alert_enabled: default_trae_quota_alert_enabled(),
+            trae_solo_cn_quota_alert_threshold: default_trae_quota_alert_threshold(),
             workbuddy_quota_alert_enabled: default_workbuddy_quota_alert_enabled(),
             workbuddy_quota_alert_threshold: default_workbuddy_quota_alert_threshold(),
         }
@@ -1138,7 +1164,8 @@ fn managed_proxy_env_pairs(config: &UserConfig) -> Vec<(&'static str, String)> {
         pairs.push((key, proxy_url.to_string()));
     }
 
-    let no_proxy = merge_local_no_proxy(config.global_proxy_no_proxy.trim());
+    let no_proxy =
+        crate::modules::codex_protocol::merge_local_no_proxy(config.global_proxy_no_proxy.trim());
     if !no_proxy.is_empty() {
         for key in MANAGED_PROXY_NO_PROXY_KEYS {
             pairs.push((key, no_proxy.clone()));
@@ -1204,13 +1231,13 @@ pub fn sync_global_proxy_env(config: &UserConfig) {
 
 /// 获取数据目录路径
 pub fn get_data_dir() -> Result<PathBuf, String> {
-    crate::modules::app_data::get_data_dir()
+    crate::modules::account::get_data_dir()
 }
 
 /// 获取共享目录路径（供其他模块使用）
 /// 与 get_data_dir 相同，但不返回 Result
 pub fn get_shared_dir() -> PathBuf {
-    crate::modules::app_data::resolve_data_dir()
+    crate::modules::account::resolve_data_dir()
         .unwrap_or_else(|_| PathBuf::from(".antigravity_cockpit"))
 }
 
@@ -1338,20 +1365,6 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             );
         }
 
-        if !obj.contains_key("gemini_app_path") {
-            obj.insert(
-                "gemini_app_path".to_string(),
-                json!(default_gemini_app_path()),
-            );
-        }
-
-        if !obj.contains_key("app_scan_roots") {
-            obj.insert(
-                "app_scan_roots".to_string(),
-                json!(default_app_scan_roots()),
-            );
-        }
-
         if !obj.contains_key("qoder_auto_refresh_minutes") {
             let inherited_refresh = obj
                 .get("gemini_auto_refresh_minutes")
@@ -1405,6 +1418,20 @@ pub fn load_user_config() -> Result<UserConfig, String> {
                 json!(inherited_refresh),
             );
         }
+        let inherited_trae_refresh = obj
+            .get("trae_auto_refresh_minutes")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32)
+            .unwrap_or_else(default_trae_auto_refresh);
+        for key in [
+            "trae_solo_auto_refresh_minutes",
+            "trae_cn_auto_refresh_minutes",
+            "trae_solo_cn_auto_refresh_minutes",
+        ] {
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), json!(inherited_trae_refresh));
+            }
+        }
 
         if !obj.contains_key("hide_dock_icon") {
             let inherited_hide_dock_icon = obj
@@ -1422,17 +1449,6 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "tray_icon_style".to_string(),
                 json!(default_tray_icon_style()),
-            );
-        }
-
-        if !obj.contains_key("startup_page") {
-            obj.insert("startup_page".to_string(), json!(default_startup_page()));
-        }
-
-        if !obj.contains_key("last_closed_page") {
-            obj.insert(
-                "last_closed_page".to_string(),
-                json!(default_last_closed_page()),
             );
         }
 
@@ -1461,13 +1477,6 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "app_auto_launch_enabled".to_string(),
                 json!(default_app_auto_launch_enabled()),
-            );
-        }
-
-        if !obj.contains_key("token_keeper_enabled") {
-            obj.insert(
-                "token_keeper_enabled".to_string(),
-                json!(default_token_keeper_enabled()),
             );
         }
 
@@ -1510,6 +1519,13 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "top_right_ad_visible".to_string(),
                 json!(default_top_right_ad_visible()),
+            );
+        }
+
+        if !obj.contains_key("token_keeper_enabled") {
+            obj.insert(
+                "token_keeper_enabled".to_string(),
+                json!(default_token_keeper_enabled()),
             );
         }
 
@@ -1651,6 +1667,18 @@ pub fn load_user_config() -> Result<UserConfig, String> {
             obj.insert(
                 "global_proxy_no_proxy".to_string(),
                 json!(default_global_proxy_no_proxy()),
+            );
+        }
+        if !obj.contains_key("diagnostics_error_reporting_enabled") {
+            obj.insert(
+                "diagnostics_error_reporting_enabled".to_string(),
+                json!(default_diagnostics_error_reporting_enabled()),
+            );
+        }
+        if !obj.contains_key("diagnostics_error_reporting_debug") {
+            obj.insert(
+                "diagnostics_error_reporting_debug".to_string(),
+                json!(default_diagnostics_error_reporting_debug()),
             );
         }
 
@@ -1897,6 +1925,33 @@ pub fn load_user_config() -> Result<UserConfig, String> {
                 json!(legacy_threshold),
             );
         }
+        let inherited_trae_quota_enabled = obj
+            .get("trae_quota_alert_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(legacy_enabled);
+        let inherited_trae_quota_threshold = obj
+            .get("trae_quota_alert_threshold")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32)
+            .unwrap_or(legacy_threshold);
+        for key in [
+            "trae_solo_quota_alert_enabled",
+            "trae_cn_quota_alert_enabled",
+            "trae_solo_cn_quota_alert_enabled",
+        ] {
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), json!(inherited_trae_quota_enabled));
+            }
+        }
+        for key in [
+            "trae_solo_quota_alert_threshold",
+            "trae_cn_quota_alert_threshold",
+            "trae_solo_cn_quota_alert_threshold",
+        ] {
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), json!(inherited_trae_quota_threshold));
+            }
+        }
         if !obj.contains_key("workbuddy_quota_alert_enabled") {
             obj.insert(
                 "workbuddy_quota_alert_enabled".to_string(),
@@ -2076,21 +2131,6 @@ mod tests {
         let cfg: UserConfig =
             serde_json::from_value(serde_json::json!({})).expect("反序列化默认配置应成功");
         assert!(!cfg.openclaw_auth_overwrite_on_switch);
-    }
-
-    #[test]
-    fn startup_page_defaults_to_dashboard() {
-        let cfg = UserConfig::default();
-        assert_eq!(cfg.startup_page, "dashboard");
-        assert_eq!(cfg.last_closed_page, "dashboard");
-    }
-
-    #[test]
-    fn startup_page_missing_fields_fall_back_to_dashboard() {
-        let cfg: UserConfig =
-            serde_json::from_value(serde_json::json!({})).expect("反序列化默认配置应成功");
-        assert_eq!(cfg.startup_page, "dashboard");
-        assert_eq!(cfg.last_closed_page, "dashboard");
     }
 
     #[test]
