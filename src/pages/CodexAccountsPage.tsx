@@ -89,7 +89,7 @@ import {
   formatCodexLoginProvider,
   getCodexAuthMetadata,
   getCodexPlanFilterKey,
-  getCodexSubscriptionPresentation,
+  getCodexSubscriptionPresentationForAccount,
   hasCodexAccountName,
   formatCodexResetTime,
   formatCodexResetTimeAbsolute,
@@ -7110,7 +7110,7 @@ export function CodexAccountsPage() {
 
   const resolveSubscriptionPresentation = useCallback(
     (account: CodexAccount) =>
-      getCodexSubscriptionPresentation(account.subscription_active_until, t),
+      getCodexSubscriptionPresentationForAccount(account, t),
     [t],
   );
 
@@ -9248,6 +9248,8 @@ export function CodexAccountsPage() {
       const isInLocalAccess = localAccessAccountIdSet.has(account.id);
       const subscriptionInfo = resolveSubscriptionPresentation(account);
       const isSubscriptionInfoMissing = subscriptionInfo.bucket === "missing";
+      const isAccessTokenOnlySubscription =
+        subscriptionInfo.bucket === "access_token_only";
       const showSubscriptionRefreshAction =
         !isApiKeyAccount &&
         !isPendingOAuthAccount &&
@@ -9494,7 +9496,7 @@ export function CodexAccountsPage() {
             >
               <div className="codex-subscription-footer-main">
                 <Calendar size={14} />
-                {isSubscriptionInfoMissing ? (
+                {isSubscriptionInfoMissing || isAccessTokenOnlySubscription ? (
                   <strong>{subscriptionInfo.valueText}</strong>
                 ) : (
                   <>
