@@ -7,6 +7,47 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.1.1] - 2026-07-08
+
+### Changed
+
+- **Chinese app multi-open terminology is unified**: Chinese UI, docs, announcements, and runtime messages consistently use `应用多开`.
+- **Codex wakeup and API Service model lists now prefer current GPT-5.4+ models**: legacy GPT-5.1 through GPT-5.3 Codex presets are pruned from defaults and migrated out of existing wakeup presets, while the official wakeup fallback uses `gpt-5.4`.
+- **Antigravity suite navigation is more consistent**: Antigravity instances, wakeup tasks, and wakeup verification stay in the Antigravity suite context and are available from the overview tab header.
+
+### Fixed
+
+- **Fixed Codex token refresh authority conflicts between Cockpit and API Service**: the API Service sidecar no longer performs its own OAuth auto-refresh when launched by Cockpit, and refreshed Cockpit tokens are written through to sidecar auth files to reduce `refresh_token_reused` failures. Thanks @wuuconix for #1442.
+- **Improved Codex API Service performance with large account pools**: starting, stopping, and rebuilding the local sidecar configuration now avoids unnecessary auth-file rewrites, removes only stale auth files, and does not start the gateway just to disable it.
+- **Reduced app-exit stalls caused by Codex API Service shutdown**: app exit now schedules local gateway cleanup asynchronously instead of blocking the main Tauri event loop.
+- **Fixed Codex sensitive note metadata being dropped during import**: JSON, auth-file, batch, access-token, refresh-token, and full-token imports now preserve password, 2FA secret, phone number, mail query URL, and notes when present.
+- **Fixed dropdown and instance account-picker jitter**: dropdown panels no longer recalculate position from their own internal scrolling, selected items scroll into view without smooth-scroll loops, and repeated identical placement updates are skipped.
+- **Fixed tag editing state when switching Codex accounts**: opening the tag editor for another account resets the modal to that account's tags and notes.
+- **Improved dark-mode tag filter visibility**: single tag filter controls have clearer contrast and active styling in dark mode.
+
+---
+## [1.1.0] - 2026-07-07
+
+### Added
+
+- **Trae suite support**: Trae, TRAE SOLO, Trae CN, and TRAE SOLO CN now support local import, OAuth login, account switching with each client's real on-disk rules, quota refresh, launch-path settings, app icons, dashboard entries, and default grouping under Trae.
+- **Trae suite authorization is separated by client and region**: international and CN clients use their own authorization, callback, token exchange, refresh, and local storage rules so accounts from different Trae clients stay isolated.
+- **Codex account notes now include delivery fields and mail-code preview**: account notes can store password, 2FA secret, mail query URL, phone number, and remarks; mail query URLs can be refreshed, opened in the browser, copied, and preview the first continuous six-digit verification code found outside HTML tags.
+- **Codex pending OAuth drafts, browser imports, and exports support the new note fields**: pending authorization cards can keep the same note details before authorization finishes, and supported export formats can include sensitive note fields only when explicitly enabled.
+- **Codex account cards can show additional rate-limit data**: more locally available plan and rate-limit fields are preserved and displayed. Thanks @iwillwill-ALLWILL for #1405.
+- **Codex API Key account bundles can sync managed model catalogs**: custom Responses API Key bundles write an account-specific model catalog, include the auto-review model when needed, and clean up the managed catalog when it no longer applies. Thanks @usertianziyang for #1429.
+
+### Changed
+
+- **Navigation and account overview state persist more predictably**: the app remembers the selected page, account overview filters, intentionally empty filter values, temporary tab filter state, and selected tabs more consistently. Thanks @xdd666t for #1351.
+
+### Fixed
+
+- **Fixed Codex opaque access-token imports and access-token-only account switching**: `at-...` credentials and access-token-only accounts can be imported, switched, and reported with clearer status without inventing a refresh token. Thanks @iwillwill-ALLWILL for #1412 and #1425.
+- **Fixed macOS startup-minimized behavior**: startup minimized with a hidden Dock icon no longer shows the main window briefly before hiding. Thanks @FateLightX for #1406.
+- **Fixed Windows Antigravity legacy current-account readback**: legacy account detection now handles system credential mode. Thanks @khanra17 for #1370.
+
+---
 ## [1.0.5] - 2026-07-05
 
 ### Added
