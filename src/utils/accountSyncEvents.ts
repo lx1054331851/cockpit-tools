@@ -14,8 +14,6 @@ export type AccountSyncEventPayload = {
 
 const PROVIDER_PAGE_PLATFORM_MAP: Record<string, PlatformId> = {
   antigravity: 'antigravity',
-  antigravityide: 'antigravity_ide',
-  antigravity_ide: 'antigravity_ide',
   codex: 'codex',
   claude: 'claude_manager',
   zed: 'zed',
@@ -30,6 +28,12 @@ const PROVIDER_PAGE_PLATFORM_MAP: Record<string, PlatformId> = {
   codebuddy_cn: 'codebuddy_cn',
   qoder: 'qoder',
   trae: 'trae',
+  trae_solo: 'trae_solo',
+  traesolo: 'trae_solo',
+  trae_cn: 'trae_cn',
+  traecn: 'trae_cn',
+  trae_solo_cn: 'trae_solo_cn',
+  traesolocn: 'trae_solo_cn',
   workbuddy: 'workbuddy',
 };
 

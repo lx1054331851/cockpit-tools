@@ -4,12 +4,12 @@ import {
   CodexAccountNoteUpdate,
   CodexApiProviderMode,
   CodexAppSpeed,
-  CodexBatchDeleteJobStatus,
   CodexProviderWireApi,
   CodexQuota,
   hasCodexAccountStructure,
   hasCodexAccountName,
   isCodexTeamLikePlan,
+  isCodexPendingOAuthAccount,
 } from '../types/codex';
 import * as codexService from '../services/codexService';
 import { emitAccountsChanged, emitCurrentAccountChanged } from '../utils/accountSyncEvents';
@@ -86,23 +86,26 @@ const mergeCodexAccountIntoList = (
   return next;
 };
 
+type FetchCodexAccountsOptions = {
+  allowEmpty?: boolean;
+};
+
+type FetchCodexCurrentAccountOptions = {
+  allowEmpty?: boolean;
+};
+
 interface CodexAccountState {
   accounts: CodexAccount[];
   currentAccount: CodexAccount | null;
   loading: boolean;
   error: string | null;
-  batchDeleteJob: CodexBatchDeleteJobStatus | null;
   
   // Actions
-  fetchAccounts: () => Promise<void>;
-  fetchCurrentAccount: () => Promise<void>;
+  fetchAccounts: (options?: FetchCodexAccountsOptions) => Promise<void>;
+  fetchCurrentAccount: (options?: FetchCodexCurrentAccountOptions) => Promise<void>;
   switchAccount: (accountId: string) => Promise<CodexAccount>;
   deleteAccount: (accountId: string) => Promise<void>;
   deleteAccounts: (accountIds: string[]) => Promise<void>;
-  pauseBatchDeleteJob: () => Promise<void>;
-  resumeBatchDeleteJob: () => Promise<void>;
-  retryFailedBatchDeleteJob: () => Promise<void>;
-  clearBatchDeleteJob: () => Promise<void>;
   refreshQuota: (accountId: string) => Promise<CodexQuota>;
   refreshSubscriptionInfo: (accountId: string) => Promise<CodexAccount>;
   refreshAllQuotas: () => Promise<number>;
@@ -129,10 +132,7 @@ interface CodexAccountState {
     boundOauthUseLocalGateway?: boolean,
   ) => Promise<CodexAccount>;
   updateAccountTags: (accountId: string, tags: string[]) => Promise<CodexAccount>;
-  updateAccountNote: (
-    accountId: string,
-    update: CodexAccountNoteUpdate,
-  ) => Promise<CodexAccount>;
+  updateAccountNote: (accountId: string, update: string | CodexAccountNoteUpdate) => Promise<CodexAccount>;
   updateAccountAppSpeed: (accountId: string, speed: CodexAppSpeed) => Promise<CodexAccount>;
 }
 
@@ -141,9 +141,11 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
   currentAccount: loadCachedCodexCurrentAccount(),
   loading: false,
   error: null,
-  batchDeleteJob: null,
   
-  fetchAccounts: async () => {
+  fetchAccounts: async (options?: FetchCodexAccountsOptions) => {
+    if (options?.allowEmpty) {
+      allowNextEmptyCodexAccountList = true;
+    }
     set({ loading: true, error: null });
     try {
       const accounts = await codexService.listCodexAccounts();
@@ -166,7 +168,10 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
     }
   },
   
-  fetchCurrentAccount: async () => {
+  fetchCurrentAccount: async (options?: FetchCodexCurrentAccountOptions) => {
+    if (options?.allowEmpty) {
+      allowNextEmptyCodexCurrentAccount = true;
+    }
     try {
       const currentAccount = await codexService.getCurrentCodexAccount();
       if (
@@ -281,28 +286,7 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
   deleteAccounts: async (accountIds: string[]) => {
     const previousCurrentAccountId = get().currentAccount?.id ?? null;
     const deleteIdSet = new Set(accountIds);
-    const started = await codexService.startCodexBatchDelete(accountIds);
-    set({ batchDeleteJob: started });
-    let finalStatus = started;
-    if (started.jobId) {
-      for (let attempt = 0; attempt < 600; attempt += 1) {
-        finalStatus = await codexService.getCodexBatchDelete(started.jobId);
-        set({ batchDeleteJob: finalStatus });
-        if (finalStatus.status === 'completed' || finalStatus.status === 'failed') {
-          break;
-        }
-        await new Promise((resolve) => window.setTimeout(resolve, 200));
-      }
-      if (finalStatus.status !== 'completed' && finalStatus.status !== 'failed') {
-        throw new Error('批量删除账号超时');
-      }
-      if (finalStatus.status === 'failed') {
-        const errors = finalStatus.errors
-          .map((item) => `${item.accountId}: ${item.error}`)
-          .join('; ');
-        throw new Error(errors || '批量删除账号失败');
-      }
-    }
+    await codexService.deleteCodexAccounts(accountIds);
     set((state) => {
       const nextAccounts = state.accounts.filter((account) => !deleteIdSet.has(account.id));
       const nextCurrentAccount =
@@ -331,37 +315,12 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
       });
     }
   },
-
-  pauseBatchDeleteJob: async () => {
-    const jobId = get().batchDeleteJob?.jobId;
-    if (!jobId) return;
-    const status = await codexService.pauseCodexBatchDelete(jobId);
-    set({ batchDeleteJob: status });
-  },
-
-  resumeBatchDeleteJob: async () => {
-    const jobId = get().batchDeleteJob?.jobId;
-    if (!jobId) return;
-    const status = await codexService.resumeCodexBatchDelete(jobId);
-    set({ batchDeleteJob: status });
-  },
-
-  retryFailedBatchDeleteJob: async () => {
-    const jobId = get().batchDeleteJob?.jobId;
-    if (!jobId) return;
-    const status = await codexService.retryFailedCodexBatchDelete(jobId);
-    set({ batchDeleteJob: status });
-  },
-
-  clearBatchDeleteJob: async () => {
-    const jobId = get().batchDeleteJob?.jobId;
-    if (jobId) {
-      await codexService.clearCodexBatchDelete(jobId).catch(() => undefined);
-    }
-    set({ batchDeleteJob: null });
-  },
   
   refreshQuota: async (accountId: string) => {
+    const account = get().accounts.find((item) => item.id === accountId);
+    if (account && isCodexPendingOAuthAccount(account)) {
+      throw new Error('CODEX_PENDING_OAUTH_ACCOUNT');
+    }
     try {
       return await codexService.refreshCodexQuota(accountId);
     } finally {
@@ -505,7 +464,7 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
     return account;
   },
 
-  updateAccountNote: async (accountId: string, update: CodexAccountNoteUpdate) => {
+  updateAccountNote: async (accountId: string, update: string | CodexAccountNoteUpdate) => {
     const account = await codexService.updateCodexAccountNote(accountId, update);
     await get().fetchAccounts();
     await get().fetchCurrentAccount();

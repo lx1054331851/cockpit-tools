@@ -81,7 +81,27 @@ pub fn get_default_cursor_user_data_dir() -> Result<PathBuf, String> {
 }
 
 pub fn get_default_instances_root_dir() -> Result<PathBuf, String> {
-    crate::modules::account::resolve_instances_dir("cursor")
+    #[cfg(target_os = "macos")]
+    {
+        let home = dirs::home_dir().ok_or("无法获取用户主目录")?;
+        return Ok(home.join(".antigravity_cockpit/instances/cursor"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let appdata =
+            std::env::var("APPDATA").map_err(|_| "无法获取 APPDATA 环境变量".to_string())?;
+        return Ok(PathBuf::from(appdata).join(".antigravity_cockpit\\instances\\cursor"));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let home = dirs::home_dir().ok_or("无法获取用户主目录")?;
+        return Ok(home.join(".antigravity_cockpit/instances/cursor"));
+    }
+
+    #[allow(unreachable_code)]
+    Err("Cursor 应用多开仅支持 macOS、Windows 和 Linux".to_string())
 }
 
 pub fn get_instance_defaults() -> Result<InstanceDefaults, String> {
@@ -185,7 +205,6 @@ pub fn create_instance(params: CreateInstanceParams) -> Result<InstanceProfile, 
             params.bind_account_id
         },
         launch_mode: crate::models::InstanceLaunchMode::App,
-        app_speed: crate::models::codex::CodexAppSpeed::Standard,
         created_at: Utc::now().timestamp_millis(),
         last_launched_at: None,
         last_pid: None,
@@ -1250,7 +1269,7 @@ pub fn start_cursor_with_args_with_new_window(
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
         let _ = (target, extra_args, use_new_window);
-        Err("Cursor 多开实例仅支持 macOS、Windows 和 Linux".to_string())
+        Err("Cursor 应用多开仅支持 macOS、Windows 和 Linux".to_string())
     }
 }
 

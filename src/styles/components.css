@@ -172,6 +172,7 @@
 
 /* Main Content */
 .main-wrapper {
+  position: relative;
   flex: 1;
   margin-inline-start: 120px; /* 增加起始侧留白，主要避开 Sidebar */
   padding: 40px 32px 32px 0;
@@ -184,28 +185,25 @@
   gap: 20px;
 }
 
+.app-global-promo-layer {
+  position: absolute;
+  top: 70px;
+  left: 0;
+  right: 32px;
+  height: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.app-global-promo-layer .global-promo-center {
+  top: 0;
+}
+
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.codex-platform-package-page {
-  position: relative;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  animation: fadeUp 0.5s ease;
-}
-
-.codex-platform-package-floating-toolbar {
-  position: absolute;
-  top: 3px;
-  right: 0;
-  z-index: 35;
-  pointer-events: auto;
 }
 
 .page-heading {
@@ -486,11 +484,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  max-width: min(340px, 40vw);
-}
-
-.page-top-strip-right-slot {
-  z-index: 120;
+  max-width: min(260px, 32vw);
 }
 
 .installed-version-badge {
@@ -560,10 +554,6 @@
 .page-tabs-row-with-leading .page-tabs {
   grid-column: 2;
   justify-self: center;
-}
-
-.platform-remote-tabs-slot:empty {
-  display: none;
 }
 
 .page-tabs-leading .platform-group-switcher-trigger {
@@ -1699,18 +1689,6 @@
   transform: rotate(90deg);
 }
 
-.modal-close:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-  transform: none;
-}
-
-.modal-close:disabled:hover {
-  background: transparent;
-  color: var(--text-secondary);
-  transform: none;
-}
-
 .modal-body {
   padding: 28px;
   overflow-y: auto;
@@ -2048,12 +2026,6 @@
   opacity: 0.68;
 }
 
-.platform-layout-row.is-package-unavailable,
-.platform-layout-child-row.is-package-unavailable {
-  border-style: dashed;
-  background: color-mix(in srgb, var(--bg-tertiary) 82%, var(--warning) 18%);
-}
-
 .platform-layout-main {
   flex: 1 1 auto;
   min-width: 0;
@@ -2118,19 +2090,11 @@
   flex: 1 1 auto;
   max-width: none;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.platform-layout-name-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .platform-layout-group-badge {
@@ -2182,58 +2146,6 @@
 .platform-layout-controls-grid .action-btn.is-danger,
 .platform-layout-controls-grid .action-btn.is-danger:hover:not(:disabled) {
   color: var(--danger);
-}
-
-.platform-layout-package-action {
-  flex: 0 0 auto;
-}
-
-.platform-layout-package-meta {
-  min-width: 0;
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.25;
-}
-
-.platform-layout-package-meta.is-notInstalled,
-.platform-layout-package-meta.is-updateAvailable {
-  color: var(--warning);
-}
-
-.platform-layout-package-meta.is-error,
-.platform-layout-package-meta.is-incompatible {
-  color: var(--danger);
-}
-
-.platform-layout-package-meta.is-compact {
-  flex: 0 1 auto;
-  max-width: 220px;
-  overflow: hidden;
-}
-
-.platform-layout-package-meta.is-compact > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.platform-layout-package-error {
-  color: var(--danger);
-}
-
-.platform-layout-package-global-error {
-  border: 1px solid color-mix(in srgb, var(--danger) 36%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--danger) 10%, var(--bg-primary));
-  color: var(--danger);
-  padding: 8px 10px;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .platform-layout-empty-edit-slot {
@@ -2453,7 +2365,7 @@
 }
 
 .platform-layout-child-name {
-  max-width: 180px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

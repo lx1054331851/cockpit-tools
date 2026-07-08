@@ -22,7 +22,6 @@ import {
   getAntigravityTierBadge,
   getQuotaClass as getAntigravityQuotaClass,
   matchModelName,
-  getSubscriptionTier,
 } from "../utils/account";
 import {
   CB_PACKAGE_CODE,
@@ -33,6 +32,7 @@ import {
 } from "../types/codebuddy";
 import {
   formatCodexResetTime,
+  getCodexAdditionalQuotaWindows,
   getCodexCodeReviewQuotaMetric,
   getCodexEffectiveQuotaPercentages,
   getCodexPlanBadgePresentation,
@@ -41,6 +41,7 @@ import {
   isCodexApiKeyAccount,
   isCodexChatCompletionsApiKeyAccount,
   isCodexNewApiAccount,
+  isCodexPendingOAuthAccount,
 } from "../types/codex";
 import {
   formatClaudeResetTime,
@@ -545,18 +546,12 @@ export function getAntigravityQuotaDisplayItems(
     });
   }
 
-  const isFree = getSubscriptionTier(account.quota) === 'FREE';
-
   if (claude5h) {
-    let resetTime = claude5h.reset_time;
-    if (isFree) {
-      resetTime = claude5h.reset_time || claudeWeekly?.reset_time || '';
-    }
     result.push({
       key: 'claude:5h',
       label: 'Claude (5h)',
       percentage: claude5h.percentage,
-      resetTime: resetTime,
+      resetTime: claude5h.reset_time,
     });
   }
   if (claudeWeekly) {
@@ -571,20 +566,16 @@ export function getAntigravityQuotaDisplayItems(
     let percentage = gemini5h.percentage;
     let resetTime = gemini5h.reset_time;
 
-    if (isFree) {
-      resetTime = gemini5h.reset_time || geminiWeekly?.reset_time || '';
-    } else {
-      if (resetTime) {
-        const resetTs = new Date(resetTime).getTime();
-        if (!isNaN(resetTs)) {
-          const diffHours = (resetTs - Date.now()) / (1000 * 60 * 60);
-          // If the reset time is > 5 hours in the future (e.g. weekly reset),
-          // it means the weekly limit is active and capping the 5h limit.
-          // We override the 5h display remaining to 100% and clear the reset time.
-          if (diffHours > 5) {
-            percentage = 100;
-            resetTime = '';
-          }
+    if (resetTime) {
+      const resetTs = new Date(resetTime).getTime();
+      if (!isNaN(resetTs)) {
+        const diffHours = (resetTs - Date.now()) / (1000 * 60 * 60);
+        // If the reset time is > 5 hours in the future (e.g. weekly reset),
+        // it means the weekly limit is active and capping the 5h limit.
+        // We override the 5h display remaining to 100% and clear the reset time.
+        if (diffHours > 5) {
+          percentage = 100;
+          resetTime = '';
         }
       }
     }
@@ -728,6 +719,29 @@ export function buildCodexAccountPresentation(
               ? weeklyBlocksHourlyHint
               : undefined,
         }));
+  const additionalQuotaItems =
+    !isCodexChatCompletionsApiKeyAccount(account)
+      ? getCodexAdditionalQuotaWindows(account.quota).map((window) => {
+          const hintText = [window.limitName, window.meteredFeature]
+            .filter(Boolean)
+            .join(" · ");
+          const limitLabel =
+            window.limitLabel || t("codex.quota.additional", "额外额度");
+          return {
+            key: window.id,
+            label: `${limitLabel} ${window.label}`,
+            percentage: window.percentage,
+            quotaClass: getCodexQuotaClass(window.percentage),
+            valueText: `${window.percentage}%`,
+            resetText: window.resetTime
+              ? formatCodexResetTime(window.resetTime, t)
+              : "",
+            resetAt: window.resetTime,
+            hintText: hintText || undefined,
+          };
+        })
+      : [];
+  quotaItems.push(...additionalQuotaItems);
   const codeReviewMetric = getCodexCodeReviewQuotaMetric(account.quota);
   if (codeReviewMetric) {
     quotaItems.push({
@@ -742,7 +756,12 @@ export function buildCodexAccountPresentation(
       resetAt: codeReviewMetric.resetTime,
     });
   }
-  const planBadge = getCodexPlanBadgePresentation(account);
+  const planBadge = isCodexPendingOAuthAccount(account)
+    ? {
+        label: t("codex.pendingAuth.badge", "待授权"),
+        className: "pending-auth",
+      }
+    : getCodexPlanBadgePresentation(account);
 
   return {
     id: account.id,

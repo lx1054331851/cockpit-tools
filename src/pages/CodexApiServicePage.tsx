@@ -35,7 +35,6 @@ import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 import { CodexIcon } from "../components/icons/CodexIcon";
 import { ManualHelpIconButton } from "../components/ManualHelpIconButton";
-import { TopCenterPromoBanner } from "../components/TopCenterPromoBanner";
 import { PlatformGroupSwitcher } from "../components/platform/PlatformGroupSwitcher";
 import {
   findGroupByPlatform,
@@ -540,7 +539,6 @@ export function CodexApiServicePage() {
   const [proxyInput, setProxyInput] = useState("");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [memberModalOpen, setMemberModalOpen] = useState(false);
-  const [customRoutingModalOpen, setCustomRoutingModalOpen] = useState(false);
   const [apiKeyDrafts, setApiKeyDrafts] = useState<Record<string, string>>({});
   const [apiKeyPolicyDrafts, setApiKeyPolicyDrafts] = useState<
     Record<string, ApiKeyPolicyDraft>
@@ -583,7 +581,6 @@ export function CodexApiServicePage() {
     useState<CodexLocalAccessUsageEventPage | null>(null);
   const [requestLogLoading, setRequestLogLoading] = useState(false);
   const [requestLogError, setRequestLogError] = useState("");
-  const [requestLogReloadToken, setRequestLogReloadToken] = useState(0);
   const [requestLogKindFilter, setRequestLogKindFilter] =
     useState<RequestLogKindFilter>("all");
   const [requestLogStatusFilter, setRequestLogStatusFilter] =
@@ -676,23 +673,6 @@ export function CodexApiServicePage() {
   const modelIds = state?.modelIds ?? [];
   const exampleModelId = modelIds[0] ?? "gpt-5.5";
   const exampleApiKey = collection?.apiKey || "<api-key>";
-  const localAccessAddressOptions = useMemo(
-    () => [
-      {
-        value: "local",
-        label: t("codex.localAccess.addressLocal", "本机"),
-      },
-      ...(state?.lanBaseUrl
-        ? [
-            {
-              value: "lan",
-              label: t("codex.localAccess.addressLan", "局域网"),
-            },
-          ]
-        : []),
-    ],
-    [state?.lanBaseUrl, t],
-  );
   const compatibilityExamples = useMemo(
     () => [
       {
@@ -811,7 +791,6 @@ export function CodexApiServicePage() {
       };
     });
   }, [collection?.modelPricings, modelIds, state?.modelPricingPresets]);
-  const modelPricingVersion = Math.max(1, collection?.modelPricingVersion ?? 1);
   const avgLatency =
     totals && totals.requestCount > 0
       ? totals.totalLatencyMs / totals.requestCount
@@ -945,7 +924,6 @@ export function CodexApiServicePage() {
     requestLogAccountQuery,
     requestLogApiKeyQuery,
     requestLogErrorQuery,
-    requestLogReloadToken,
   ]);
 
   useEffect(() => {
@@ -1009,7 +987,6 @@ export function CodexApiServicePage() {
     requestLogAccountQuery,
     requestLogApiKeyQuery,
     requestLogErrorQuery,
-    requestLogReloadToken,
     stats?.updatedAt,
   ]);
 
@@ -1396,10 +1373,6 @@ export function CodexApiServicePage() {
   };
 
   const handleUpdateRouting = async (value: string) => {
-    if (value === "custom") {
-      setCustomRoutingModalOpen(true);
-      return;
-    }
     await runAction(
       async () => {
         const next =
@@ -1830,17 +1803,17 @@ export function CodexApiServicePage() {
   const handleRepriceRequestLogs = async () => {
     setBusy(true);
     setPricingError("");
+    setNotice("");
     try {
       const next =
         await codexLocalAccessService.repriceCodexLocalAccessRequestLogs();
       setState(next);
       setNotice(
         t(
-          "codex.apiService.models.pricingRepriceSuccess",
-          "历史请求估值已按当前价格重算",
+          "codex.apiService.models.pricingRepriced",
+          "历史估值已按当前价格重算",
         ),
       );
-      setRequestLogReloadToken((value) => value + 1);
     } catch (err) {
       setPricingError(String(err).replace(/^Error:\s*/, ""));
     } finally {
@@ -2298,10 +2271,7 @@ export function CodexApiServicePage() {
     },
     {
       value: "single_account",
-      label: t(
-        "codex.localAccess.routingStrategy.singleAccount",
-        "固定首个账号",
-      ),
+      label: t("codex.localAccess.routingStrategy.singleAccount", "固定首个账号"),
     },
     {
       value: "quota_high_first",
@@ -2531,71 +2501,6 @@ export function CodexApiServicePage() {
     setRequestLogApiKeyQuery("");
     setRequestLogErrorQuery("");
   };
-  const localAccessModalCommonProps = {
-    state,
-    addressKind,
-    addressOptions: localAccessAddressOptions,
-    onAddressKindChange: (value: string) =>
-      setAddressKind(normalizeAddressKind(value)),
-    accounts,
-    accountGroups: groups,
-    initialSelectedIds: memberIds,
-    maskAccountText,
-    onSaveAccounts: ({
-      accountIds,
-      restrictFreeAccounts,
-    }: {
-      accountIds: string[];
-      restrictFreeAccounts: boolean;
-    }) => handleSaveMembersFromModal(accountIds, restrictFreeAccounts),
-    onClearStats: () =>
-      codexLocalAccessService.clearCodexLocalAccessStats().then(setState),
-    onRefreshStats: reloadState,
-    onUpdatePort: (port: number) =>
-      codexLocalAccessService.updateCodexLocalAccessPort(port).then(setState),
-    onUpdateRoutingStrategy: (strategy: CodexLocalAccessRoutingStrategy) =>
-      codexLocalAccessService
-        .updateCodexLocalAccessRoutingStrategy(strategy)
-        .then(setState),
-    onUpdateCustomRouting: (rules: CodexLocalAccessCustomRoutingRule[]) =>
-      codexLocalAccessService
-        .updateCodexLocalAccessCustomRouting(rules)
-        .then(setState),
-    onUpdateAccessScope: (scope: CodexLocalAccessScope) =>
-      codexLocalAccessService
-        .updateCodexLocalAccessAccessScope(scope)
-        .then(setState),
-    onUpdateDebugLogs: (debugLogs: boolean) =>
-      codexLocalAccessService
-        .updateCodexLocalAccessDebugLogs(debugLogs)
-        .then(setState),
-    onUpdateUpstreamProxyConfig: (url: string | null) =>
-      codexLocalAccessService
-        .updateCodexLocalAccessUpstreamProxyConfig(url)
-        .then(setState),
-    onRotateApiKey: () =>
-      codexLocalAccessService.rotateCodexLocalAccessApiKey().then(setState),
-    onKillPort: handleKillPort,
-    onToggleEnabled: handleToggleEnabled,
-    onStreamTestMessage: ({
-      sessionId,
-      modelId,
-      messages,
-    }: {
-      sessionId: string;
-      modelId: string;
-      messages: CodexLocalAccessChatMessage[];
-    }) =>
-      codexLocalAccessService.streamCodexLocalAccessChatTest(
-        sessionId,
-        modelId,
-        messages,
-      ),
-    saving: busy,
-    testing: testDialogRunning,
-    starting: false,
-    portCleanupBusy: portKilling,
-  };
 
   return (
     <div className="codex-api-service-page">
@@ -2606,7 +2511,6 @@ export function CodexApiServicePage() {
           </span>
           <ManualHelpIconButton className="platform-header-help" />
         </div>
-        <TopCenterPromoBanner />
         <div className="page-top-strip-right-placeholder" aria-hidden="true" />
       </div>
 
@@ -4644,6 +4548,15 @@ export function CodexApiServicePage() {
               <button
                 type="button"
                 className="btn btn-secondary"
+                onClick={() => void handleRepriceRequestLogs()}
+                disabled={busy}
+              >
+                <RefreshCw size={15} />
+                {t("codex.apiService.models.pricingReprice", "重算历史估值")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={handleResetTimeoutDrafts}
               >
                 {t("codex.apiService.timeouts.resetDefaults", "恢复默认")}
@@ -4855,32 +4768,6 @@ export function CodexApiServicePage() {
                     "单位为 USD / 1M tokens，仅用于本地价值统计。",
                   )}
                 </p>
-                <p className="codex-api-service-pricing-desc">
-                  {t("codex.apiService.models.pricingVersion", {
-                    version: modelPricingVersion,
-                    defaultValue: "当前价格版本 v{{version}}",
-                  })}
-                </p>
-                <div className="codex-api-service-pricing-reprice">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => void handleRepriceRequestLogs()}
-                    disabled={busy}
-                  >
-                    <RefreshCw size={14} />
-                    {t(
-                      "codex.apiService.models.pricingRepriceHistory",
-                      "重算历史估值",
-                    )}
-                  </button>
-                  <span>
-                    {t(
-                      "codex.apiService.models.pricingRepriceHint",
-                      "按当前价格版本刷新请求日志和统计里的估算金额。",
-                    )}
-                  </span>
-                </div>
               </div>
               <button
                 type="button"
@@ -5039,6 +4926,7 @@ export function CodexApiServicePage() {
               <button
                 className="modal-close codex-local-access-test-dialog-close"
                 onClick={handleCloseTestDialog}
+                disabled={testDialogRunning}
                 aria-label={t("common.close")}
               >
                 <X size={18} />
@@ -5176,6 +5064,7 @@ export function CodexApiServicePage() {
               <button
                 className="btn btn-secondary"
                 onClick={handleCloseTestDialog}
+                disabled={testDialogRunning}
               >
                 {t("common.close")}
               </button>
@@ -5187,14 +5076,83 @@ export function CodexApiServicePage() {
       <CodexLocalAccessModal
         isOpen={memberModalOpen}
         mode="members"
+        state={state}
+        addressKind={addressKind}
+        addressOptions={[
+          {
+            value: "local",
+            label: t("codex.localAccess.addressLocal", "本机"),
+          },
+          ...(state?.lanBaseUrl
+            ? [
+                {
+                  value: "lan",
+                  label: t("codex.localAccess.addressLan", "局域网"),
+                },
+              ]
+            : []),
+        ]}
+        onAddressKindChange={(value) =>
+          setAddressKind(normalizeAddressKind(value))
+        }
+        accounts={accounts}
+        accountGroups={groups}
+        initialSelectedIds={memberIds}
+        maskAccountText={maskAccountText}
         onClose={() => setMemberModalOpen(false)}
-        {...localAccessModalCommonProps}
-      />
-      <CodexLocalAccessModal
-        isOpen={customRoutingModalOpen}
-        mode="customRouting"
-        onClose={() => setCustomRoutingModalOpen(false)}
-        {...localAccessModalCommonProps}
+        onSaveAccounts={({ accountIds, restrictFreeAccounts }) =>
+          handleSaveMembersFromModal(accountIds, restrictFreeAccounts)
+        }
+        onClearStats={() =>
+          codexLocalAccessService.clearCodexLocalAccessStats().then(setState)
+        }
+        onRefreshStats={reloadState}
+        onUpdatePort={(port) =>
+          codexLocalAccessService
+            .updateCodexLocalAccessPort(port)
+            .then(setState)
+        }
+        onUpdateRoutingStrategy={(strategy) =>
+          codexLocalAccessService
+            .updateCodexLocalAccessRoutingStrategy(strategy)
+            .then(setState)
+        }
+        onUpdateCustomRouting={(rules: CodexLocalAccessCustomRoutingRule[]) =>
+          codexLocalAccessService
+            .updateCodexLocalAccessCustomRouting(rules)
+            .then(setState)
+        }
+        onUpdateAccessScope={(scope: CodexLocalAccessScope) =>
+          codexLocalAccessService
+            .updateCodexLocalAccessAccessScope(scope)
+            .then(setState)
+        }
+        onUpdateDebugLogs={(debugLogs) =>
+          codexLocalAccessService
+            .updateCodexLocalAccessDebugLogs(debugLogs)
+            .then(setState)
+        }
+        onUpdateUpstreamProxyConfig={(url) =>
+          codexLocalAccessService
+            .updateCodexLocalAccessUpstreamProxyConfig(url)
+            .then(setState)
+        }
+        onRotateApiKey={() =>
+          codexLocalAccessService.rotateCodexLocalAccessApiKey().then(setState)
+        }
+        onKillPort={handleKillPort}
+        onToggleEnabled={handleToggleEnabled}
+        onStreamTestMessage={({ sessionId, modelId, messages }) =>
+          codexLocalAccessService.streamCodexLocalAccessChatTest(
+            sessionId,
+            modelId,
+            messages,
+          )
+        }
+        saving={busy}
+        testing={testDialogRunning}
+        starting={false}
+        portCleanupBusy={portKilling}
       />
     </div>
   );

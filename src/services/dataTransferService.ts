@@ -5,7 +5,6 @@ import {
   AccountTransferImportProgress,
   AccountTransferImportResult,
   buildAccountTransferBundle,
-  canUseAccountTransferPlatform,
   importAllAccountsFromTransferJson,
 } from './accountTransferService';
 import { ALL_PLATFORM_IDS, PlatformId } from '../types/platform';
@@ -32,12 +31,7 @@ import {
   saveCodexWakeupState,
   updateCodexWakeupRuntimeConfig,
 } from './codexWakeupService';
-import {
-  CodexCliStatus,
-  CodexWakeupModelPreset,
-  CodexWakeupState,
-  CodexWakeupTask,
-} from '../types/codexWakeup';
+import { CodexWakeupModelPreset, CodexWakeupTask } from '../types/codexWakeup';
 import {
   CURRENT_ACCOUNT_REFRESH_STORAGE_KEY,
   CurrentAccountRefreshMinutesMap,
@@ -75,7 +69,6 @@ const WAKEUP_TASKS_KEY = 'agtools.wakeup.tasks';
 const INSTANCE_PLATFORMS = [
   'antigravity',
   'codex',
-  'claude_manager',
   'github-copilot',
   'windsurf',
   'kiro',
@@ -89,40 +82,6 @@ const INSTANCE_PLATFORMS = [
 ] as const;
 
 type InstancePlatform = (typeof INSTANCE_PLATFORMS)[number];
-
-async function listAvailableInstancePlatforms(): Promise<InstancePlatform[]> {
-  const entries = await Promise.all(
-    INSTANCE_PLATFORMS.map(async (platform) => {
-      if (platform === 'antigravity') {
-        return (await canUseAntigravitySeriesTransfer()) ? platform : null;
-      }
-      return (await canUseAccountTransferPlatform(platform)) ? platform : null;
-    }),
-  );
-  return entries.filter((platform): platform is InstancePlatform => platform != null);
-}
-
-async function canUseAntigravitySeriesTransfer(): Promise<boolean> {
-  const [legacyReady, ideReady] = await Promise.all([
-    canUseAccountTransferPlatform('antigravity'),
-    canUseAccountTransferPlatform('antigravity_ide'),
-  ]);
-  return legacyReady || ideReady;
-}
-
-const EMPTY_CODEX_WAKEUP_STATE: CodexWakeupState = {
-  enabled: false,
-  tasks: [],
-  model_presets: [],
-  model_preset_migrations: [],
-};
-
-const EMPTY_CODEX_WAKEUP_CLI_STATUS: CodexCliStatus = {
-  available: false,
-  required_runtime_paths: [],
-  checked_at: 0,
-  install_hints: [],
-};
 type TransferAccountRecord = Record<string, unknown> & { id: string };
 type AccountLoader = () => Promise<TransferAccountRecord[]>;
 type LegacyFormat = 'data_bundle' | 'account_bundle' | 'legacy_account_json';
@@ -226,19 +185,6 @@ interface ExportedCodexWakeupState {
   };
 }
 
-interface CodexSessionTransferImportSummary {
-  sourceInstanceCount: number;
-  targetInstanceCount: number;
-  exportedSessionCount: number;
-  importedSessionCount: number;
-  skippedExistingCount: number;
-  missingTargetInstanceCount: number;
-  metadataRebuildFailedCount: number;
-  backupDirs: string[];
-  items: unknown[];
-  message: string;
-}
-
 interface ExportedAccountGroup extends Omit<AccountGroup, 'accountIds'> {
   accountRefs: DataTransferAccountRef[];
 }
@@ -276,7 +222,6 @@ export interface DataTransferConfigBundle {
   codex_account_groups: ExportedCodexAccountGroup[];
   codex_model_providers: CodexModelProvider[];
   instance_stores: Partial<Record<InstancePlatform, ExportedInstanceStore>>;
-  codex_sessions?: unknown;
   antigravity_wakeup: ExportedAntigravityWakeupState;
   codex_wakeup: ExportedCodexWakeupState;
   current_account_refresh_minutes: CurrentAccountRefreshMinutesMap;
@@ -288,15 +233,6 @@ export interface DataTransferConfigBundle {
   compact_group_colors?: unknown;
   compact_hidden_groups?: unknown;
   app_language?: string;
-  antigravity_filter_persistence_enabled?: unknown;
-  antigravity_view_mode?: unknown;
-  antigravity_sort_by?: unknown;
-  antigravity_sort_direction?: unknown;
-  antigravity_filter_types?: unknown;
-  antigravity_tag_filter?: unknown;
-  antigravity_group_by_tag?: unknown;
-  antigravity_active_group_id?: unknown;
-  privacy_mode_enabled?: unknown;
 }
 
 export interface DataTransferBundle {
@@ -316,7 +252,6 @@ export interface DataTransferConfigImportResult {
   unresolved_account_ref_count: number;
   disabled_task_count: number;
   needs_restart: boolean;
-  codex_session_import_result?: CodexSessionTransferImportSummary | null;
 }
 
 export interface DataTransferImportResult {
@@ -355,6 +290,9 @@ const ACCOUNT_LOADERS: Record<PlatformId, AccountLoader> = {
     (await codebuddyCnService.listCodebuddyCnAccounts()) as unknown as TransferAccountRecord[],
   qoder: async () => (await qoderService.listQoderAccounts()) as unknown as TransferAccountRecord[],
   trae: async () => (await traeService.listTraeAccounts()) as unknown as TransferAccountRecord[],
+  trae_solo: async () => (await traeService.listTraeAccounts()) as unknown as TransferAccountRecord[],
+  trae_cn: async () => (await traeService.listTraeAccounts()) as unknown as TransferAccountRecord[],
+  trae_solo_cn: async () => (await traeService.listTraeAccounts()) as unknown as TransferAccountRecord[],
   workbuddy: async () => (await workbuddyService.listWorkbuddyAccounts()) as unknown as TransferAccountRecord[],
 };
 
@@ -373,6 +311,9 @@ const LEGACY_IMPORTERS: Record<PlatformId, ((jsonContent: string) => Promise<unk
   codebuddy_cn: codebuddyCnService.importCodebuddyCnFromJson,
   qoder: qoderService.importQoderFromJson,
   trae: traeService.importTraeFromJson,
+  trae_solo: traeService.importTraeFromJson,
+  trae_cn: traeService.importTraeFromJson,
+  trae_solo_cn: traeService.importTraeFromJson,
   workbuddy: workbuddyService.importWorkbuddyFromJson,
 };
 
@@ -485,15 +426,11 @@ function buildAccountRegistry(
 }
 
 async function loadAccountRegistry(): Promise<AccountRegistry> {
-  const entries = await Promise.all(
-    ALL_PLATFORM_IDS.map(async (platform) => {
-      if (!(await canUseAccountTransferPlatform(platform))) {
-        return [platform, [] as TransferAccountRecord[]] as const;
-      }
-      const accounts = await ACCOUNT_LOADERS[platform]();
-      return [platform, accounts] as const;
-    }),
-  );
+  const entries: Array<readonly [PlatformId, TransferAccountRecord[]]> = [];
+  for (const platform of ALL_PLATFORM_IDS) {
+    const accounts = await ACCOUNT_LOADERS[platform]();
+    entries.push([platform, accounts] as const);
+  }
 
   return buildAccountRegistry(entries);
 }
@@ -537,6 +474,9 @@ function buildAccountRef(platform: PlatformId, account: TransferAccountRecord): 
       break;
     case 'qoder':
     case 'trae':
+    case 'trae_solo':
+    case 'trae_cn':
+    case 'trae_solo_cn':
       ref.email = normalizeString(account.email) ?? undefined;
       ref.userId = normalizeString(account.user_id) ?? undefined;
       break;
@@ -606,6 +546,9 @@ function scoreAccountRef(ref: DataTransferAccountRef, account: TransferAccountRe
       break;
     case 'qoder':
     case 'trae':
+    case 'trae_solo':
+    case 'trae_cn':
+    case 'trae_solo_cn':
       addStringScore(ref.userId, account.user_id, 24);
       addStringScore(ref.email, account.email, 10);
       break;
@@ -846,22 +789,11 @@ function exportInstanceStore(
   };
 }
 
-async function resolveImportedInstanceUserDataDir(
-  platform: InstancePlatform,
-  instance: ExportedInstanceProfile,
-): Promise<string> {
-  const mapped = await invoke<string>('data_transfer_get_import_instance_dir', {
-    platform,
-    instanceId: instance.id,
-  });
-  return normalizeString(mapped) ?? instance.userDataDir;
-}
-
-async function importInstanceStore(
-  platform: InstancePlatform,
+function importInstanceStore(
+  _platform: InstancePlatform,
   store: ExportedInstanceStore,
   registry: AccountRegistry,
-): Promise<{ store: RawInstanceStore; unresolved: number }> {
+): { store: RawInstanceStore; unresolved: number } {
   let unresolved = 0;
 
   const defaultResolved = resolveAccountRef(store.defaultSettings.bindAccountRef, registry);
@@ -870,7 +802,7 @@ async function importInstanceStore(
   }
 
   const restoredInstances = Array.isArray(store.instances)
-    ? await Promise.all(store.instances.map(async (instance) => {
+    ? store.instances.map((instance) => {
         const resolvedId = resolveAccountRef(instance.bindAccountRef, registry);
         if (instance.bindAccountRef && !resolvedId) {
           unresolved += 1;
@@ -878,8 +810,8 @@ async function importInstanceStore(
         return {
           id: instance.id,
           name: instance.name,
-          userDataDir: await resolveImportedInstanceUserDataDir(platform, instance),
-          workingDir: null,
+          userDataDir: instance.userDataDir,
+          workingDir: instance.workingDir ?? null,
           extraArgs: normalizeString(instance.extraArgs) ?? '',
           bindAccountId: resolvedId,
           launchMode: instance.launchMode,
@@ -887,7 +819,7 @@ async function importInstanceStore(
           lastLaunchedAt: null,
           lastPid: null,
         } as RawInstanceProfile;
-      }))
+      })
     : [];
 
   return {
@@ -1050,9 +982,6 @@ function importCodexWakeupState(
 }
 
 async function exportConfigBundle(registry: AccountRegistry): Promise<DataTransferConfigBundle> {
-  const codexRuntimeReady = await canUseAccountTransferPlatform('codex');
-  const antigravityRuntimeReady = await canUseAntigravitySeriesTransfer();
-  const instancePlatforms = await listAvailableInstancePlatforms();
   const [
     rawUserConfig,
     groupSettings,
@@ -1061,25 +990,23 @@ async function exportConfigBundle(registry: AccountRegistry): Promise<DataTransf
     codexModelProviders,
     codexWakeupState,
     codexWakeupCliStatus,
-    codexSessions,
     instanceStoreEntries,
   ] = await Promise.all([
     invoke<RawUserConfig>('data_transfer_get_user_config'),
     getGroupSettings(),
     getAccountGroups(),
-    codexRuntimeReady ? getCodexAccountGroups() : Promise.resolve([]),
-    codexRuntimeReady ? listCodexModelProviders() : Promise.resolve([]),
-    codexRuntimeReady ? getCodexWakeupState() : Promise.resolve(EMPTY_CODEX_WAKEUP_STATE),
-    codexRuntimeReady ? getCodexWakeupCliStatus() : Promise.resolve(EMPTY_CODEX_WAKEUP_CLI_STATUS),
-    codexRuntimeReady
-      ? invoke<unknown>('data_transfer_export_codex_sessions').catch(() => undefined)
-      : Promise.resolve(undefined),
-    Promise.all(
-      instancePlatforms.map(async (platform) => {
+    getCodexAccountGroups(),
+    listCodexModelProviders(),
+    getCodexWakeupState(),
+    getCodexWakeupCliStatus(),
+    (async () => {
+      const entries: Array<readonly [InstancePlatform, ExportedInstanceStore]> = [];
+      for (const platform of INSTANCE_PLATFORMS) {
         const store = await invoke<RawInstanceStore>('data_transfer_get_instance_store', { platform });
-        return [platform, exportInstanceStore(platform, store, registry)] as const;
-      }),
-    ),
+        entries.push([platform, exportInstanceStore(platform, store, registry)] as const);
+      }
+      return entries;
+    })(),
   ]);
 
   return {
@@ -1091,14 +1018,7 @@ async function exportConfigBundle(registry: AccountRegistry): Promise<DataTransf
     instance_stores: Object.fromEntries(instanceStoreEntries) as Partial<
       Record<InstancePlatform, ExportedInstanceStore>
     >,
-    codex_sessions: codexSessions,
-    antigravity_wakeup: antigravityRuntimeReady
-      ? exportAntigravityWakeupState(registry)
-      : {
-          enabled: false,
-          official_ls_version_mode: DEFAULT_WAKEUP_OFFICIAL_LS_VERSION_MODE,
-          tasks: [],
-        },
+    antigravity_wakeup: exportAntigravityWakeupState(registry),
     codex_wakeup: exportCodexWakeupState(
       codexWakeupState,
       registry,
@@ -1116,26 +1036,13 @@ async function exportConfigBundle(registry: AccountRegistry): Promise<DataTransf
     compact_group_colors: safeGetLocalStorageItem('compactGroupColors'),
     compact_hidden_groups: safeGetLocalStorageItem('compactHiddenGroups'),
     app_language: localStorage.getItem('app-language') ?? undefined,
-    antigravity_filter_persistence_enabled: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.persist_enabled'),
-    antigravity_view_mode: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.view_mode'),
-    antigravity_sort_by: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.sort_by'),
-    antigravity_sort_direction: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.sort_direction'),
-    antigravity_filter_types: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.filter_types'),
-    antigravity_tag_filter: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.tag_filter'),
-    antigravity_group_by_tag: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.group_by_tag'),
-    antigravity_active_group_id: safeGetLocalStorageItem('agtools.antigravity.accounts_overview_filters.active_group_id'),
-    privacy_mode_enabled: safeGetLocalStorageItem('agtools.privacy_mode_enabled'),
   };
 }
 
 async function importConfigBundle(bundle: DataTransferConfigBundle): Promise<DataTransferConfigImportResult> {
-  const codexRuntimeReady = await canUseAccountTransferPlatform('codex');
-  const antigravityRuntimeReady = await canUseAntigravitySeriesTransfer();
-  const availableInstancePlatforms = new Set(await listAvailableInstancePlatforms());
   const registry = await loadAccountRegistry();
   let unresolvedAccountRefs = 0;
   let disabledTaskCount = 0;
-  let codexSessionImportResult: CodexSessionTransferImportSummary | null = null;
 
   const userConfigImport = importUserConfig(bundle.user_config, registry);
   unresolvedAccountRefs += userConfigImport.unresolved;
@@ -1157,25 +1064,22 @@ async function importConfigBundle(bundle: DataTransferConfigBundle): Promise<Dat
   });
   invalidateAccountGroupCache();
 
-  if (codexRuntimeReady) {
-    const codexAccountGroupsImport = importCodexAccountGroups(bundle.codex_account_groups, registry);
-    unresolvedAccountRefs += codexAccountGroupsImport.unresolved;
-    await invoke('save_codex_account_groups', {
-      data: JSON.stringify(codexAccountGroupsImport.groups, null, 2),
-    });
-    invalidateCodexGroupCache();
+  const codexAccountGroupsImport = importCodexAccountGroups(bundle.codex_account_groups, registry);
+  unresolvedAccountRefs += codexAccountGroupsImport.unresolved;
+  await invoke('save_codex_account_groups', {
+    data: JSON.stringify(codexAccountGroupsImport.groups, null, 2),
+  });
+  invalidateCodexGroupCache();
 
-    await invoke('save_codex_model_providers', {
-      data: JSON.stringify(bundle.codex_model_providers, null, 2),
-    });
-    invalidateCodexModelProviderCache();
-  }
+  await invoke('save_codex_model_providers', {
+    data: JSON.stringify(bundle.codex_model_providers, null, 2),
+  });
+  invalidateCodexModelProviderCache();
 
   for (const platform of INSTANCE_PLATFORMS) {
-    if (!availableInstancePlatforms.has(platform)) continue;
     const store = bundle.instance_stores[platform];
     if (!store) continue;
-    const imported = await importInstanceStore(platform, store, registry);
+    const imported = importInstanceStore(platform, store, registry);
     unresolvedAccountRefs += imported.unresolved;
     await invoke('data_transfer_replace_instance_store', {
       platform,
@@ -1183,46 +1087,35 @@ async function importConfigBundle(bundle: DataTransferConfigBundle): Promise<Dat
     });
   }
 
-  if (codexRuntimeReady && bundle.codex_sessions !== undefined) {
-    codexSessionImportResult = await invoke<CodexSessionTransferImportSummary>(
-      'data_transfer_import_codex_sessions',
-      { bundle: bundle.codex_sessions },
-    );
-  }
+  const antigravityWakeupImport = importAntigravityWakeupState(bundle.antigravity_wakeup, registry);
+  unresolvedAccountRefs += antigravityWakeupImport.unresolved;
+  disabledTaskCount += antigravityWakeupImport.disabledTasks;
+  localStorage.setItem(WAKEUP_ENABLED_KEY, antigravityWakeupImport.state.enabled ? 'true' : 'false');
+  localStorage.setItem(WAKEUP_TASKS_KEY, JSON.stringify(antigravityWakeupImport.state.tasks));
+  localStorage.setItem(
+    WAKEUP_OFFICIAL_LS_VERSION_STORAGE_KEY,
+    antigravityWakeupImport.state.official_ls_version_mode,
+  );
+  saveWakeupOfficialLsVersionMode(antigravityWakeupImport.state.official_ls_version_mode);
+  await invoke('wakeup_sync_state', {
+    enabled: antigravityWakeupImport.state.enabled,
+    tasks: antigravityWakeupImport.state.tasks,
+    officialLsVersionMode: antigravityWakeupImport.state.official_ls_version_mode,
+    runStartupTasks: false,
+  });
 
-  if (antigravityRuntimeReady) {
-    const antigravityWakeupImport = importAntigravityWakeupState(bundle.antigravity_wakeup, registry);
-    unresolvedAccountRefs += antigravityWakeupImport.unresolved;
-    disabledTaskCount += antigravityWakeupImport.disabledTasks;
-    localStorage.setItem(WAKEUP_ENABLED_KEY, antigravityWakeupImport.state.enabled ? 'true' : 'false');
-    localStorage.setItem(WAKEUP_TASKS_KEY, JSON.stringify(antigravityWakeupImport.state.tasks));
-    localStorage.setItem(
-      WAKEUP_OFFICIAL_LS_VERSION_STORAGE_KEY,
-      antigravityWakeupImport.state.official_ls_version_mode,
-    );
-    saveWakeupOfficialLsVersionMode(antigravityWakeupImport.state.official_ls_version_mode);
-    await invoke('wakeup_sync_state', {
-      enabled: antigravityWakeupImport.state.enabled,
-      tasks: antigravityWakeupImport.state.tasks,
-      officialLsVersionMode: antigravityWakeupImport.state.official_ls_version_mode,
-      runStartupTasks: false,
-    });
-  }
-
-  if (codexRuntimeReady) {
-    const codexWakeupImport = importCodexWakeupState(bundle.codex_wakeup, registry);
-    unresolvedAccountRefs += codexWakeupImport.unresolved;
-    disabledTaskCount += codexWakeupImport.disabledTasks;
-    await saveCodexWakeupState(
-      codexWakeupImport.state.enabled,
-      codexWakeupImport.state.tasks,
-      codexWakeupImport.state.model_presets,
-    );
-    await updateCodexWakeupRuntimeConfig(
-      normalizeString(codexWakeupImport.state.runtime.codex_cli_path) ?? undefined,
-      normalizeString(codexWakeupImport.state.runtime.node_path) ?? undefined,
-    );
-  }
+  const codexWakeupImport = importCodexWakeupState(bundle.codex_wakeup, registry);
+  unresolvedAccountRefs += codexWakeupImport.unresolved;
+  disabledTaskCount += codexWakeupImport.disabledTasks;
+  await saveCodexWakeupState(
+    codexWakeupImport.state.enabled,
+    codexWakeupImport.state.tasks,
+    codexWakeupImport.state.model_presets,
+  );
+  await updateCodexWakeupRuntimeConfig(
+    normalizeString(codexWakeupImport.state.runtime.codex_cli_path) ?? undefined,
+    normalizeString(codexWakeupImport.state.runtime.node_path) ?? undefined,
+  );
 
   const legacyRecordsKey = ['mfa', 'vault', 'records'].join('_');
   const legacyRecords = (bundle as Record<string, any>)[legacyRecordsKey];
@@ -1241,40 +1134,6 @@ async function importConfigBundle(bundle: DataTransferConfigBundle): Promise<Dat
   if (bundle.app_language !== undefined) {
     localStorage.setItem('app-language', bundle.app_language);
   }
-  if (bundle.antigravity_filter_persistence_enabled !== undefined) {
-    safeSetLocalStorageItem(
-      'agtools.antigravity.accounts_overview_filters.persist_enabled',
-      bundle.antigravity_filter_persistence_enabled,
-    );
-  }
-  if (bundle.antigravity_view_mode !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.view_mode', bundle.antigravity_view_mode);
-  }
-  if (bundle.antigravity_sort_by !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.sort_by', bundle.antigravity_sort_by);
-  }
-  if (bundle.antigravity_sort_direction !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.sort_direction', bundle.antigravity_sort_direction);
-  }
-  if (bundle.antigravity_filter_types !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.filter_types', bundle.antigravity_filter_types);
-  }
-  if (bundle.antigravity_tag_filter !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.tag_filter', bundle.antigravity_tag_filter);
-  }
-  if (bundle.antigravity_group_by_tag !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.group_by_tag', bundle.antigravity_group_by_tag);
-  }
-  if (bundle.antigravity_active_group_id !== undefined) {
-    safeSetLocalStorageItem('agtools.antigravity.accounts_overview_filters.active_group_id', bundle.antigravity_active_group_id);
-  }
-  if (bundle.privacy_mode_enabled !== undefined) {
-    safeSetLocalStorageItem('agtools.privacy_mode_enabled', bundle.privacy_mode_enabled);
-    if (typeof window !== 'undefined') {
-      const isEnabled = bundle.privacy_mode_enabled === true || bundle.privacy_mode_enabled === 'true' || bundle.privacy_mode_enabled === 1 || bundle.privacy_mode_enabled === '1';
-      window.dispatchEvent(new CustomEvent('agtools:privacy-mode-changed', { detail: isEnabled }));
-    }
-  }
 
   saveCurrentAccountRefreshMinutesMap(bundle.current_account_refresh_minutes);
   window.dispatchEvent(new Event('config-updated'));
@@ -1285,7 +1144,6 @@ async function importConfigBundle(bundle: DataTransferConfigBundle): Promise<Dat
     unresolved_account_ref_count: unresolvedAccountRefs,
     disabled_task_count: disabledTaskCount,
     needs_restart: needsRestart,
-    codex_session_import_result: codexSessionImportResult,
   };
 }
 
@@ -1374,9 +1232,6 @@ async function importLegacyAccountJson(
   platform: PlatformId,
   jsonContent: string,
 ): Promise<AccountTransferImportResult> {
-  if (!(await canUseAccountTransferPlatform(platform))) {
-    throw new Error(`platform_package_not_ready:${platform}`);
-  }
   const importer = LEGACY_IMPORTERS[platform];
   if (!importer) {
     throw new Error('unsupported_legacy_account_json');

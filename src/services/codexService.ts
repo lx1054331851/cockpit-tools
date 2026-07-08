@@ -9,9 +9,6 @@ import {
   CodexProviderWireApi,
   CodexQuickConfig,
   CodexQuota,
-  CodexReferralEligibilityRules,
-  CodexReferralInviteEligibility,
-  CodexReferralInviteResponse,
   CodexResetCreditsSnapshot,
 } from '../types/codex';
 
@@ -268,41 +265,6 @@ export async function consumeCodexResetCredit(accountId: string): Promise<void> 
   return await invoke('consume_codex_reset_credit', { accountId });
 }
 
-/** 获取 Codex 邀请入口资格 */
-export async function getCodexReferralInviteEligibility(
-  accountId: string,
-  referralKey?: string | null,
-): Promise<CodexReferralInviteEligibility> {
-  return await invoke('get_codex_referral_invite_eligibility', {
-    accountId,
-    referralKey: referralKey ?? null,
-  });
-}
-
-/** 获取 Codex 邀请资格规则 */
-export async function getCodexReferralEligibilityRules(
-  accountId: string,
-  referralKey?: string | null,
-): Promise<CodexReferralEligibilityRules> {
-  return await invoke('get_codex_referral_eligibility_rules', {
-    accountId,
-    referralKey: referralKey ?? null,
-  });
-}
-
-/** 发送 Codex 邀请邮件 */
-export async function sendCodexReferralInvites(
-  accountId: string,
-  emails: string[],
-  referralKey?: string | null,
-): Promise<CodexReferralInviteResponse> {
-  return await invoke('send_codex_referral_invites', {
-    accountId,
-    referralKey: referralKey ?? null,
-    emails,
-  });
-}
-
 /** 强制刷新单个账号的订阅信息 */
 export async function refreshCodexSubscriptionInfo(accountId: string): Promise<CodexAccount> {
   return await invoke('refresh_codex_subscription_info', { accountId });
@@ -410,8 +372,8 @@ export async function updateCodexApiKeyCredentials(
     apiProviderName: apiProviderName ?? null,
     apiModelCatalog: apiModelCatalog ?? null,
     apiWireApi: apiWireApi ?? null,
-    apiSupportsVision: apiSupportsVision ?? null,
-    apiModelVisionSupport: apiModelVisionSupport ?? null,
+    apiSupportsVision: apiSupportsVision ?? false,
+    apiModelVisionSupport: apiModelVisionSupport ?? {},
     apiVisionRoutingModel: apiVisionRoutingModel ?? null,
   });
 }
@@ -444,7 +406,28 @@ export async function updateCodexAccountTags(accountId: string, tags: string[]):
 
 export async function updateCodexAccountNote(
   accountId: string,
+  update: string | CodexAccountNoteUpdate,
+): Promise<CodexAccount> {
+  const payload = typeof update === 'string' ? { note: update } : update;
+  return await invoke('update_codex_account_note', { accountId, ...payload });
+}
+
+export async function createPendingCodexOAuthAccount(
+  email: string,
   update: CodexAccountNoteUpdate,
 ): Promise<CodexAccount> {
-  return await invoke('update_codex_account_note', { accountId, ...update });
+  return await invoke('create_pending_codex_oauth_account', { email, ...update });
+}
+
+export interface CodexMailPreviewFetchResult {
+  status: number;
+  contentType?: string | null;
+  body: string;
+  truncated: boolean;
+}
+
+export async function fetchCodexAccountNoteMailUrl(
+  mailUrl: string,
+): Promise<CodexMailPreviewFetchResult> {
+  return await invoke('fetch_codex_account_note_mail_url', { mailUrl });
 }

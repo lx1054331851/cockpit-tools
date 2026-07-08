@@ -225,9 +225,7 @@
     "deleteTagWarning": "Apakah Anda yakin ingin menghapus tag ini dari semua akun?",
     "expand": "Perluas",
     "processing": "Memproses...",
-    "selectAll": "Pilih Semua",
-    "pause": "Jeda",
-    "resume": "Lanjutkan"
+    "selectAll": "Pilih Semua"
   },
   "floatingCard": {
     "selectPlatform": "Ganti platform",
@@ -302,6 +300,9 @@
     },
     "qoder": "Qoder​",
     "trae": "Trae​",
+    "traeSolo": "TRAE SOLO​",
+    "traeCn": "Trae CN​",
+    "traeSoloCn": "TRAE SOLO CN​",
     "codebuddyCn": "CodeBuddy CN​",
     "switchClassicLayoutEntry": "Beralih ke tata letak klasik",
     "switchClassicLayoutTitle": "Beralih ke tata letak bilah sisi klasik",
@@ -362,103 +363,7 @@
     "customIconDeleteConfirm": "Hapus ikon kustom ini?",
     "editChildPlatform": "Edit platform anak",
     "setAsDefaultInGroup": "Tetapkan sebagai platform bawaan dalam grup ini",
-    "removeFromGroup": "Keluarkan dari grup",
-    "packageNotInstalled": "Belum diunduh · {{size}}",
-    "packageInstalled": "Terpasang v{{version}} · {{size}}",
-    "packageUpdateAvailable": "Pembaruan {{version}} · {{size}}",
-    "packageIncompatible": "Versi inti tidak cocok",
-    "packageError": "Kesalahan status",
-    "packageOperating": "Memproses",
-    "packageDownload": "Unduh",
-    "packageRepair": "Perbaiki",
-    "packageUpdate": "Perbarui",
-    "packageReload": "Muat ulang",
-    "packageUninstall": "Copot",
-    "packageInstallRequired": "Belum terpasang",
-    "packageInstallAndOpen": "Pasang dan buka",
-    "packageRepairAndOpen": "Perbaiki dan buka",
-    "packageUpdateAndOpen": "Perbarui dan buka",
-    "packageInstallConfirmTitle": "Pasang paket {{platform}}",
-    "packageInstallConfirmDesc": "{{platform}} perlu mengunduh paket platform sebelum dibuka. Versi {{version}}, ukuran {{size}}.",
-    "packageInstallNotReady": "Paket sudah diproses, tetapi runtime belum siap.",
-    "packageInstallCardTitle": "Paket {{platform}} belum terpasang",
-    "packageInstallCardDesc": "Unduh versi {{version}}, ukuran {{size}}. Platform akan dibuka setelah pemasangan.",
-    "packageUpdateAvailableShort": "Pembaruan",
-    "packageRepairRequired": "Perbaiki",
-    "packageIncompatibleShort": "Tak cocok",
-    "packageCheckUpdate": "Periksa pembaruan",
-    "packageCheckUpdateShort": "Periksa",
-    "packageChangelog": "Catatan perubahan",
-    "packageChangelogShort": "Catatan",
-    "packageInstallFromLocalZip": "Instal dari paket lokal...",
-    "packageUpdateFromLocalZip": "Perbarui dari paket lokal...",
-    "packageLocalZipShort": "Paket lokal",
-    "packageLocalZipFilter": "ZIP paket platform",
-    "packageLocalZipInstallConfirmTitle": "Instal {{platform}} dari paket lokal",
-    "packageLocalZipUpdateConfirmTitle": "Perbarui {{platform}} dari paket lokal",
-    "packageLocalZipInstallConfirmDesc": "Paket platform {{platform}} akan diinstal dari ZIP lokal. Data akun tersimpan tidak akan dihapus; pemeriksaan pembaruan berikutnya tetap memakai indeks jarak jauh.",
-    "packageLocalZipUpdateConfirmDesc": "Komponen runtime {{platform}} saat ini akan diganti dengan ZIP lokal. Data akun tersimpan tidak akan dihapus; pemeriksaan pembaruan berikutnya tetap memakai indeks jarak jauh.",
-    "packageLocalZipInstallAction": "Instal paket lokal",
-    "packageLocalZipUpdateAction": "Perbarui paket lokal",
-    "packageChangelogTitle": "Catatan perubahan {{platform}}",
-    "packageChangelogEntryEmpty": "Belum ada catatan untuk versi ini.",
-    "packageChangelogEmpty": "Belum ada catatan perubahan.",
-    "packageCurrentVersion": "Saat ini {{version}}",
-    "packageLatestVersion": "Terbaru {{version}}",
-    "packageUninstallConfirmTitle": "Copot paket {{platform}}",
-    "packageUninstallConfirmDesc": "Menghapus paket platform {{platform}} dan komponen runtime ({{size}}). Data akun tersimpan tidak akan dihapus.",
-    "packageUpdateConfirmTitle": "Perbarui paket {{platform}}",
-    "packageUpdateConfirmDesc": "Mengunduh dan beralih ke paket {{platform}} {{version}} ({{size}}).",
-    "packageRepairConfirmTitle": "Perbaiki paket {{platform}}",
-    "packageRepairConfirmDesc": "Mengunduh ulang dan memverifikasi paket {{platform}} {{version}} ({{size}}).",
-    "packageReloadConfirmTitle": "Muat ulang paket {{platform}}",
-    "packageReloadConfirmDesc": "Membangun ulang paket lokal {{platform}} dan beralih ke paket pengembangan terbaru. Data akun yang tersimpan tidak akan dihapus.",
-    "packageReloadProgressRebuilding": "Membangun ulang paket platform lokal",
-    "packageProgressWaiting": "Menunggu mulai",
-    "packageProgressWorking": "Memproses paket platform",
-    "packageProgressResolving": "Menentukan sumber paket",
-    "packageProgressDownloading": "Mengunduh paket platform",
-    "packageProgressVerifying": "Memverifikasi paket platform",
-    "packageProgressExtracting": "Mengekstrak paket platform",
-    "packageProgressInstalling": "Mengalihkan komponen runtime",
-    "packageProgressUninstalling": "Menghapus paket platform",
-    "packageProgressCompleted": "Selesai",
-    "packageProgressFailed": "Pemrosesan gagal",
-    "packageProgressDownloaded": "Terunduh {{downloaded}} / {{total}}",
-    "packageProgressDownloadedUnknown": "Terunduh {{downloaded}}",
-    "packageDownloadFailedRetryable": "Unduhan paket platform gagal. Jaringan atau proxy mungkin sementara tidak tersedia. Periksa koneksi lalu coba lagi.",
-    "packageDownloadSourceMissing": "Tidak ada sumber paket platform yang tersedia untuk sistem ini. Periksa pembaruan nanti atau gunakan installer yang didukung.",
-    "packageDownloadVerifyFailed": "Verifikasi paket platform gagal. Unduh ulang; jika masih gagal, tunggu paket dipublikasikan ulang.",
-    "packageOperationFailedFriendly": "Operasi paket platform gagal. Coba lagi nanti.",
-    "packageOperationCanceled": "Operasi paket platform dibatalkan.",
-    "packageOperationRetryHint": "Anda dapat mengeklik tombol di bawah untuk mencoba lagi.",
-    "packagePageRepairTitle": "Paket {{platform}} perlu diperbaiki",
-    "packagePageInstallTitle": "Paket {{platform}} belum terpasang",
-    "packagePageInstallDesc": "Anda dapat memasang langsung dari halaman ini, atau memakai aksi paket di kanan atas untuk memasang atau memperbaiki sebelum mengelola akun. Akun, OAuth, pengalihan, dan penyegaran latar belakang tidak akan dimuat sebelum pemasangan.",
-    "packageDashboardStateDesc": "Buka halaman {{platform}} untuk memasang langsung, atau gunakan aksi kanan atas untuk memperbarui, memperbaiki, atau melihat catatan perubahan.",
-    "packageOpenPlatformPage": "Buka halaman platform",
-    "packageBundledShort": "Bawaan",
-    "packageBundledStatus": "Disediakan oleh aplikasi utama",
-    "packageBundledDesc": "Platform ini disertakan bersama aplikasi utama. Instalasi dan pembaruan mengikuti versi aplikasi utama.",
-    "packageVersionHistory": "Riwayat versi",
-    "packageVersionHistoryShort": "Versi",
-    "packageVersionHistoryTitle": "Riwayat versi {{platform}}",
-    "packageVersionHistoryLoading": "Memuat riwayat versi",
-    "packageVersionHistoryEmpty": "Belum ada versi yang dapat dipasang.",
-    "packageVersionHistoryRetry": "Coba lagi",
-    "packageVersionHistoryLoadFailed": "Gagal memuat riwayat versi",
-    "packageVersionInstalledBadge": "Terpasang",
-    "packageVersionLatestBadge": "Terbaru",
-    "packageVersionIncompatibleBadge": "Tidak cocok",
-    "packageVersionCurrentSystem": "Sistem saat ini",
-    "packageVersionMinCore": "Perlu app {{version}}+",
-    "packageVersionInstallAction": "Pasang",
-    "packageVersionReinstallAction": "Pasang ulang",
-    "packageVersionDowngradeAction": "Kembali",
-    "packageVersionUpdateAction": "Perbarui",
-    "packageVersionInstallConfirmTitle": "Pasang paket {{platform}} {{version}}",
-    "packageVersionInstallConfirmDesc": "Beralih ke paket {{platform}} {{version}} ({{size}}). Data akun tidak akan dihapus, dan nanti bisa kembali dari riwayat versi.",
-    "packageVersionReinstallConfirmDesc": "Unduh dan verifikasi lagi paket {{platform}} {{version}} ({{size}}). Data akun tidak akan dihapus."
+    "removeFromGroup": "Keluarkan dari grup"
   },
   "privacy": {
     "hideSensitive": "Sembunyikan email",
@@ -640,7 +545,6 @@
       "allAlreadyRunning": "Semua instansi sudah berjalan",
       "noneRunning": "Tidak ditemukan instansi yang sedang berjalan",
       "syncThreadsNeedTwo": "Diperlukan setidaknya dua instansi untuk menyinkronkan thread",
-      "loadTimeout": "Memuat instans terlalu lama. Coba lagi.",
       "launchPrepared": "Perintah peluncuran siap",
       "speedUpdated": "Kecepatan diperbarui"
     },
@@ -765,13 +669,6 @@
       "floatingCardAlwaysOnTopDesc": "Jendela kartu mengambang baru tetap di atas saat dibuka",
       "appAutoLaunch": "Jalankan Cockpit Tools saat login",
       "appAutoLaunchDesc": "Jalankan aplikasi secara otomatis setelah masuk ke sistem",
-      "tokenKeeper": "Jaga otorisasi akun",
-      "tokenKeeperDesc": "Saat aktif, aplikasi menyegarkan otorisasi akun yang hampir kedaluwarsa di latar belakang setelah jeda dan secara bertahap; saat nonaktif, pemeliharaan otomatis berhenti, sementara refresh manual, pindah akun, dan impor tetap berjalan.",
-      "platformQuickSettingsTitle": "Pengaturan platform",
-      "platformQuickSettingsDesc": "Pengaturan tiap platform kini ada di halaman platform. Buka cepat dari sini.",
-      "platformQuickSettingsItemDesc": "Halaman platform",
-      "openPlatformSettings": "Buka",
-      "platformQuickSettingsOpenAria": "Buka pengaturan {{platform}}",
       "startupWakeupDisabled": "Nonaktif",
       "startupWakeupImmediate": "Bangunkan segera",
       "startupWakeupDelayed": "Bangunkan setelah penundaan",
@@ -939,7 +836,14 @@
       "claudeAutoRefreshDesc": "Menyegarkan cache kuota akun Claude secara otomatis di latar belakang.",
       "claudeAppPath": "Target peluncuran Claude Desktop",
       "claudeAppPathDesc": "Profil default dapat memakai target Microsoft Store; profil multi-instans membutuhkan Claude.exe asli.",
-      "platformQuickSettingsEntryTitle": "{{platform}} akses pengaturan"
+      "antigravityLaunchOnSwitch": "Jalankan Antigravity IDE saat beralih",
+      "antigravityLaunchOnSwitchDesc": "Jika nonaktif, perpindahan hanya menulis data akun default Antigravity IDE dan tidak menutup, menjalankan, atau memulai ulang aplikasi.",
+      "tokenKeeper": "Jaga auth",
+      "tokenKeeperDesc": "Menyegarkan Token akun dalam batch kecil hanya saat otorisasi hampir kedaluwarsa, sehingga mengurangi permintaan latar belakang.",
+      "platformAutoRefresh": "Penyegaran otomatis kuota {{platform}}",
+      "traeSoloAppPath": "Jalur peluncuran TRAE SOLO",
+      "traeCnAppPath": "Jalur peluncuran Trae CN",
+      "traeSoloCnAppPath": "Jalur peluncuran TRAE SOLO CN"
     },
     "network": {
       "apiTitle": "API Antigravity Cockpit",
@@ -1099,9 +1003,7 @@
         "unresolvedRefs": "{{count}} keterkaitan akun tidak dapat dicocokkan dan dilewati",
         "disabledTasks": "{{count}} tugas dinonaktifkan karena tidak ada akun yang cocok",
         "restartRequired": "Pengaturan layanan jaringan telah dipulihkan. Sebagian perubahan berlaku setelah restart",
-        "partialAccountFailure": "Sebagian impor akun gagal: {{error}}",
-        "codexSessionsImported": "{{imported}} sesi Codex diimpor, {{skipped}} dilewati",
-        "codexSessionsMissingTargets": "{{count}} instance sumber Codex tidak punya target lokal"
+        "partialAccountFailure": "Sebagian impor akun gagal: {{error}}"
       },
       "errors": {
         "selectionRequired": "Pilih setidaknya satu jenis data",
@@ -1772,7 +1674,8 @@
     "installFailed": "Instalasi sistem gagal. Coba lagi nanti atau unduh secara manual.",
     "restartRequiredAfterInstall": "Pembaruan terpasang. Mulai ulang aplikasi secara manual untuk menyelesaikan peralihan.",
     "stoppingApiService": "Menghentikan layanan API...",
-    "stopApiServiceFailed": "Layanan API tidak dapat dihentikan. Nonaktifkan dulu, lalu coba lagi."
+    "stopApiServiceFailed": "Layanan API tidak dapat dihentikan. Nonaktifkan dulu, lalu coba lagi.",
+    "stopApiServiceFailedContinue": "Layanan API tidak berhenti dengan benar. Tetap melanjutkan mulai ulang..."
   },
   "closeDialog": {
     "title": "Tutup Jendela",
@@ -1781,8 +1684,7 @@
     "minimizeDesc": "Aplikasi akan terus berjalan di latar belakang",
     "quit": "Keluar dari Aplikasi",
     "quitDesc": "Tutup aplikasi sepenuhnya",
-    "remember": "Ingat pilihan saya, jangan tanyakan lagi",
-    "actionFailed": "Tindakan gagal: {{error}}"
+    "remember": "Ingat pilihan saya, jangan tanyakan lagi"
   },
   "group_settings": {
     "title": "Manajemen Grup",
@@ -1929,7 +1831,6 @@
       "emptyMembers": "Belum ada akun di koleksi ini",
       "footerHint": "Cakupan akses: {{scope}}",
       "manageAccounts": "Kelola akun",
-      "saveTimeout": "Penyimpanan anggota layanan API kehabisan waktu. Coba lagi nanti.",
       "rotateKey": "Putar kunci",
       "rotateConfirmMessage": "Setelah direset, kunci layanan API saat ini akan langsung tidak berlaku, dan permintaan yang sedang berjalan mungkin menjadi tidak tersedia. Lanjutkan?",
       "disableService": "Nonaktifkan layanan",
@@ -2040,7 +1941,7 @@
       "refreshStatsSuccess": "Statistik layanan API telah disegarkan",
       "routingStrategy": {
         "auto": "Otomatis (Disarankan)",
-        "singleAccount": "Tetapkan akun pertama",
+        "singleAccount": "Satu akun",
         "quotaHighFirst": "Kuota Tinggi Dulu",
         "quotaLowFirst": "Kuota Rendah Dulu",
         "planHighFirst": "Paket Tinggi Dulu",
@@ -2327,6 +2228,7 @@
     "quota": {
       "hourly": "Kuota 5 jam",
       "weekly": "Kuota mingguan",
+      "additional": "Kuota tambahan",
       "reset": "Setel ulang",
       "weeklyBlocksHourly": "Kuota mingguan 0, jadi kuota 5 jam tidak tersedia",
       "resetCredits": "Reset {{count}}",
@@ -2420,7 +2322,6 @@
       "subtitle": "Jadwalkan pekerjaan bangun Codex, uji jalur CLI, dan tinjau riwayat eksekusi.",
       "heroTitle": "Tugas Bangun Codex",
       "heroSubtitle": "Buat pekerjaan bangun berbasis waktu untuk akun Codex OAuth, jalankan tes ad-hoc, dan periksa setiap pemicu di satu tempat.",
-      "loadTimeout": "Memuat tugas wakeup Codex terlalu lama. Coba lagi.",
       "runtimeReady": "CLI Codex siap",
       "runtimeMissing": "CLI Codex diperlukan",
       "runtimeCardTitle": "Codex CLI",
@@ -2441,9 +2342,6 @@
       "copied": "Tersalin",
       "addTask": "Tambah tugas",
       "testNow": "Tes bangun",
-      "fullQuotaAction": "Bangunkan akun",
-      "fullQuotaActionTitle": "Buka uji wakeup akun. Akun diurutkan default berdasarkan kuota 5h dari tinggi ke rendah.",
-      "fullQuotaNoAccounts": "Tidak ada akun OAuth yang dapat dibangunkan di daftar saat ini.",
       "enableAll": "Aktifkan semua tugas",
       "disableAll": "Nonaktifkan semua tugas",
       "refreshRuntime": "Periksa Ulang CLI",
@@ -2514,6 +2412,16 @@
       "accountSearchPlaceholder": "Cari email...",
       "accountFilterEmpty": "Tidak ada akun yang cocok",
       "accountFilteredCount": "{{count}} akun dalam filter saat ini",
+      "fullQuotaAction": "Wake akun",
+      "fullQuotaActionTitle": "Buka tes wakeup akun. Akun diurutkan berdasarkan kuota 5 jam dari tinggi ke rendah secara default.",
+      "fullQuotaNoAccounts": "Daftar saat ini tidak memiliki akun OAuth yang bisa di-wakeup.",
+      "fullQuotaAccountsLabel": "Akun untuk wakeup",
+      "accountSort": {
+        "default": "Urutan default",
+        "hourly": "Menurut kuota 5 jam",
+        "weekly": "Menurut kuota mingguan",
+        "email": "Menurut email"
+      },
       "testTitle": "Tes wakeup Codex",
       "testAccountsLabel": "Akun tes",
       "testAccountsRequired": "Silakan pilih setidaknya satu akun tes.",
@@ -2598,15 +2506,7 @@
       "officialChatRuntimeTitle": "Langsung resmi",
       "officialChatRuntimePath": "Chat Codex resmi ChatGPT",
       "officialChatRuntimeSource": "Langsung resmi",
-      "officialChatRuntimeMessage": "Chat langsung akun OAuth",
-      "fullQuotaTestTitle": "Bangunkan akun",
-      "fullQuotaAccountsLabel": "Pilih akun untuk dibangunkan",
-      "accountSort": {
-        "default": "Urutan default",
-        "hourly": "Menurut kuota 5h",
-        "weekly": "Menurut kuota mingguan",
-        "email": "Menurut email"
-      }
+      "officialChatRuntimeMessage": "Chat langsung akun OAuth"
     },
     "sessionManager": {
       "title": "Manajer Sesi",
@@ -2618,10 +2518,14 @@
         "collapse": "Ciutkan",
         "repairVisibility": "Perbaiki visibilitas",
         "restoreSessions": "Pulihkan sesi",
+        "exportSessions": "Ekspor sesi",
+        "importSessions": "Impor sesi",
         "copySessionId": "Salin ID sesi",
+        "openLocation": "Buka lokasi",
         "selectAllSessions": "Pilih semua sesi",
         "clearSelectedSessions": "Batal pilih",
-        "copyToInstance": "Salin ke instans"
+        "copyToInstance": "Salin ke instans",
+        "trash": "Sampah"
       },
       "confirm": {
         "title": "Pindahkan ke Sampah",
@@ -2659,11 +2563,25 @@
       "locationRunning": " (berjalan)",
       "untitled": "Sesi tanpa judul",
       "restoreModal": {
-        "title": "Pulihkan sesi",
-        "hint": "Saat dipulihkan, file rollout, baris thread SQLite, dan entri session_index akan dikembalikan bersama ke instance asal.",
+        "title": "Sampah",
+        "hint": "Sesi di Sampah dapat dipulihkan ke instans asal atau dihapus permanen untuk mengosongkan ruang disk.",
         "emptyTitle": "Trash kosong",
         "emptyDesc": "Sesi yang dipindahkan ke Trash akan muncul di sini.",
-        "restoreAction": "Pulihkan sesi terpilih"
+        "restoreAction": "Pulihkan sesi terpilih",
+        "summary": "{{count}} item, {{size}}",
+        "selectedSummary": "{{count}} dipilih, {{size}}",
+        "selectAll": "Pilih semua",
+        "clearSelected": "Batal pilih",
+        "emptyTrash": "Kosongkan Sampah",
+        "itemSize": "Ukuran {{size}}",
+        "deleteOne": "Hapus permanen",
+        "deleteSelected": "Hapus pilihan",
+        "pickDeleteOne": "Pilih setidaknya satu sesi untuk dihapus permanen",
+        "deleteOneConfirm": "Hapus permanen sesi ini? Tindakan ini tidak dapat dibatalkan. Perkiraan ruang bebas: {{size}}.",
+        "deleteSelectedConfirm": "Hapus permanen {{count}} sesi yang dipilih? Tindakan ini tidak dapat dibatalkan. Perkiraan ruang bebas: {{size}}.",
+        "permanentDeleteTitle": "Hapus permanen",
+        "permanentDeleteAction": "Hapus permanen",
+        "emptyTrashConfirm": "Kosongkan Sampah? {{count}} sesi akan dihapus permanen dan tidak dapat dipulihkan. Perkiraan ruang bebas: {{size}}."
       },
       "targetModal": {
         "title": "Salin ke instans",
@@ -2726,11 +2644,89 @@
         "instanceScopeAllDesc": "Memperbaiki semua instans Codex saat pemulihan bersama.",
         "progressTitle": "Progres perbaikan",
         "start": "Perbaiki",
-        "previewing": "Mempratinjau...",
+        "previewing": "Membuat pratinjau...",
         "previewAgain": "Pratinjau ulang",
         "preview": "Pratinjau perubahan",
-        "previewFailedWithError": "Gagal mempratinjau perbaikan sesi: {{error}}",
+        "previewFailedWithError": "Pratinjau perbaikan sesi gagal: {{error}}",
         "confirmRepair": "Konfirmasi perbaikan"
+      },
+      "importModal": {
+        "title": "Impor sesi",
+        "hint": "Paket sesi hanya mengimpor file rollout dan entri session_index. Akun, token, API key, dan pengaturan aplikasi tidak disertakan; sesi dengan ID yang sama di instance target akan dilewati.",
+        "noTarget": "Tidak ada instance Codex yang tersedia untuk impor",
+        "noPackage": "Pilih paket sesi terlebih dahulu",
+        "pickOne": "Pilih setidaknya satu sesi yang dapat diimpor",
+        "totalCount": "{{count}} sesi dalam paket",
+        "readyCount": "{{count}} dapat diimpor",
+        "selectReady": "Pilih yang dapat diimpor",
+        "previewing": "Mempratinjau paket sesi...",
+        "existsIn": "Sudah ada di: {{names}}",
+        "statusReady": "Siap",
+        "statusDuplicate": "Ada",
+        "statusConflict": "Konflik",
+        "statusInvalid": "Tidak valid",
+        "confirm": "Impor sesi terpilih"
+      },
+      "transferModal": {
+        "exportTitle": "Ekspor sesi",
+        "importTitle": "Impor sesi",
+        "minimize": "Minimalkan",
+        "reopen": "Lihat progres",
+        "clear": "Bersihkan",
+        "runningSummary": "Memproses {{current}} dari {{total}}",
+        "completedSummary": "Tugas selesai",
+        "failedSummary": "Tugas gagal",
+        "current": "{{current}} dari {{total}}",
+        "phase": {
+          "exportPrepare": "Menyiapkan ekspor...",
+          "exportCollect": "Mengumpulkan sesi...",
+          "exportHash": "Memeriksa file sesi...",
+          "exportWrite": "Menulis paket sesi...",
+          "importPrepare": "Menyiapkan impor...",
+          "importRead": "Membaca paket sesi...",
+          "importWrite": "Menulis instance tujuan...",
+          "importRebuild": "Memperbarui indeks sesi resmi...",
+          "done": "Tugas selesai"
+        }
+      },
+      "exportModal": {
+        "title": "Ekspor sesi",
+        "hint": "Tinjau daftar sesi, instance sumber, dan ukuran file sebelum mengekspor. Paket hanya berisi file rollout dan entri session_index, bukan akun, token, kunci API, atau pengaturan aplikasi.",
+        "previewing": "Mempratinjau sesi...",
+        "selectedCount": "{{count}} dipilih",
+        "exportableCount": "{{count}} bisa diekspor",
+        "missingCount": "{{count}} hilang",
+        "totalSize": "Ukuran total {{size}}",
+        "exportPath": "Lokasi ekspor",
+        "pathUnset": "Lokasi belum dipilih",
+        "choosePath": "Pilih lokasi",
+        "missingNotice": "{{count}} sesi tidak lagi ada di kumpulan instance saat ini dan akan dilewati.",
+        "sourceInstance": "Sumber: {{name}}",
+        "emptyTitle": "Tidak ada sesi untuk diekspor",
+        "noPreview": "Selesaikan pratinjau dulu",
+        "noExportable": "Tidak ada sesi yang bisa diekspor",
+        "pickPath": "Pilih lokasi ekspor",
+        "confirm": "Ekspor",
+        "selectedExportCount": "Dipilih {{selected}} / bisa diekspor {{total}}",
+        "selectedSize": "Ukuran terpilih {{selected}} / total {{total}}",
+        "removedNotice": "{{count}} dihapus dari daftar ekspor ini",
+        "restoreRemoved": "Pulihkan daftar",
+        "sourceLabel": "Sumber",
+        "allSources": "Semua sumber",
+        "selectionLabel": "Pilihan",
+        "filterAll": "Semua",
+        "filterSelected": "Dipilih",
+        "filterUnselected": "Belum dipilih",
+        "visibleCount": "Tampil {{visible}} / {{total}}",
+        "selectVisible": "Pilih filter",
+        "clearVisible": "Hapus pilihan",
+        "keepVisibleOnly": "Simpan filter",
+        "removeVisible": "Keluarkan filter",
+        "removeUnchecked": "Keluarkan belum dipilih",
+        "selectItem": "Pilih sesi untuk ekspor",
+        "removeItem": "Keluarkan",
+        "emptyFilteredTitle": "Tidak ada sesi cocok",
+        "emptyFilteredDesc": "Ubah pencarian, sumber, atau status pilihan lalu coba lagi."
       }
     },
     "modelProviders": {
@@ -2738,7 +2734,6 @@
       "desc": "Kelola penyedia model dan beberapa API Key di satu tempat, lalu pakai ulang langsung saat menambahkan akun Codex berbasis API Key.",
       "add": "Tambah penyedia",
       "loadFailed": "Gagal memuat penyedia model: {{error}}",
-      "loadTimeout": "Memuat penyedia model terlalu lama. Coba lagi.",
       "emptyTitle": "Belum ada penyedia model",
       "emptyDesc": "Klik \"Tambah penyedia\" di kanan atas untuk memulai.",
       "baseUrl": "URL dasar",
@@ -3038,7 +3033,9 @@
       "filterWithin24h": "24 jam ({{count}})",
       "filterWithin7d": "7 hr ({{count}})",
       "filterWithin30d": "30 hr ({{count}})",
-      "filterMissing": "Tidak diketahui ({{count}})"
+      "filterMissing": "Tidak diketahui ({{count}})",
+      "accessTokenOnlyUsable": "Token dapat digunakan",
+      "accessTokenOnlyUsableDetail": "Endpoint langganan dibatasi, tetapi kuota dan penggunaan Codex berjalan normal"
     },
     "apiSwitchNotice": {
       "title": "Sesi Codex tersembunyi",
@@ -3057,7 +3054,7 @@
     "accountNote": {
       "title": "Catatan Akun",
       "label": "Catatan Akun",
-      "desc": "Tambahkan 2FA, kata sandi, telepon, dan catatan lain untuk {{account}}.",
+      "desc": "Tambahkan kata sandi, 2FA, URL email, telepon, dan catatan lain untuk {{account}}.",
       "twoFactorSecretLabel": "Rahasia 2FA",
       "twoFactorSecretShort": "2FA",
       "twoFactorSecretPlaceholder": "Rahasia Base32 atau URI otpauth://",
@@ -3071,13 +3068,30 @@
       "phoneNumberLabel": "Telepon",
       "phoneShort": "Telepon",
       "phoneNumberPlaceholder": "Nomor telepon tertaut",
+      "mailUrlLabel": "URL email",
+      "mailUrlPlaceholder": "Masukkan URL halaman baca email yang bisa dibuka",
+      "mailPreviewRefresh": "Segarkan email",
+      "mailPreviewOpen": "Buka di browser",
+      "mailPreviewLoading": "Membaca email...",
+      "mailPreviewNoCode": "Kode 6 digit berurutan tidak ditemukan",
+      "mailPreviewFetchFailed": "Gagal membaca email: {{error}}",
+      "mailPreviewUrlRequired": "Masukkan URL email",
+      "mailPreviewUrlInvalid": "URL email tidak valid. Masukkan alamat http:// atau https:// lengkap.",
+      "mailPreviewUnsupportedProtocol": "URL email hanya mendukung http atau https.",
+      "mailPreviewHttpFailed": "Permintaan URL email gagal: HTTP {{status}}",
+      "mailPreviewCode": "Kode email terbaru",
+      "mailPreviewStatusInitial": "Diambil pada {{time}}",
+      "mailPreviewStatusChanged": "Kode baru · {{time}}",
+      "mailPreviewStatusUnchanged": "Tidak berubah · {{time}}",
+      "mailPreviewTruncated": "Konten dipotong",
+      "mailOpenFailed": "Gagal membuka URL email: {{error}}",
       "otherNoteLabel": "Catatan lain",
       "otherNoteShort": "Catatan",
       "placeholder": "Catatan pengiriman, email pemulihan, atau detail akun",
-      "exportSensitiveNotice": "Ekspor berisi rahasia 2FA, kata sandi, atau nomor telepon. Simpan hanya di lokasi tepercaya.",
+      "exportSensitiveNotice": "Ekspor berisi rahasia 2FA, kata sandi, nomor telepon, atau URL email. Simpan hanya di lokasi tepercaya.",
       "exportSensitiveIncluded": "Sertakan catatan sensitif",
       "exportSensitiveExcluded": "Kecualikan catatan sensitif",
-      "exportSensitiveToggleHint": "Mengatur apakah JSON ekspor menyertakan rahasia 2FA, kata sandi, dan nomor telepon.",
+      "exportSensitiveToggleHint": "Mengatur apakah JSON ekspor menyertakan rahasia 2FA, kata sandi, nomor telepon, dan URL email.",
       "show": "Tampilkan",
       "hide": "Sembunyikan",
       "emptyTitle": "Tambah catatan akun",
@@ -3175,10 +3189,8 @@
         "pricingReset": "Atur ulang",
         "pricingSaved": "Harga tersimpan",
         "pricingInvalid": "Harga harus berupa angka lebih besar atau sama dengan 0",
-        "pricingVersion": "Versi harga saat ini v{{version}}",
-        "pricingRepriceHistory": "Hitung ulang riwayat",
-        "pricingRepriceHint": "Menyegarkan estimasi biaya di log permintaan dan statistik memakai versi harga saat ini.",
-        "pricingRepriceSuccess": "Estimasi permintaan historis telah dihitung ulang dengan harga saat ini"
+        "pricingReprice": "Hitung ulang riwayat",
+        "pricingRepriced": "Estimasi riwayat dihitung ulang dengan harga saat ini"
       },
       "keys": {
         "policyTitle": "Kebijakan Model",
@@ -3325,7 +3337,11 @@
       "selectedCount": "Dipilih {{count}}/{{total}}",
       "selectAllAccounts": "Pilih semua akun",
       "selectReady": "Pilih akun OK",
-      "clearSelection": "Hapus pilihan"
+      "clearSelection": "Hapus pilihan",
+      "hiddenTask": "Tugas impor massal Codex",
+      "taskRunning": "Memproses {{current}} / {{total}}",
+      "taskPreview": "{{total}} pratinjau siap",
+      "reopen": "Lihat tugas"
     },
     "autoRepairMode": {
       "label": "Logika perbaikan otomatis",
@@ -3334,65 +3350,33 @@
       "legacy4eb75d96": "Logika 4eb75d96",
       "current": "Logika saat ini"
     },
-    "referralInvite": {
-      "inviteFriendShort": "Undang teman",
-      "inviteCoworkerShort": "Undang rekan",
-      "inviteResetTitle": "Dapatkan {{count}} reset setelah undangan berhasil",
-      "inviteCreditsTitle": "Dapatkan {{count}} kredit setelah undangan berhasil",
-      "limitReachedTitle": "Anda masih bisa mengundang, tetapi akun ini tidak akan mendapat hadiah lagi",
-      "notEligible": "Akun ini saat ini tidak menampilkan kampanye undangan Codex.",
-      "titlePersonal": "Undang teman",
-      "titleWorkspace": "Undang rekan kerja",
-      "limitReachedDesc": "Anda masih bisa mengirim undangan, tetapi batas hadiah akun ini sudah tercapai, jadi undangan ini tidak akan memberi reset.",
-      "resetDesc": "Saat mereka bergabung dan mengirim pesan pertama, Anda berdua akan menerima {{count}} reset yang bisa ditukarkan dalam 30 hari.",
-      "creditsDesc": "Saat mereka bergabung dan mengirim pesan pertama, Anda berdua akan menerima {{count}} kredit.",
-      "successTitle": "Undangan terkirim",
-      "successResetDesc": "Setelah mereka bergabung ke Codex dan mengirim pesan pertama, Anda berdua akan menerima satu reset.",
-      "successCreditsDesc": "Setelah mereka bergabung ke Codex dan mengirim pesan pertama, Anda berdua akan menerima kredit.",
-      "emailLabel": "Surel",
-      "emailPlaceholder": "Masukkan email",
-      "maxReached": "Batas tercapai",
-      "maxEmailsHint": "Kirim hingga {{count}} email sekaligus. Pisahkan dengan koma, titik koma, atau spasi.",
-      "removeEmail": "Hapus {{email}}",
-      "invalidEmailsError": "Perbaiki email ini: {{emails}}",
-      "maxEmailsError": "Anda bisa mengirim hingga {{count}} email undangan sekaligus.",
-      "noEmailsError": "Masukkan setidaknya satu email undangan terlebih dahulu.",
-      "consentRequired": "Konfirmasikan bahwa Anda sudah mendapat persetujuan sebelum mengirim.",
-      "consentSingle": "Saya mendapat persetujuan orang ini untuk mengirim undangan",
-      "consentMultiple": "Saya mendapat persetujuan orang-orang ini untuk mengirim undangan",
-      "limitReachedCardTitle": "Batas hadiah tercapai",
-      "limitReachedCardDesc": "Anda masih bisa mengundang orang ke Codex, tetapi akun ini tidak akan menerima hadiah kampanye.",
-      "eligibilityCriteria": "Kelayakan",
-      "rules": {
-        "maxInvites": "Selama kampanye, Anda dapat mengirim hingga {{count}} undangan.",
-        "notSelf": "Anda tidak dapat mengirim undangan kepada diri sendiri.",
-        "inactiveMonths": "Penerima undangan tidak boleh menggunakan Codex dalam {{count}} bulan terakhir.",
-        "noActiveInvite": "Penerima undangan tidak boleh sudah memiliki undangan aktif."
-      },
-      "rulesLoadFailed": "Gagal memuat kelayakan: {{error}}",
-      "viewFullTerms": "Lihat syarat lengkap",
-      "send": "Kirim",
-      "sent": "Undangan terkirim",
-      "done": "Selesai",
-      "eligibilityLoading": "Sedang memuat kelayakan undangan...",
-      "eligibilityLoadFailed": "Gagal memuat kelayakan undangan: {{error}}",
-      "unsupportedApiKey": "Akun ini adalah akun API Key; kampanye undangan resmi hanya tersedia untuk akun login OAuth/ChatGPT.",
-      "unsupportedStructure": "Akun ini tidak memiliki info struktur personal/workspace, jadi kami tidak akan meminta kelayakan undangan resmi.",
-      "unavailableTitle": "Alasan undangan saat ini tidak tersedia",
-      "debugUnknown": "Tidak dikembalikan",
-      "debugShouldShow": "Nilai resmi should_show",
-      "debugReasonCode": "Kode alasan",
-      "debugRemainingReferrals": "Sisa undangan",
-      "debugAccountStructure": "Struktur akun"
+    "pendingAuth": {
+      "badge": "Menunggu auth",
+      "emailRequired": "Masukkan email akun",
+      "saving": "Menyimpan akun tertunda...",
+      "saved": "Akun tertunda disimpan",
+      "saveFailed": "Gagal menyimpan akun tertunda: {{error}}",
+      "emailLabel": "Akun tertunda",
+      "emailPlaceholder": "Masukkan email akun OpenAI",
+      "saveDraft": "Simpan kartu tertunda",
+      "authorizeAction": "Otorisasi",
+      "cardHint": "Catatan disimpan. Selesaikan OAuth untuk memakai akun ini."
     },
     "batchDelete": {
       "title": "Hapus massal Codex",
       "running": "Menghapus",
       "paused": "Dijeda",
-      "failed": "Gagal sebagian",
+      "failed": "Sebagian gagal",
       "completed": "Penghapusan selesai",
       "preparing": "Menyiapkan tugas hapus...",
-      "retryFailed": "Coba ulang gagal"
+      "retryFailed": "Coba gagal",
+      "pause": "Jeda",
+      "resume": "Lanjut",
+      "clear": "Bersihkan",
+      "summary": "{{completed}} / {{total}} diproses, gagal {{failed}}",
+      "started": "Mulai menghapus {{count}} akun Codex",
+      "pollFailed": "Gagal memuat ulang progres hapus massal: {{error}}",
+      "actionFailed": "Aksi hapus massal gagal: {{error}}"
     }
   },
   "codebuddy": {
@@ -3769,6 +3753,18 @@
     "claude": {
       "appPath": "Jalur Claude",
       "appTargetPlaceholder": "Jalur Claude.exe atau shell:AppsFolder\\..."
+    },
+    "traeSolo": {
+      "appPath": "Path TRAE SOLO",
+      "title": "Pengaturan TRAE SOLO"
+    },
+    "traeCn": {
+      "appPath": "Path Trae CN",
+      "title": "Pengaturan Trae CN"
+    },
+    "traeSoloCn": {
+      "appPath": "Path TRAE SOLO CN",
+      "title": "Pengaturan TRAE SOLO CN"
     }
   },
   "quotaAlert": {
@@ -4232,20 +4228,20 @@
         "4": "troubleshooting​",
         "5": "logs​",
         "6": "log directory​",
-        "7": "catatan app-YYYY-MM-DD.log"
+        "7": "app.log​"
       },
       "outcomes": {
         "0": "Impor akun secara massal untuk migrasi lingkungan yang cepat.",
         "1": "Ekspor JSON untuk cadangan atau migrasi lintas perangkat.",
         "2": "Temukan masalah melalui petunjuk kesalahan dan panduan perbaikan berkas.",
-        "3": "Temukan masalah runtime dengan cepat di folder logs melalui app-YYYY-MM-DD.log dan platform-<platform>-YYYY-MM-DD.log."
+        "3": "Temukan masalah runtime dengan cepat melalui app.log* di Direktori Data/logs."
       },
       "steps": {
         "0": "Sebelum operasi massal, ekspor data saat ini sekali sebagai snapshot.",
         "1": "Di halaman daftar, ganti tampilan privasi melalui \"Tampilkan/Sembunyikan Email\".",
         "2": "Saat prompt kerusakan berkas muncul, ikuti dialog dan buka direktori untuk memperbaiki.",
         "3": "Untuk pemecahan masalah, buka \"Pengaturan -> Direktori Data -> Buka\", lalu masuk ke folder logs.",
-        "4": "Periksa app-YYYY-MM-DD.log terbaru terlebih dahulu; untuk masalah platform, pilih platform-<platform>-YYYY-MM-DD.log yang sesuai.",
+        "4": "Periksa app.log atau app.log.* terbaru terlebih dahulu (berkas log yang dirotasi berdasarkan tanggal).",
         "5": "Saat mengirimkan umpan balik, sertakan: waktu kejadian, platform, langkah reproduksi, log kesalahan kunci (20 baris sebelum/sesudah)."
       },
       "summary": "Mencakup pemeliharaan harian: impor/ekspor JSON, tampilan email yang disamarkan, penanganan pengecualian dan alur pemulihan.",
@@ -4505,17 +4501,21 @@
   "trae": {
     "title": "Akun Trae",
     "empty": {
-      "description": "Klik \"Tambah Akun\" untuk mulai mengelola akun Trae Anda, atau impor dari data Trae lokal atau berkas JSON."
+      "description": "Klik \"Tambah Akun\" untuk mulai mengelola akun Trae Anda, atau impor dari data Trae lokal atau berkas JSON.",
+      "descriptionWithPlatform": "Klik \"Tambah Akun\" untuk mengelola akun {{platform}}, atau impor data {{platform}} lokal maupun file JSON."
     },
     "addModal": {
-      "title": "Tambah Akun Trae"
+      "title": "Tambah Akun Trae",
+      "titleWithPlatform": "Tambah Akun {{platform}}"
     },
     "oauth": {
-      "desc": "Klik tombol di bawah ini dan selesaikan otorisasi OAuth Trae di peramban Anda."
+      "desc": "Klik tombol di bawah ini dan selesaikan otorisasi OAuth Trae di peramban Anda.",
+      "descWithPlatform": "Klik tombol di bawah dan selesaikan otorisasi OAuth {{platform}} di browser."
     },
     "import": {
       "localDesc": "Impor akun yang sedang masuk saat ini, informasi paket, dan data kuota yang di-cache dari direktori konfigurasi Trae lokal.",
-      "jsonTab": "Berkas JSON"
+      "jsonTab": "Berkas JSON",
+      "localDescWithPlatform": "Mengimpor akun yang sedang masuk, informasi paket, dan data kuota cache dari direktori konfigurasi lokal {{platform}}."
     },
     "quota": {
       "usedOfTotal": "${{used}} / ${{total}}​",
@@ -4541,7 +4541,12 @@
       "title": "Panduan akun Trae (klik untuk perluas/ciutkan)",
       "desc": "Mendukung masuk OAuth resmi, impor lokal, impor JSON, dan penggantian akun berbasis injeksi lokal. Penggantian akun menulis kembali menggunakan aturan on-disk klien Trae yang sebenarnya.",
       "permission": "Cakupan izin: baca dan tulis bidang terkait login di storage.json Trae lokal untuk impor akun, injeksi penggantian akun, dan tampilan paket. Semua data diproses secara lokal di mesin Anda.",
-      "network": "Cakupan jaringan: Masuk OAuth, penyegaran token, dan kueri paket memanggil API resmi Trae. Berkas akun lokal dan konten penyimpanan mentah tidak diunggah ke layanan pihak ketiga."
+      "network": "Cakupan jaringan: Masuk OAuth, penyegaran token, dan kueri paket memanggil API resmi Trae. Berkas akun lokal dan konten penyimpanan mentah tidak diunggah ke layanan pihak ketiga.",
+      "titleWithPlatform": "Panduan akun {{platform}} (klik untuk buka/tutup)",
+      "descWithPlatform": "Mendukung OAuth resmi {{platform}}, impor lokal, impor JSON, dan pergantian akun berbasis injeksi lokal. Pergantian akun menulis kembali sesuai aturan penyimpanan nyata klien {{platform}}.",
+      "permissionWithPlatform": "Cakupan izin: membaca dan menulis kolom login di storage.json lokal {{platform}} untuk impor akun, injeksi pergantian akun, dan tampilan paket. Semua data diproses secara lokal.",
+      "networkGlobal": "Cakupan jaringan: login OAuth, penyegaran token, dan kueri paket {{platform}} memanggil API resmi trae.ai / traeapi.us. File akun lokal dan isi penyimpanan mentah tidak diunggah ke layanan pihak ketiga.",
+      "networkCn": "Cakupan jaringan: login OAuth, penyegaran token, dan kueri paket {{platform}} memanggil API resmi trae.cn / trae.com.cn. File akun lokal dan isi penyimpanan mentah tidak diunggah ke layanan pihak ketiga."
     }
   },
   "codebuddyCn": {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { TopRightAdState } from '../types/topRightAd';
-import { getTopRightAdState } from '../services/topRightAdService';
+import { forceRefreshTopRightAdState, getTopRightAdState } from '../services/topRightAdService';
 
 const EMPTY_STATE: TopRightAdState = {
   ad: null,
@@ -14,6 +14,7 @@ interface TopRightAdStoreState {
   loading: boolean;
   initialized: boolean;
   fetchState: () => Promise<TopRightAdState>;
+  forceRefreshState: () => Promise<TopRightAdState>;
 }
 
 function isTopRightAdState(value: unknown): value is TopRightAdState {
@@ -59,7 +60,7 @@ function persistTopRightAdState(state: TopRightAdState): void {
       JSON.stringify({ savedAt: Date.now(), state: normalizeTopRightAdState(state) }),
     );
   } catch {
-    // Cache writes are best effort only.
+    // 缓存写入失败不影响主流程。
   }
 }
 
@@ -78,10 +79,25 @@ export const useTopRightAdStore = create<TopRightAdStoreState>((set, get) => ({
       persistTopRightAdState(nextState);
       return nextState;
     } catch (error) {
-      console.error('Failed to load top right ad state:', error);
-      set({ state: get().state, loading: false, initialized: true });
-      return get().state;
+      console.error('加载右上角广告位失败:', error);
+      const currentState = get().state;
+      set({ state: currentState, loading: false, initialized: true });
+      return currentState;
+    }
+  },
+
+  forceRefreshState: async () => {
+    set({ loading: true });
+    try {
+      const nextState = normalizeTopRightAdState(await forceRefreshTopRightAdState());
+      set({ state: nextState, loading: false, initialized: true });
+      persistTopRightAdState(nextState);
+      return nextState;
+    } catch (error) {
+      console.error('强制刷新右上角广告位失败:', error);
+      const currentState = get().state;
+      set({ state: currentState, loading: false, initialized: true });
+      return currentState;
     }
   },
 }));
-

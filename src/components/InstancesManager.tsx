@@ -44,10 +44,7 @@ import {
   type FileCorruptedError,
 } from "./FileCorruptedModal";
 import { useEscClose } from "../hooks/useEscClose";
-import {
-  INSTANCE_LIST_TIMEOUT_ERROR,
-  type InstanceStoreState,
-} from "../stores/createInstanceStore";
+import type { InstanceStoreState } from "../stores/createInstanceStore";
 import { showInstanceFloatingCardWindow } from "../services/floatingCardService";
 import {
   isPrivacyModeEnabledByDefault,
@@ -92,6 +89,7 @@ interface InstancesManagerProps<TAccount extends AccountLike> {
   fetchAccounts: () => Promise<void>;
   renderAccountQuotaPreview: (account: TAccount) => ReactNode;
   renderAccountBadge?: (account: TAccount) => ReactNode;
+  getAccountDisplayText?: (account: TAccount) => string;
   getAccountSearchText?: (account: TAccount) => string;
   appType?:
     | "antigravity"
@@ -107,6 +105,9 @@ interface InstancesManagerProps<TAccount extends AccountLike> {
     | "codebuddy_cn"
     | "qoder"
     | "trae"
+    | "trae_solo"
+    | "trae_cn"
+    | "trae_solo_cn"
     | "workbuddy";
   onInstanceStarted?: (instance: InstanceProfile) => void | Promise<void>;
   resolveStartSuccessMessage?: (instance: InstanceProfile) => string;
@@ -261,6 +262,16 @@ const resolveAccountSelectPortalPosition = (
   };
 };
 
+const isSameAccountSelectPortalPosition = (
+  left: AccountSelectPortalPosition | null,
+  right: AccountSelectPortalPosition | null,
+) =>
+  left?.top === right?.top &&
+  left?.left === right?.left &&
+  left?.width === right?.width &&
+  left?.maxHeight === right?.maxHeight &&
+  left?.placement === right?.placement;
+
 const resolveInstanceSortStorageKeys = (
   appType: InstancesManagerProps<AccountLike>["appType"],
 ) => ({
@@ -300,6 +311,7 @@ export function InstancesManager<TAccount extends AccountLike>({
   fetchAccounts,
   renderAccountQuotaPreview,
   renderAccountBadge,
+  getAccountDisplayText,
   getAccountSearchText,
   appType = "antigravity",
   onInstanceStarted,
@@ -548,6 +560,14 @@ export function InstancesManager<TAccount extends AccountLike>({
     (value?: string | null) => maskSensitiveValue(value, privacyModeEnabled),
     [privacyModeEnabled],
   );
+  const resolveAccountDisplayText = useCallback(
+    (account?: TAccount | null) => {
+      if (!account) return "";
+      const value = getAccountDisplayText?.(account) ?? account.email;
+      return value.trim() || account.email;
+    },
+    [getAccountDisplayText],
+  );
 
   useEffect(() => {
     fetchDefaults();
@@ -578,15 +598,10 @@ export function InstancesManager<TAccount extends AccountLike>({
     const corrupted = parseFileCorruptedError(error);
     if (corrupted) {
       setFileCorruptedError(corrupted);
-    } else if (error === INSTANCE_LIST_TIMEOUT_ERROR) {
-      setMessage({
-        text: t("instances.messages.loadTimeout", "加载实例超时，请重试。"),
-        tone: "error",
-      });
     } else {
       setMessage({ text: String(error), tone: "error" });
     }
-  }, [error, t]);
+  }, [error]);
 
   useEffect(() => {
     if (stoppingInstanceIds.length === 0) return;
@@ -648,7 +663,7 @@ export function InstancesManager<TAccount extends AccountLike>({
         : account
           ? getAccountSearchText
             ? getAccountSearchText(account)
-            : account.email
+            : resolveAccountDisplayText(account)
           : "";
       const haystack = [displayName, accountText, instance.userDataDir || ""]
         .join(" ")
@@ -659,6 +674,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     getAccountSearchText,
     resolveApiServiceLabel,
     resolveBoundAccount,
+    resolveAccountDisplayText,
     searchQuery,
     sortedInstances,
     t,
@@ -1725,6 +1741,7 @@ export function InstancesManager<TAccount extends AccountLike>({
       {visibleAccounts.map((account) => {
         const bindValue = resolveBindAccountValue(account.id) ?? account.id;
         const active = value === bindValue && !isFollowingCurrent;
+        const displayText = resolveAccountDisplayText(account);
         return (
           <button
             type="button"
@@ -1739,9 +1756,9 @@ export function InstancesManager<TAccount extends AccountLike>({
             <span className="account-select-email-row">
               <span
                 className="account-select-email"
-                title={maskAccountText(account.email)}
+                title={maskAccountText(displayText)}
               >
-                {maskAccountText(account.email)}
+                {maskAccountText(displayText)}
               </span>
               {renderAccountBadge?.(account)}
             </span>
@@ -1783,6 +1800,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     const menuRef = useRef<HTMLDivElement | null>(null);
     const triggerRef = useRef<HTMLButtonElement | null>(null);
     const portalMenuRef = useRef<HTMLDivElement | null>(null);
+    const activeItemScrolledRef = useRef(false);
     const isOpen = instanceId ? currentOpenId === instanceId : false;
     const [portalPos, setPortalPos] =
       useState<AccountSelectPortalPosition | null>(null);
@@ -1817,6 +1835,7 @@ export function InstancesManager<TAccount extends AccountLike>({
         }
         if (!normalizedQuery) return true;
         const haystack = [
+          resolveAccountDisplayText(account),
           account.email,
           getAccountSearchText ? getAccountSearchText(account) : "",
           ...(account.tags || []),
@@ -1825,7 +1844,13 @@ export function InstancesManager<TAccount extends AccountLike>({
           .toLowerCase();
         return haystack.includes(normalizedQuery);
       });
-    }, [getAccountSearchText, searchValue, selectableAccounts, tagFilter]);
+    }, [
+      getAccountSearchText,
+      resolveAccountDisplayText,
+      searchValue,
+      selectableAccounts,
+      tagFilter,
+    ]);
 
     const toggleTagFilter = useCallback((tag: string) => {
       setTagFilter((prev) =>
@@ -1833,12 +1858,24 @@ export function InstancesManager<TAccount extends AccountLike>({
       );
     }, []);
 
-    const updatePortalPos = useCallback(() => {
-      setPortalPos(resolveAccountSelectPortalPosition(triggerRef.current));
+    const updatePortalPos = useCallback((event?: Event) => {
+      const eventTarget = event?.target;
+      if (
+        event?.type === "scroll" &&
+        eventTarget instanceof Node &&
+        portalMenuRef.current?.contains(eventTarget)
+      ) {
+        return;
+      }
+      setPortalPos((prev) => {
+        const next = resolveAccountSelectPortalPosition(triggerRef.current);
+        return isSameAccountSelectPortalPosition(prev, next) ? prev : next;
+      });
     }, []);
 
     useEffect(() => {
       if (isOpen) return;
+      activeItemScrolledRef.current = false;
       setSearchValue("");
       setTagFilter([]);
     }, [isOpen]);
@@ -1875,6 +1912,8 @@ export function InstancesManager<TAccount extends AccountLike>({
 
     useEffect(() => {
       if (!isOpen || !portalPos || !portalMenuRef.current) return;
+      if (activeItemScrolledRef.current) return;
+      activeItemScrolledRef.current = true;
 
       const frameId = window.requestAnimationFrame(() => {
         const activeItem = portalMenuRef.current?.querySelector<HTMLElement>(
@@ -1882,7 +1921,7 @@ export function InstancesManager<TAccount extends AccountLike>({
         );
         activeItem?.scrollIntoView({
           block: "nearest",
-          behavior: "smooth",
+          behavior: "auto",
         });
       });
 
@@ -1890,11 +1929,8 @@ export function InstancesManager<TAccount extends AccountLike>({
         window.cancelAnimationFrame(frameId);
       };
     }, [
-      visibleAccounts.length,
-      isFollowingCurrent,
       isOpen,
       portalPos?.placement,
-      value,
     ]);
 
     useEffect(() => {
@@ -1913,11 +1949,11 @@ export function InstancesManager<TAccount extends AccountLike>({
     const selectedLabel = missing
       ? t("instances.quota.accountMissing", "账号不存在")
       : isFollowingCurrent
-        ? maskAccountText(selectedAccount?.email) ||
+        ? maskAccountText(resolveAccountDisplayText(selectedAccount)) ||
           t("instances.form.followCurrent", "跟随当前账号")
         : isApiServiceSelected
           ? resolveApiServiceLabel()
-        : maskAccountText(selectedAccount?.email) || basePlaceholder;
+          : maskAccountText(resolveAccountDisplayText(selectedAccount)) || basePlaceholder;
     const selectedBadge =
       !missing && selectedAccount
         ? renderAccountBadge?.(selectedAccount)
@@ -2012,6 +2048,7 @@ export function InstancesManager<TAccount extends AccountLike>({
     const menuRef = useRef<HTMLDivElement | null>(null);
     const triggerRef = useRef<HTMLButtonElement | null>(null);
     const portalMenuRef = useRef<HTMLDivElement | null>(null);
+    const activeItemScrolledRef = useRef(false);
     const [open, setOpen] = useState(false);
     const [portalPos, setPortalPos] =
       useState<AccountSelectPortalPosition | null>(null);
@@ -2040,6 +2077,7 @@ export function InstancesManager<TAccount extends AccountLike>({
         }
         if (!normalizedQuery) return true;
         const haystack = [
+          resolveAccountDisplayText(account),
           account.email,
           getAccountSearchText ? getAccountSearchText(account) : "",
           ...(account.tags || []),
@@ -2048,7 +2086,13 @@ export function InstancesManager<TAccount extends AccountLike>({
           .toLowerCase();
         return haystack.includes(normalizedQuery);
       });
-    }, [getAccountSearchText, searchValue, selectableAccounts, tagFilter]);
+    }, [
+      getAccountSearchText,
+      resolveAccountDisplayText,
+      searchValue,
+      selectableAccounts,
+      tagFilter,
+    ]);
 
     const toggleTagFilter = useCallback((tag: string) => {
       setTagFilter((prev) =>
@@ -2056,8 +2100,19 @@ export function InstancesManager<TAccount extends AccountLike>({
       );
     }, []);
 
-    const updatePortalPos = useCallback(() => {
-      setPortalPos(resolveAccountSelectPortalPosition(triggerRef.current));
+    const updatePortalPos = useCallback((event?: Event) => {
+      const eventTarget = event?.target;
+      if (
+        event?.type === "scroll" &&
+        eventTarget instanceof Node &&
+        portalMenuRef.current?.contains(eventTarget)
+      ) {
+        return;
+      }
+      setPortalPos((prev) => {
+        const next = resolveAccountSelectPortalPosition(triggerRef.current);
+        return isSameAccountSelectPortalPosition(prev, next) ? prev : next;
+      });
     }, []);
 
     useEffect(() => {
@@ -2090,6 +2145,8 @@ export function InstancesManager<TAccount extends AccountLike>({
 
     useEffect(() => {
       if (!open || !portalPos || !portalMenuRef.current) return;
+      if (activeItemScrolledRef.current) return;
+      activeItemScrolledRef.current = true;
 
       const frameId = window.requestAnimationFrame(() => {
         const activeItem = portalMenuRef.current?.querySelector<HTMLElement>(
@@ -2097,14 +2154,14 @@ export function InstancesManager<TAccount extends AccountLike>({
         );
         activeItem?.scrollIntoView({
           block: "nearest",
-          behavior: "smooth",
+          behavior: "auto",
         });
       });
 
       return () => {
         window.cancelAnimationFrame(frameId);
       };
-    }, [isFollowingCurrent, open, portalPos?.placement, value, visibleAccounts.length]);
+    }, [open, portalPos?.placement]);
 
     useEffect(() => {
       if (disabled && open) {
@@ -2114,6 +2171,7 @@ export function InstancesManager<TAccount extends AccountLike>({
 
     useEffect(() => {
       if (open) return;
+      activeItemScrolledRef.current = false;
       setSearchValue("");
       setTagFilter([]);
     }, [open]);
@@ -2128,11 +2186,11 @@ export function InstancesManager<TAccount extends AccountLike>({
     const selectedLabel = missing
       ? t("instances.quota.accountMissing", "账号不存在")
       : isFollowingCurrent
-        ? maskAccountText(selectedAccount?.email) ||
+        ? maskAccountText(resolveAccountDisplayText(selectedAccount)) ||
           t("instances.form.followCurrent", "跟随当前账号")
         : isApiServiceSelected
           ? resolveApiServiceLabel()
-        : maskAccountText(selectedAccount?.email) || basePlaceholder;
+          : maskAccountText(resolveAccountDisplayText(selectedAccount)) || basePlaceholder;
     const selectedBadge =
       !missing && selectedAccount
         ? renderAccountBadge?.(selectedAccount)

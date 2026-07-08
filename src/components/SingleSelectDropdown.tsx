@@ -22,19 +22,6 @@ interface SingleSelectDropdownProps {
   menuMaxHeight?: number;
 }
 
-function findPlatformUiRoot(element: HTMLElement | null): HTMLElement | null {
-  let current = element;
-  while (current) {
-    for (const className of Array.from(current.classList)) {
-      if (className.endsWith("-platform-ui-root")) {
-        return current;
-      }
-    }
-    current = current.parentElement;
-  }
-  return null;
-}
-
 export function SingleSelectDropdown({
   value,
   options,
@@ -59,7 +46,6 @@ export function SingleSelectDropdown({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const portalContainerRef = useRef<HTMLElement | null>(null);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? null,
@@ -69,34 +55,49 @@ export function SingleSelectDropdown({
   useEffect(() => {
     if (!open) return;
 
-    const updateMenuPosition = () => {
+    const updateMenuPosition = (event?: Event) => {
+      const eventTarget = event?.target;
+      if (
+        event?.type === "scroll" &&
+        eventTarget instanceof Node &&
+        menuRef.current?.contains(eventTarget)
+      ) {
+        return;
+      }
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      portalContainerRef.current =
-        findPlatformUiRoot(rootRef.current) ?? document.body;
       const width = menuWidth ? Math.max(rect.width, menuWidth) : rect.width;
       const left = Math.min(
         rect.left,
         Math.max(12, window.innerWidth - width - 12),
       );
-      if (menuPlacement === "up") {
-        const availableHeight = Math.max(160, rect.top - 20);
-        setMenuStyle({
-          bottom: window.innerHeight - rect.top + 10,
-          left,
-          width,
-          maxHeight: Math.min(menuMaxHeight, availableHeight),
-        });
-        return;
-      }
-
-      const availableHeight = Math.max(160, window.innerHeight - rect.bottom - 20);
-      setMenuStyle({
-        top: rect.bottom + 10,
-        left,
-        width,
-        maxHeight: Math.min(menuMaxHeight, availableHeight),
-      });
+      const nextStyle =
+        menuPlacement === "up"
+          ? {
+              bottom: Math.round(window.innerHeight - rect.top + 10),
+              left: Math.round(left),
+              width: Math.round(width),
+              maxHeight: Math.min(menuMaxHeight, Math.max(160, rect.top - 20)),
+            }
+          : {
+              top: Math.round(rect.bottom + 10),
+              left: Math.round(left),
+              width: Math.round(width),
+              maxHeight: Math.min(
+                menuMaxHeight,
+                Math.max(160, window.innerHeight - rect.bottom - 20),
+              ),
+            };
+      setMenuStyle((prev) =>
+        prev &&
+        prev.top === nextStyle.top &&
+        prev.bottom === nextStyle.bottom &&
+        prev.left === nextStyle.left &&
+        prev.width === nextStyle.width &&
+        prev.maxHeight === nextStyle.maxHeight
+          ? prev
+          : nextStyle,
+      );
     };
 
     const handlePointerDown = (event: MouseEvent) => {
@@ -207,7 +208,7 @@ export function SingleSelectDropdown({
                 );
               })}
             </div>,
-            portalContainerRef.current ?? document.body,
+            document.body,
           )
         : null}
     </div>
