@@ -57,6 +57,7 @@ import type {
   CodexLocalAccessChatMessage,
   CodexLocalAccessChatStreamEvent,
   CodexLocalAccessClientBaseUrlHost,
+  CodexLocalAccessCollection,
   CodexLocalAccessCustomRoutingRule,
   CodexLocalAccessGatewayMode,
   CodexLocalAccessImageGenerationMode,
@@ -321,6 +322,31 @@ function apiKeyInheritsAccountPool(apiKey: CodexLocalAccessApiKey): boolean {
   return (
     apiKey.inheritAccountPool ?? ((apiKey.accountIds?.length ?? 0) === 0)
   );
+}
+
+function apiKeyHasFixedAccountScope(
+  apiKey: CodexLocalAccessApiKey,
+  collection: CodexLocalAccessCollection | null,
+): boolean {
+  if (apiKey.providerGateway) return true;
+  const accountIds = apiKey.accountIds ?? [];
+  return Boolean(
+    collection?.boundOauthAccountId &&
+      collection.accountIds.length === 0 &&
+      accountIds.length === 1 &&
+      apiKey.id === `provider_gateway_${accountIds[0]}`,
+  );
+}
+
+function apiKeySelectableAccountIds(
+  collection: CodexLocalAccessCollection | null,
+  apiKey: CodexLocalAccessApiKey | null | undefined,
+): string[] {
+  const ids = new Set<string>(collection?.accountIds ?? []);
+  for (const accountId of apiKey?.accountIds ?? []) {
+    if (accountId) ids.add(accountId);
+  }
+  return [...ids];
 }
 
 function apiKeyPolicyDraftFromValue(
@@ -708,10 +734,6 @@ export function CodexApiServicePage() {
   const memberAccountIds = useMemo(
     () => memberAccounts.map((account) => account.id),
     [memberAccounts],
-  );
-  const memberAccountIdSet = useMemo(
-    () => new Set(memberAccountIds),
-    [memberAccountIds],
   );
   const accountModelRuleCount = collection?.accountModelRules.length ?? 0;
   const accountModelRuleAllSelected =
@@ -1580,9 +1602,26 @@ export function CodexApiServicePage() {
   const handleSaveApiKeyPolicy = async (apiKeyId: string) => {
     const draft = apiKeyPolicyDrafts[apiKeyId];
     if (!draft) return;
-    const accountIds = draft.accountIds.filter((accountId) =>
-      memberAccountIdSet.has(accountId),
+    const apiKey = collection?.apiKeys.find((item) => item.id === apiKeyId);
+    if (!apiKey) return;
+    const selectableAccountIdSet = new Set(
+      apiKeySelectableAccountIds(collection, apiKey),
     );
+    const accountIds = draft.accountIds.filter((accountId) =>
+      selectableAccountIdSet.has(accountId),
+    );
+    if (
+      apiKeyHasFixedAccountScope(apiKey, collection) &&
+      (draft.inheritAccountPool || accountIds.length === 0)
+    ) {
+      setError(
+        t(
+          "codex.apiService.keys.accountScopeFixed",
+          "此 Key 已固定绑定账号，不能继承服务池或清空账号范围",
+        ),
+      );
+      return;
+    }
     if (!draft.inheritAccountPool && accountIds.length === 0) {
       setError(
         t(
@@ -1605,6 +1644,15 @@ export function CodexApiServicePage() {
           },
         );
         setState(next);
+        const savedApiKey = next.collection?.apiKeys.find(
+          (item) => item.id === apiKeyId,
+        );
+        if (savedApiKey) {
+          setApiKeyPolicyDrafts((drafts) => ({
+            ...drafts,
+            [apiKeyId]: apiKeyPolicyDraftFromValue(savedApiKey),
+          }));
+        }
       },
       t("codex.apiService.keys.policySaved", "Key 策略已保存"),
     );
@@ -3079,12 +3127,32 @@ export function CodexApiServicePage() {
                 const persistedInheritAccountPool =
                   apiKeyInheritsAccountPool(apiKey);
                 const persistedAccountIds = apiKey.accountIds ?? [];
+                const accountScopeLocked = apiKeyHasFixedAccountScope(
+                  apiKey,
+                  collection,
+                );
+                const keySelectableAccountIds = apiKeySelectableAccountIds(
+                  collection,
+                  apiKey,
+                );
+                const keySelectableAccounts = keySelectableAccountIds
+                  .map((accountId) =>
+                    localAccessAccounts.find(
+                      (account) => account.id === accountId,
+                    ),
+                  )
+                  .filter((account): account is CodexAccount =>
+                    Boolean(account),
+                  );
+                const keySelectableAccountIdSet = new Set(
+                  keySelectableAccounts.map((account) => account.id),
+                );
                 const policyDirty = apiKeyPolicyDraftIsDirty(
                   apiKey,
                   policyDraft,
                 );
                 const validDraftAccountIds = policyDraft.accountIds.filter(
-                  (accountId) => memberAccountIdSet.has(accountId),
+                  (accountId) => keySelectableAccountIdSet.has(accountId),
                 );
                 const customScopeInvalid =
                   !policyDraft.inheritAccountPool &&
@@ -3203,7 +3271,9 @@ export function CodexApiServicePage() {
                               "账号池：{{selected}}/{{total}}",
                               {
                                 selected: persistedAccountIds.length,
-                                total: memberAccounts.length,
+                                total: persistedInheritAccountPool
+                                  ? memberAccounts.length
+                                  : keySelectableAccounts.length,
                               },
                             )}
                       </span>
@@ -3214,7 +3284,9 @@ export function CodexApiServicePage() {
                         })}
                       </span>
                       <span>
-                        {formatCompactNumber(keyUsage?.totalTokens ?? 0)} Tokens
+                        {t("codex.localAccess.stats.accountTokens", {
+                          count: keyUsage?.totalTokens ?? 0,
+                        })}
                       </span>
                       <span>
                         {t("codex.localAccess.stats.successRate", {
@@ -3267,21 +3339,26 @@ export function CodexApiServicePage() {
                               )}
                             </span>
                             <span className="api-key-account-scope-hint">
-                              {policyDraft.inheritAccountPool
+                              {accountScopeLocked
                                 ? t(
-                                    "codex.apiService.keys.accountScopeInherit",
-                                    "随服务账号池自动更新",
+                                    "codex.apiService.keys.accountScopeFixed",
+                                    "此 Key 已固定绑定账号，不能继承服务池或清空账号范围",
                                   )
-                                : customScopeInvalid
+                                : policyDraft.inheritAccountPool
                                   ? t(
-                                      "codex.apiService.keys.accountScopeRequired",
-                                      "自定义账号池至少需要选择 1 个账号",
+                                      "codex.apiService.keys.accountScopeInherit",
+                                      "随服务账号池自动更新",
                                     )
-                                : t(
-                                    "codex.apiService.keys.accountScopeSelected",
-                                    "已选择 {{count}} 个账号",
-                                    { count: validDraftAccountIds.length },
-                                  )}
+                                  : customScopeInvalid
+                                    ? t(
+                                        "codex.apiService.keys.accountScopeRequired",
+                                        "自定义账号池至少需要选择 1 个账号",
+                                      )
+                                    : t(
+                                        "codex.apiService.keys.accountScopeSelected",
+                                        "已选择 {{count}} 个账号",
+                                        { count: validDraftAccountIds.length },
+                                      )}
                             </span>
                           </div>
                           <div className="api-key-account-scope-mode">
@@ -3299,7 +3376,15 @@ export function CodexApiServicePage() {
                                   },
                                 }))
                               }
-                              disabled={busy}
+                              disabled={busy || accountScopeLocked}
+                              title={
+                                accountScopeLocked
+                                  ? t(
+                                      "codex.apiService.keys.accountScopeFixed",
+                                      "此 Key 已固定绑定账号，不能继承服务池或清空账号范围",
+                                    )
+                                  : undefined
+                              }
                             >
                               {t(
                                 "codex.apiService.keys.accountScopeModeInherit",
@@ -3317,7 +3402,7 @@ export function CodexApiServicePage() {
                                     drafts[apiKey.id] ?? policyDraft;
                                   const reusableAccountIds =
                                     currentDraft.accountIds.filter((accountId) =>
-                                      memberAccountIdSet.has(accountId),
+                                      keySelectableAccountIdSet.has(accountId),
                                     );
                                   return {
                                     ...drafts,
@@ -3332,7 +3417,11 @@ export function CodexApiServicePage() {
                                   };
                                 })
                               }
-                              disabled={busy || memberAccounts.length === 0}
+                              disabled={
+                                busy ||
+                                accountScopeLocked ||
+                                keySelectableAccounts.length === 0
+                              }
                             >
                               {t(
                                 "codex.apiService.keys.accountScopeModeCustom",
@@ -3340,7 +3429,7 @@ export function CodexApiServicePage() {
                               )}
                             </button>
                           </div>
-                          {memberAccounts.length === 0 ? (
+                          {keySelectableAccounts.length === 0 ? (
                             <div className="codex-api-service-empty">
                               {t(
                                 "codex.localAccess.emptyMembers",
@@ -3349,7 +3438,7 @@ export function CodexApiServicePage() {
                             </div>
                           ) : (
                             <div className="api-key-account-scope-grid">
-                              {memberAccounts.map((account) => {
+                              {keySelectableAccounts.map((account) => {
                                 const presentation =
                                   buildCodexAccountPresentation(account, t);
                                 return (
@@ -3383,7 +3472,9 @@ export function CodexApiServicePage() {
                                         })
                                       }
                                       disabled={
-                                        busy || policyDraft.inheritAccountPool
+                                        busy ||
+                                        policyDraft.inheritAccountPool ||
+                                        accountScopeLocked
                                       }
                                     />
                                     <span>

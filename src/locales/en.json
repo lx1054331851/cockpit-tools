@@ -3373,6 +3373,7 @@
         "advancedPolicyTitle": "Account Pool & Model Policy",
         "accountScope": "Account Rotation Scope",
         "accountScopeInherit": "Follow the service account pool automatically",
+        "accountScopeFixed": "This Key is fixed to its bound account and cannot inherit the service pool",
         "accountScopeSelected": "{{count}} accounts selected",
         "accountScopeInheritedCount": "Account pool: inheriting {{count}}",
         "accountScopeUnavailable": "Account pool: no available accounts",

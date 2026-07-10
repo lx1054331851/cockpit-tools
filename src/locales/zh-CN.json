@@ -3373,6 +3373,7 @@
         "advancedPolicyTitle": "账号池与模型策略",
         "accountScope": "账号轮转范围",
         "accountScopeInherit": "随服务账号池自动更新",
+        "accountScopeFixed": "此 Key 已固定绑定账号，不能继承服务池",
         "accountScopeSelected": "已选择 {{count}} 个账号",
         "accountScopeInheritedCount": "账号池：继承 {{count}} 个",
         "accountScopeUnavailable": "账号池：无可用账号",

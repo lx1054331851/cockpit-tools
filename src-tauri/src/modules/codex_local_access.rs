@@ -6782,6 +6782,44 @@ fn api_key_inherits_account_pool(api_key: &CodexLocalAccessApiKey) -> bool {
         .unwrap_or_else(|| api_key.account_ids.is_empty())
 }
 
+fn api_key_has_fixed_account_scope(
+    collection: &CodexLocalAccessCollection,
+    api_key: &CodexLocalAccessApiKey,
+) -> bool {
+    if api_key.provider_gateway.is_some() {
+        return true;
+    }
+
+    collection.bound_oauth_account_id.is_some()
+        && collection.account_ids.is_empty()
+        && api_key.account_ids.len() == 1
+        && api_key.id == provider_gateway_api_key_id(&api_key.account_ids[0])
+}
+
+fn validate_api_key_account_scope_update(
+    collection: &CodexLocalAccessCollection,
+    api_key: &CodexLocalAccessApiKey,
+    account_ids: Option<&[String]>,
+    inherit_account_pool: Option<bool>,
+) -> Result<(), String> {
+    if !api_key_has_fixed_account_scope(collection, api_key) {
+        return Ok(());
+    }
+
+    let requested_inherit = inherit_account_pool.unwrap_or_else(|| {
+        account_ids
+            .map(|ids| ids.is_empty())
+            .unwrap_or_else(|| api_key_inherits_account_pool(api_key))
+    });
+    if requested_inherit {
+        return Err("固定账号 Key 不支持继承服务账号池".to_string());
+    }
+    if account_ids.is_some_and(|ids| ids.is_empty()) {
+        return Err("固定账号 Key 不能清空账号范围".to_string());
+    }
+    Ok(())
+}
+
 fn codex_app_speed_service_tier(speed: &CodexAppSpeed) -> Option<&'static str> {
     match speed {
         CodexAppSpeed::Fast => Some("priority"),
@@ -14170,6 +14208,13 @@ pub async fn update_local_access_api_key(
     else {
         return Err("API Key 不存在".to_string());
     };
+    let normalized_account_ids = account_ids.map(normalize_account_id_list);
+    validate_api_key_account_scope_update(
+        &collection,
+        &collection.api_keys[index],
+        normalized_account_ids.as_deref(),
+        inherit_account_pool,
+    )?;
     if let Some(label) = label {
         collection.api_keys[index].label = normalize_api_key_label(Some(label.as_str()), "API Key");
     }
@@ -14185,18 +14230,13 @@ pub async fn update_local_access_api_key(
     if let Some(excluded_models) = excluded_models {
         collection.api_keys[index].excluded_models = normalize_model_rule_list(excluded_models);
     }
-    if let Some(account_ids) = account_ids {
-        let normalized_account_ids = normalize_account_id_list(account_ids);
+    if let Some(account_ids) = normalized_account_ids {
         if inherit_account_pool.is_none() {
-            collection.api_keys[index].inherit_account_pool =
-                Some(normalized_account_ids.is_empty());
+            collection.api_keys[index].inherit_account_pool = Some(account_ids.is_empty());
         }
-        collection.api_keys[index].account_ids = normalized_account_ids;
+        collection.api_keys[index].account_ids = account_ids;
     }
     if let Some(inherit_account_pool) = inherit_account_pool {
-        if inherit_account_pool && collection.api_keys[index].provider_gateway.is_some() {
-            return Err("Provider Gateway Key 不支持继承服务账号池".to_string());
-        }
         collection.api_keys[index].inherit_account_pool = Some(inherit_account_pool);
     }
     collection.api_keys[index].updated_at = now_ms();
@@ -19066,7 +19106,8 @@ mod tests {
         parse_responses_payload_from_upstream, parse_websocket_upstream_error,
         prepare_gateway_request, prepare_gateway_request_with_default_service_tier,
         prepare_sidecar_launch_config_in_dir, prepare_websocket_initial_request,
-        profile_base_url_matches, provider_gateway_bound_oauth_account_id_for_account,
+        profile_base_url_matches, provider_gateway_api_key_id,
+        provider_gateway_bound_oauth_account_id_for_account,
         provider_gateway_default_model_for_account,
         provider_gateway_image_generation_mode_for_account, provider_gateway_models_for_account,
         read_http_request, recover_invalid_stats_file, remove_account_refs_from_collection,
@@ -19081,7 +19122,8 @@ mod tests {
         sidecar_codex_api_key_auth_id, sidecar_config_fingerprint,
         sidecar_payload_default_service_tier, sidecar_routing_strategy_value, sidecar_stable_id,
         supported_codex_model_ids, system_proxy_target_scheme, system_proxy_value_url,
-        validate_client_model_visible, visible_codex_model_ids_for_api_key, websocket_accept_value,
+        validate_api_key_account_scope_update, validate_client_model_visible,
+        visible_codex_model_ids_for_api_key, websocket_accept_value,
         websocket_connect_error_from_http_response, windows_proxy_url_from_server,
         windows_reg_dword_enabled, windows_reg_query_map,
         write_local_access_profile_model_override, write_local_access_profile_takeover,
@@ -19821,6 +19863,54 @@ wire_api = "responses"
         assert!(sidecar_api_key_manifest_values(&collection)
             .iter()
             .all(|value| value.get("key").and_then(Value::as_str) != Some("scoped-key")));
+    }
+
+    #[test]
+    fn bound_oauth_gateway_key_rejects_inherited_or_empty_scope_updates() {
+        let account_id = "api-bound-oauth-1".to_string();
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.bound_oauth_account_id = Some("oauth-1".to_string());
+
+        let mut api_key = build_local_access_api_key(Some("Bound OAuth Local Gateway"));
+        api_key.id = provider_gateway_api_key_id(&account_id);
+        api_key.inherit_account_pool = Some(false);
+        api_key.account_ids = vec![account_id.clone()];
+
+        assert!(validate_api_key_account_scope_update(
+            &collection,
+            &api_key,
+            Some(&[]),
+            Some(true),
+        )
+        .is_err());
+        assert!(validate_api_key_account_scope_update(
+            &collection,
+            &api_key,
+            Some(&[]),
+            Some(false),
+        )
+        .is_err());
+        assert!(
+            validate_api_key_account_scope_update(&collection, &api_key, None, Some(true),)
+                .is_err()
+        );
+        assert!(validate_api_key_account_scope_update(
+            &collection,
+            &api_key,
+            Some(&[account_id]),
+            Some(false),
+        )
+        .is_ok());
+
+        let regular_collection = test_local_access_collection(vec!["account-a".to_string()]);
+        let regular_key = build_local_access_api_key(Some("Regular Key"));
+        assert!(validate_api_key_account_scope_update(
+            &regular_collection,
+            &regular_key,
+            None,
+            Some(true),
+        )
+        .is_ok());
     }
 
     #[test]

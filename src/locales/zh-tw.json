@@ -3151,6 +3151,7 @@
         "advancedPolicyTitle": "帳號池與模型策略",
         "accountScope": "帳號輪轉範圍",
         "accountScopeInherit": "隨服務帳號池自動更新",
+        "accountScopeFixed": "此 Key 已固定綁定帳號，不能繼承服務池",
         "accountScopeSelected": "已選擇 {{count}} 個帳號",
         "accountScopeInheritedCount": "帳號池：繼承 {{count}} 個",
         "accountScopeUnavailable": "帳號池：無可用帳號",
