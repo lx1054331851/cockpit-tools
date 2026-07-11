@@ -150,6 +150,7 @@ interface GeneralConfig {
   codebuddy_app_path: string;
   codebuddy_cn_app_path: string;
   qoder_app_path: string;
+  zcode_app_path: string;
   trae_app_path: string;
   trae_solo_app_path: string;
   trae_cn_app_path: string;
@@ -238,6 +239,7 @@ type AppPathTarget =
   | 'codebuddy'
   | 'codebuddy_cn'
   | 'qoder'
+  | 'zcode'
   | 'trae'
   | 'trae_solo'
   | 'trae_cn'
@@ -456,6 +458,7 @@ export function SettingsPage() {
   const [codebuddyAppPath, setCodebuddyAppPath] = useState('');
   const [codebuddyCnAppPath, setCodebuddyCnAppPath] = useState('');
   const [qoderAppPath, setQoderAppPath] = useState('');
+  const [zcodeAppPath, setZcodeAppPath] = useState('');
   const [traeAppPath, setTraeAppPath] = useState('');
   const [traeSoloAppPath, setTraeSoloAppPath] = useState('');
   const [traeCnAppPath, setTraeCnAppPath] = useState('');
@@ -958,6 +961,7 @@ export function SettingsPage() {
           codebuddyAppPath,
           codebuddyCnAppPath,
           qoderAppPath,
+          zcodeAppPath,
           traeAppPath,
           traeSoloAppPath,
           traeCnAppPath,
@@ -1113,6 +1117,7 @@ export function SettingsPage() {
     codebuddyAppPath,
     codebuddyCnAppPath,
     qoderAppPath,
+    zcodeAppPath,
     traeAppPath,
     traeSoloAppPath,
     traeCnAppPath,
@@ -1423,6 +1428,7 @@ export function SettingsPage() {
       setCodebuddyAppPath(config.codebuddy_app_path || '');
       setCodebuddyCnAppPath(config.codebuddy_cn_app_path || '');
       setQoderAppPath(config.qoder_app_path || '');
+      setZcodeAppPath(config.zcode_app_path || '');
       setTraeAppPath(config.trae_app_path || '');
       setTraeSoloAppPath(config.trae_solo_app_path || '');
       setTraeCnAppPath(config.trae_cn_app_path || '');
@@ -1754,6 +1760,8 @@ export function SettingsPage() {
       setCodebuddyCnAppPath(path);
     } else if (target === 'qoder') {
       setQoderAppPath(path);
+    } else if (target === 'zcode') {
+      setZcodeAppPath(path);
     } else if (isTraeAppPathTarget(target)) {
       setTraeAppPathValue(target, path);
       setTraeLaunchCandidatesTarget(target);
@@ -1788,6 +1796,11 @@ export function SettingsPage() {
     }
     if (target === 'qoder') {
       return t('settings.general.qoderPathReset', '重置默认');
+    }
+    if (target === 'zcode') {
+      return isWindows
+        ? t('appPath.missing.scanApps', '扫描应用')
+        : t('settings.general.codexPathReset', '重置默认');
     }
     if (isTraeAppPathTarget(target)) {
       return isWindows
@@ -5538,6 +5551,48 @@ export function SettingsPage() {
 
                   {renderCurrentAccountRefreshRow('zcode')}
                   {renderAccountLevelRefreshConfig('zcode')}
+
+                  <div className="settings-row">
+                    <div className="row-label">
+                      <div className="row-title">{t('settings.general.zcodeAppPath', 'ZCode 启动路径')}</div>
+                      <div className="row-desc">{t('settings.general.zcodeAppPathDesc', '留空则使用默认路径')}</div>
+                    </div>
+                    <div className="row-control row-control--grow">
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1 }}>
+                        <input
+                          type="text"
+                          className="settings-input settings-input--path"
+                          value={zcodeAppPath}
+                          placeholder={t('settings.general.codexAppPathPlaceholder', '默认路径')}
+                          onChange={(event) => setZcodeAppPath(event.target.value)}
+                        />
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setZcodeAppPath('')}
+                          disabled={isAppPathResetDetecting('zcode') || !zcodeAppPath.trim()}
+                        >
+                          {t('common.clear', '清除')}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handlePickAppPath('zcode')}
+                          disabled={isAppPathResetDetecting('zcode')}
+                        >
+                          {t('settings.general.codexPathSelect', '选择')}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleResetAppPath('zcode')}
+                          disabled={isAppPathResetDetecting('zcode')}
+                        >
+                          <RefreshCw size={16} className={isAppPathResetDetecting('zcode') ? 'spin' : undefined} />
+                          {isAppPathResetDetecting('zcode')
+                            ? t('common.loading', '加载中...')
+                            : getResetLabelByTarget('zcode')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 

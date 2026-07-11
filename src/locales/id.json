@@ -131,6 +131,8 @@
         "failed": "Otorisasi gagal",
         "hint": "Setelah diotorisasi, jendela ini akan diperbarui secara otomatis",
         "openBrowser": "Buka di Peramban",
+        "normalWindow": "Jendela biasa",
+        "incognitoWindow": "Jendela privat",
         "success": "Otorisasi berhasil",
         "meta": "Kedaluwarsa dalam: {{expires}} detik; Interval polling: {{interval}} detik",
         "preparing": "Menyiapkan informasi otorisasi...",
@@ -805,6 +807,8 @@
       "codebuddyCnPathReset": "Reset ke Default",
       "codebuddyCnPathSelect": "Pilih",
       "codebuddyCnSettingsTitle": "Pengaturan CodeBuddy CN",
+      "zcodeAppPath": "Jalur peluncuran ZCode",
+      "zcodeAppPathDesc": "Kosongkan untuk memakai jalur bawaan",
       "qoderAppPath": "Path Aplikasi Qoder",
       "qoderAppPathDesc": "Kosongkan untuk menggunakan path default",
       "qoderAppPathPlaceholder": "Path default",
@@ -3737,7 +3741,8 @@
       "appPath": "Qoder Path​"
     },
     "zcode": {
-      "title": "Pengaturan ZCode"
+      "title": "Pengaturan ZCode",
+      "appPath": "Jalur ZCode"
     },
     "zed": {
       "title": "Zed Settings​",

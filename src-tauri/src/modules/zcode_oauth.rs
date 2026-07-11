@@ -119,7 +119,11 @@ fn authorize_url_matches_pending(url: &Url, pending: &PendingOAuthState) -> bool
     }
 }
 
-pub fn open_oauth_window(app: &AppHandle, auth_url: &str) -> Result<(), String> {
+pub fn open_oauth_window(
+    app: &AppHandle,
+    auth_url: &str,
+    incognito: bool,
+) -> Result<(), String> {
     let parsed = Url::parse(auth_url.trim())
         .map_err(|error| format!("ZCode OAuth 授权地址无效: {}", error))?;
     let pending = PENDING_OAUTH
@@ -137,19 +141,8 @@ pub fn open_oauth_window(app: &AppHandle, auth_url: &str) -> Result<(), String> 
 
     if let Some(window) = app.get_webview_window(ZCODE_OAUTH_WINDOW_LABEL) {
         window
-            .navigate(parsed)
-            .map_err(|error| format!("更新 ZCode OAuth 授权窗口失败: {}", error))?;
-        window
-            .show()
-            .map_err(|error| format!("显示 ZCode OAuth 授权窗口失败: {}", error))?;
-        window
-            .set_focus()
-            .map_err(|error| format!("聚焦 ZCode OAuth 授权窗口失败: {}", error))?;
-        logger::log_info(&format!(
-            "[ZCode OAuth] 已复用内置授权窗口: provider={}",
-            pending.provider
-        ));
-        return Ok(());
+            .destroy()
+            .map_err(|error| format!("重置 ZCode OAuth 授权窗口失败: {}", error))?;
     }
 
     let callback_app = app.clone();
@@ -158,6 +151,7 @@ pub fn open_oauth_window(app: &AppHandle, auth_url: &str) -> Result<(), String> 
         .inner_size(920.0, 720.0)
         .min_inner_size(640.0, 560.0)
         .center()
+        .incognito(incognito)
         .on_navigation(move |url| {
             if is_zcode_callback_url(url) {
                 let callback_url = url.to_string();
@@ -185,8 +179,8 @@ pub fn open_oauth_window(app: &AppHandle, auth_url: &str) -> Result<(), String> 
         .map_err(|error| format!("创建 ZCode OAuth 授权窗口失败: {}", error))?;
 
     logger::log_info(&format!(
-        "[ZCode OAuth] 已打开内置授权窗口: provider={}",
-        pending.provider
+        "[ZCode OAuth] 已打开内置授权窗口: provider={}, incognito={}",
+        pending.provider, incognito
     ));
 
     Ok(())

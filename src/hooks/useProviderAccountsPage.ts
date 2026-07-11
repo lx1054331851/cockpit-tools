@@ -95,7 +95,7 @@ export interface OAuthService {
   completeLogin: (loginId: string) => Promise<unknown>;
   cancelLogin: (loginId?: string) => Promise<void>;
   submitCallbackUrl?: (loginId: string, callbackUrl: string) => Promise<void>;
-  openAuthUrl?: (url: string) => Promise<void>;
+  openAuthUrl?: (url: string, incognito?: boolean) => Promise<void>;
 }
 
 export interface OAuthStartResponse {
@@ -727,7 +727,7 @@ export interface UseProviderAccountsPageReturn {
   handleCopyOauthUserCode: () => Promise<void>;
   handleRetryOauth: () => void;
   handleRetryOauthComplete: () => void;
-  handleOpenOauthUrl: () => Promise<void>;
+  handleOpenOauthUrl: (incognito?: boolean) => Promise<void>;
   handleSubmitOauthCallbackUrl: () => Promise<void>;
 
   // Inject / Switch
@@ -2238,16 +2238,17 @@ export function useProviderAccountsPage<TAccount extends ProviderAccountBase>(
     handleOauthCompleteError,
   ]);
 
-  const handleOpenOauthUrl = useCallback(async () => {
+  const handleOpenOauthUrl = useCallback(async (incognito = false) => {
     if (!oauthUrl) return;
     setOauthCompleteError(null);
     oauthLog('用户点击打开授权链接', {
       loginId: oauthLoginIdRef.current,
       authUrl: oauthUrl,
+      incognito,
     });
     try {
       if (oauthService?.openAuthUrl) {
-        await oauthService.openAuthUrl(oauthUrl);
+        await oauthService.openAuthUrl(oauthUrl, incognito);
       } else {
         await openUrl(oauthUrl);
       }

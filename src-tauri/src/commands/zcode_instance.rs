@@ -59,7 +59,10 @@ pub async fn zcode_list_instances() -> Result<Vec<InstanceProfileView>, String> 
         .instances
         .into_iter()
         .map(|profile| {
-            let pid = modules::zcode_instance::resolve_pid(Some(&profile.id), profile.last_pid);
+            let pid = modules::zcode_instance::resolve_pid(
+                Some(Path::new(&profile.user_data_dir)),
+                profile.last_pid,
+            );
             to_view(profile, pid)
         })
         .collect();
@@ -115,7 +118,10 @@ pub async fn zcode_update_instance(
             extra_args,
             bind_account_id,
         })?;
-    let pid = modules::zcode_instance::resolve_pid(Some(&profile.id), profile.last_pid);
+    let pid = modules::zcode_instance::resolve_pid(
+        Some(Path::new(&profile.user_data_dir)),
+        profile.last_pid,
+    );
     Ok(to_view(profile, pid))
 }
 
@@ -130,7 +136,12 @@ pub async fn zcode_delete_instance(instance_id: String) -> Result<(), String> {
         .iter()
         .find(|profile| profile.id == instance_id)
         .ok_or_else(|| "ZCode 实例不存在".to_string())?;
-    if modules::zcode_instance::resolve_pid(Some(&profile.id), profile.last_pid).is_some() {
+    if modules::zcode_instance::resolve_pid(
+        Some(Path::new(&profile.user_data_dir)),
+        profile.last_pid,
+    )
+    .is_some()
+    {
         return Err("请先停止 ZCode 实例再删除".to_string());
     }
     modules::zcode_instance::delete_instance(&instance_id)
@@ -157,7 +168,10 @@ pub async fn zcode_start_instance(instance_id: String) -> Result<InstanceProfile
         .into_iter()
         .find(|profile| profile.id == instance_id)
         .ok_or_else(|| "ZCode 实例不存在".to_string())?;
-    if let Some(pid) = modules::zcode_instance::resolve_pid(Some(&profile.id), profile.last_pid) {
+    if let Some(pid) = modules::zcode_instance::resolve_pid(
+        Some(Path::new(&profile.user_data_dir)),
+        profile.last_pid,
+    ) {
         modules::process::close_pid(pid, 20)?;
     }
     inject_bound_account(
@@ -191,7 +205,10 @@ pub async fn zcode_stop_instance(instance_id: String) -> Result<InstanceProfileV
         .into_iter()
         .find(|profile| profile.id == instance_id)
         .ok_or_else(|| "ZCode 实例不存在".to_string())?;
-    if let Some(pid) = modules::zcode_instance::resolve_pid(Some(&profile.id), profile.last_pid) {
+    if let Some(pid) = modules::zcode_instance::resolve_pid(
+        Some(Path::new(&profile.user_data_dir)),
+        profile.last_pid,
+    ) {
         modules::process::close_pid(pid, 20)?;
     }
     modules::zcode_instance::mark_stopped(Some(&profile.id))?;
@@ -215,7 +232,10 @@ pub async fn zcode_open_instance_window(instance_id: String) -> Result<(), Strin
             .iter()
             .find(|profile| profile.id == instance_id)
             .ok_or_else(|| "ZCode 实例不存在".to_string())?;
-        modules::zcode_instance::resolve_pid(Some(&profile.id), profile.last_pid)
+        modules::zcode_instance::resolve_pid(
+            Some(Path::new(&profile.user_data_dir)),
+            profile.last_pid,
+        )
     }
     .ok_or_else(|| "ZCode 实例未运行".to_string())?;
     modules::process::focus_process_pid(pid)

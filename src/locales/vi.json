@@ -124,6 +124,8 @@
         "failed": "Ủy quyền thất bại",
         "hint": "Sau khi ủy quyền, cửa sổ này sẽ tự cập nhật",
         "openBrowser": "Mở trong trình duyệt",
+        "normalWindow": "Cửa sổ thường",
+        "incognitoWindow": "Cửa sổ riêng tư",
         "success": "Ủy quyền thành công",
         "meta": "Hết hạn sau: {{expires}}s; chu kỳ thăm dò: {{interval}}s",
         "preparing": "Đang chuẩn bị liên kết ủy quyền...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "Đặt lại mặc định",
       "codebuddyCnPathSelect": "Chọn",
       "codebuddyCnSettingsTitle": "Cài đặt CodeBuddy CN",
+      "zcodeAppPath": "Đường dẫn khởi chạy ZCode",
+      "zcodeAppPathDesc": "Để trống để dùng đường dẫn mặc định",
       "qoderAppPath": "Đường dẫn ứng dụng Qoder",
       "qoderAppPathDesc": "Để trống để sử dụng đường dẫn mặc định",
       "qoderAppPathPlaceholder": "Đường dẫn mặc định",
@@ -3602,7 +3606,8 @@
       "appPath": "Đường dẫn WorkBuddy"
     },
     "zcode": {
-      "title": "Cài đặt ZCode"
+      "title": "Cài đặt ZCode",
+      "appPath": "Đường dẫn ZCode"
     },
     "zed": {
       "title": "Cài đặt Zed",

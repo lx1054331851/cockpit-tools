@@ -124,6 +124,8 @@
         "failed": "授權失敗",
         "hint": "完成授權後，此視窗將自動更新",
         "openBrowser": "在瀏覽器中開啟",
+        "normalWindow": "一般視窗",
+        "incognitoWindow": "無痕視窗",
         "success": "授權成功",
         "meta": "有效期限：{{expires}}s；輪詢間隔：{{interval}}s",
         "preparing": "正在準備授權連結...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "重設為預設",
       "codebuddyCnPathSelect": "選擇",
       "codebuddyCnSettingsTitle": "CodeBuddy CN 設定",
+      "zcodeAppPath": "ZCode 啟動路徑",
+      "zcodeAppPathDesc": "留空則使用預設路徑",
       "qoderAppPath": "Qoder 應用程式路徑",
       "qoderAppPathDesc": "留白則使用預設路徑",
       "qoderAppPathPlaceholder": "預設路徑",
@@ -3602,7 +3606,8 @@
       "appPath": "WorkBuddy 路徑"
     },
     "zcode": {
-      "title": "ZCode 設定"
+      "title": "ZCode 設定",
+      "appPath": "ZCode 路徑"
     },
     "zed": {
       "title": "Zed 設定",

@@ -131,6 +131,8 @@
         "failed": "Authorization failed",
         "hint": "Once authorized, this window will update automatically",
         "openBrowser": "Open in Browser",
+        "normalWindow": "Standard Window",
+        "incognitoWindow": "Incognito Window",
         "success": "Authorization successful",
         "meta": "Expires in: {{expires}}s; Poll interval: {{interval}}s",
         "preparing": "Preparing authorization info...",
@@ -1130,6 +1132,8 @@
       "codebuddyCnPathReset": "Reset to Default",
       "codebuddyCnPathSelect": "Select",
       "codebuddyCnSettingsTitle": "CodeBuddy CN Settings",
+      "zcodeAppPath": "ZCode Launch Path",
+      "zcodeAppPathDesc": "Leave blank to use the default path",
       "qoderAppPath": "Qoder App Path",
       "qoderAppPathDesc": "Leave blank to use the default path",
       "qoderAppPathPlaceholder": "Default path",
@@ -3894,7 +3898,8 @@
       "appPath": "Qoder Path"
     },
     "zcode": {
-      "title": "ZCode Settings"
+      "title": "ZCode Settings",
+      "appPath": "ZCode Path"
     },
     "zed": {
       "title": "Zed Settings",

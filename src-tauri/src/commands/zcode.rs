@@ -59,8 +59,12 @@ pub async fn zcode_oauth_submit_callback_url(
 }
 
 #[tauri::command]
-pub async fn zcode_oauth_open_window(app: AppHandle, auth_url: String) -> Result<(), String> {
-    zcode_oauth::open_oauth_window(&app, &auth_url)
+pub async fn zcode_oauth_open_window(
+    app: AppHandle,
+    auth_url: String,
+    incognito: Option<bool>,
+) -> Result<(), String> {
+    zcode_oauth::open_oauth_window(&app, &auth_url, incognito.unwrap_or(false))
 }
 
 #[tauri::command]

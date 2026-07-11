@@ -124,6 +124,8 @@
         "failed": "Autorizace selhala",
         "hint": "Po autorizaci se toto okno automaticky aktualizuje",
         "openBrowser": "Otevřít v prohlížeči",
+        "normalWindow": "Běžné okno",
+        "incognitoWindow": "Anonymní okno",
         "success": "Autorizace úspěšná",
         "meta": "Platnost vyprší za: {{expires}}s; interval dotazování: {{interval}}s",
         "preparing": "Připravuje se autorizační odkaz...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "Obnovit výchozí",
       "codebuddyCnPathSelect": "Vybrat",
       "codebuddyCnSettingsTitle": "Nastavení CodeBuddy CN",
+      "zcodeAppPath": "Spouštěcí cesta ZCode",
+      "zcodeAppPathDesc": "Ponechte prázdné pro výchozí cestu",
       "qoderAppPath": "Cesta k aplikaci Qoder",
       "qoderAppPathDesc": "Pokud je prázdné, použije se výchozí cesta",
       "qoderAppPathPlaceholder": "Výchozí cesta",
@@ -3602,7 +3606,8 @@
       "appPath": "Cesta WorkBuddy"
     },
     "zcode": {
-      "title": "Nastavení ZCode"
+      "title": "Nastavení ZCode",
+      "appPath": "Cesta k ZCode"
     },
     "zed": {
       "title": "Nastavení Zed",

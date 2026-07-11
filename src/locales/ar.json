@@ -124,6 +124,8 @@
         "failed": "فشل التفويض",
         "hint": "بعد إكمال التفويض سيتم تحديث هذه النافذة تلقائيًا",
         "openBrowser": "فتح في المتصفح",
+        "normalWindow": "نافذة عادية",
+        "incognitoWindow": "نافذة خاصة",
         "success": "تم التفويض بنجاح",
         "meta": "تنتهي الصلاحية خلال: {{expires}}s؛ فاصل الاستطلاع: {{interval}}s",
         "preparing": "جارٍ تجهيز معلومات التفويض...",
@@ -805,6 +807,8 @@
       "codebuddyCnPathReset": "إعادة تعيين إلى الافتراضي",
       "codebuddyCnPathSelect": "اختر",
       "codebuddyCnSettingsTitle": "إعدادات CodeBuddy CN",
+      "zcodeAppPath": "مسار تشغيل ZCode",
+      "zcodeAppPathDesc": "اتركه فارغًا لاستخدام المسار الافتراضي",
       "qoderAppPath": "مسار تطبيق Qoder",
       "qoderAppPathDesc": "يُستخدم المسار الافتراضي إذا تُرك فارغًا",
       "qoderAppPathPlaceholder": "المسار الافتراضي",
@@ -3648,7 +3652,8 @@
       "appPath": "مسار WorkBuddy"
     },
     "zcode": {
-      "title": "إعدادات ZCode"
+      "title": "إعدادات ZCode",
+      "appPath": "مسار ZCode"
     },
     "zed": {
       "title": "إعدادات Zed",

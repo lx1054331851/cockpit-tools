@@ -131,6 +131,8 @@
         "failed": "授权失败",
         "hint": "完成授权后，此窗口将自动更新",
         "openBrowser": "在浏览器中打开",
+        "normalWindow": "普通窗口",
+        "incognitoWindow": "无痕窗口",
         "success": "授权成功",
         "meta": "授权有效期：{{expires}}s；轮询间隔：{{interval}}s",
         "preparing": "正在准备授权信息...",
@@ -1130,6 +1132,8 @@
       "codebuddyCnPathReset": "重置默认",
       "codebuddyCnPathSelect": "选择",
       "codebuddyCnSettingsTitle": "CodeBuddy CN 设置",
+      "zcodeAppPath": "ZCode 启动路径",
+      "zcodeAppPathDesc": "留空则使用默认路径",
       "qoderAppPath": "Qoder 启动路径",
       "qoderAppPathDesc": "留空则使用默认路径",
       "qoderAppPathPlaceholder": "默认路径",
@@ -3894,7 +3898,8 @@
       "appPath": "Qoder 路径"
     },
     "zcode": {
-      "title": "ZCode 设置"
+      "title": "ZCode 设置",
+      "appPath": "ZCode 路径"
     },
     "zed": {
       "title": "Zed 设置",

@@ -3,6 +3,7 @@ import {
   Plus, RefreshCw, Download, Upload, Trash2, X, Globe, KeyRound, Database,
   Copy, Check, RotateCw, LayoutGrid, List, Search,
   Tag, Play, Eye, EyeOff, CircleAlert, ChevronDown, ChevronLeft, ArrowRightLeft, CalendarCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { TagEditModal } from '../TagEditModal';
 import { ExportJsonModal } from '../ExportJsonModal';
@@ -76,6 +77,7 @@ export interface CodebuddySuiteAccountsPlatformConfig<TAccount extends Codebuddy
   oauthWaitingDefault: string;
   oauthOpenButtonKey?: string;
   oauthOpenButtonDefault?: string;
+  showOauthIncognitoOpenButton?: boolean;
   tokenDescKey: string;
   tokenDescDefault: string;
   importLocalDescKey: string;
@@ -713,15 +715,31 @@ export function CodebuddySuiteAccountsSharedView<TAccount extends CodebuddySuite
                           })}
                         </p>
                       )}
-                      <button className="btn btn-primary btn-full" onClick={handleOpenOauthUrl}>
-                        <Globe size={16} />
-                        {platformConfig.oauthOpenButtonKey
-                          ? t(
-                              platformConfig.oauthOpenButtonKey,
-                              platformConfig.oauthOpenButtonDefault ?? '打开授权窗口',
-                            )
-                          : t('common.shared.oauth.openBrowser', '在浏览器中打开')}
-                      </button>
+                      <div className={platformConfig.showOauthIncognitoOpenButton ? 'zcode-oauth-window-actions' : undefined}>
+                        <button
+                          className="btn btn-primary btn-full"
+                          onClick={() => void handleOpenOauthUrl(false)}
+                        >
+                          <Globe size={16} />
+                          {platformConfig.showOauthIncognitoOpenButton
+                            ? t('common.shared.oauth.normalWindow', '打开授权窗口')
+                            : platformConfig.oauthOpenButtonKey
+                              ? t(
+                                  platformConfig.oauthOpenButtonKey,
+                                  platformConfig.oauthOpenButtonDefault ?? '打开授权窗口',
+                                )
+                              : t('common.shared.oauth.openBrowser', '在浏览器中打开')}
+                        </button>
+                        {platformConfig.showOauthIncognitoOpenButton && (
+                          <button
+                            className="btn btn-secondary btn-full"
+                            onClick={() => void handleOpenOauthUrl(true)}
+                          >
+                            <ShieldCheck size={16} />
+                            {t('common.shared.oauth.incognitoWindow', '打开无痕授权窗口')}
+                          </button>
+                        )}
+                      </div>
                       {oauthPolling && (
                         <div className="add-status loading">
                           <RefreshCw size={16} className="loading-spinner" />

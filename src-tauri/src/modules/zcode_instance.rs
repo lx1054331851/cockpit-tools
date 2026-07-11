@@ -1,5 +1,7 @@
 use chrono::Utc;
 use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -13,8 +15,6 @@ use crate::modules::{self, instance_store};
 pub use crate::modules::instance_store::{CreateInstanceParams, UpdateInstanceParams};
 
 const INSTANCES_FILE: &str = "zcode_instances.json";
-const PROFILE_MARKER_PREFIX: &str = "--cockpit-zcode-profile=";
-
 static STORE_LOCK: std::sync::LazyLock<Mutex<()>> = std::sync::LazyLock::new(|| Mutex::new(()));
 
 fn instances_path() -> Result<PathBuf, String> {
@@ -329,8 +329,74 @@ pub fn resolve_executable() -> Result<PathBuf, String> {
         .ok_or_else(|| "未找到 ZCode 客户端，请先安装 ZCode".to_string())
 }
 
+fn normalize_path_for_compare(path: &Path) -> String {
+    let resolved = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let value = resolved.to_string_lossy().trim().to_string();
+    #[cfg(target_os = "windows")]
+    {
+        return value.to_ascii_lowercase();
+    }
+    #[cfg(not(target_os = "windows"))]
+    value
+}
+
+fn extract_user_data_dir(arguments: &[OsString]) -> Option<String> {
+    let mut index = 0;
+    while index < arguments.len() {
+        let argument = arguments[index].to_string_lossy();
+        if let Some(value) = argument.strip_prefix("--user-data-dir=") {
+            let value = value.trim();
+            return (!value.is_empty()).then(|| value.to_string());
+        }
+        if argument == "--user-data-dir" {
+            return arguments
+                .get(index + 1)
+                .map(|value| value.to_string_lossy().trim().to_string())
+                .filter(|value| !value.is_empty());
+        }
+        index += 1;
+    }
+    None
+}
+
+fn extract_user_data_dir_from_command_line(command_line: &str) -> Option<String> {
+    for marker in ["--user-data-dir=", "--user-data-dir "] {
+        let Some(start) = command_line.find(marker) else {
+            continue;
+        };
+        let rest = command_line[start + marker.len()..].trim_start();
+        if rest.is_empty() {
+            return None;
+        }
+        let (value, _) =
+            if let Some(quote) = rest.chars().next().filter(|ch| *ch == '\'' || *ch == '"') {
+                let quoted = &rest[quote.len_utf8()..];
+                let end = quoted.find(quote).unwrap_or(quoted.len());
+                (&quoted[..end], true)
+            } else {
+                let end = rest.find(" --").unwrap_or(rest.len());
+                (&rest[..end], false)
+            };
+        let value = value.trim();
+        return (!value.is_empty()).then(|| value.to_string());
+    }
+    None
+}
+
+fn is_helper_command(command: &str) -> bool {
+    let lower = command.to_ascii_lowercase();
+    lower.contains("zcode helper")
+        || lower.contains("--type=")
+        || lower.contains("crashpad_handler")
+}
+
 fn is_main_process(process: &sysinfo::Process) -> bool {
     let name = process.name().to_string_lossy().to_ascii_lowercase();
+    let executable_name = process
+        .exe()
+        .and_then(Path::file_name)
+        .map(|value| value.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
     let command = process
         .cmd()
         .iter()
@@ -338,52 +404,151 @@ fn is_main_process(process: &sysinfo::Process) -> bool {
         .collect::<Vec<_>>()
         .join(" ")
         .to_ascii_lowercase();
-    (name == "zcode" || name == "zcode.exe")
-        && !command.contains("--type=")
-        && !command.contains("crashpad_handler")
+    (name == "zcode"
+        || name == "zcode.exe"
+        || name.starts_with("zcode [")
+        || executable_name == "zcode"
+        || executable_name == "zcode.exe")
+        && !is_helper_command(&command)
 }
 
-fn command_matches_profile(command: &[std::ffi::OsString], profile_id: Option<&str>) -> bool {
-    match profile_id {
-        Some(profile_id) => {
-            let expected = format!("{}{}", PROFILE_MARKER_PREFIX, profile_id);
-            command.iter().any(|argument| argument == expected.as_str())
+fn parse_ps_process_line(line: &str) -> Option<(u32, u32, &str)> {
+    let line = line.trim_start();
+    let pid_end = line.find(char::is_whitespace)?;
+    let pid = line[..pid_end].parse().ok()?;
+    let rest = line[pid_end..].trim_start();
+    let parent_end = rest.find(char::is_whitespace)?;
+    let parent_pid = rest[..parent_end].parse().ok()?;
+    Some((pid, parent_pid, rest[parent_end..].trim_start()))
+}
+
+fn collect_process_entries_from_ps(output: &str) -> Vec<(u32, Option<String>)> {
+    let mut main_pids = HashSet::new();
+    let mut user_data_by_parent = HashMap::new();
+    for line in output.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
         }
-        None => command.iter().all(|argument| {
-            !argument
-                .to_string_lossy()
-                .starts_with(PROFILE_MARKER_PREFIX)
-        }),
+        let Some((pid, parent_pid, command)) = parse_ps_process_line(line) else {
+            continue;
+        };
+        let lower = command.to_ascii_lowercase();
+        if is_helper_command(command) {
+            if let Some(user_data_dir) = extract_user_data_dir_from_command_line(command) {
+                user_data_by_parent
+                    .entry(parent_pid)
+                    .or_insert(user_data_dir);
+            }
+            continue;
+        }
+        if lower == "zcode"
+            || lower.starts_with("zcode [")
+            || lower.contains("zcode.app/contents/macos/zcode")
+        {
+            main_pids.insert(pid);
+        }
+    }
+
+    main_pids.extend(user_data_by_parent.keys().copied());
+    let mut entries: Vec<_> = main_pids
+        .into_iter()
+        .map(|pid| (pid, user_data_by_parent.remove(&pid)))
+        .collect();
+    entries.sort_by_key(|(pid, _)| *pid);
+    entries
+}
+
+pub fn collect_process_entries() -> Vec<(u32, Option<String>)> {
+    #[cfg(target_os = "macos")]
+    {
+        return Command::new("ps")
+            .args(["-axo", "pid=,ppid=,command="])
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .map(|output| collect_process_entries_from_ps(&String::from_utf8_lossy(&output.stdout)))
+            .unwrap_or_default();
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let mut system = System::new();
+        system.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .with_cmd(UpdateKind::OnlyIfNotSet),
+        );
+        let mut main_entries = Vec::new();
+        let mut user_data_by_parent = HashMap::new();
+        for (pid, process) in system.processes() {
+            let command = process
+                .cmd()
+                .iter()
+                .map(|value| value.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let user_data_dir = extract_user_data_dir(process.cmd());
+            if is_helper_command(&command) {
+                if let (Some(parent), Some(user_data_dir)) = (process.parent(), user_data_dir) {
+                    user_data_by_parent
+                        .entry(parent.as_u32())
+                        .or_insert(user_data_dir);
+                }
+                continue;
+            }
+            if is_main_process(process) {
+                main_entries.push((pid.as_u32(), user_data_dir));
+            }
+        }
+
+        for (pid, user_data_dir) in &mut main_entries {
+            if user_data_dir.is_none() {
+                *user_data_dir = user_data_by_parent.remove(pid);
+            }
+        }
+        main_entries.sort_by_key(|(pid, _)| *pid);
+        main_entries
     }
 }
 
-pub fn resolve_pid(profile_id: Option<&str>, last_pid: Option<u32>) -> Option<u32> {
-    let mut system = System::new();
-    system.refresh_processes_specifics(
-        ProcessesToUpdate::All,
-        true,
-        ProcessRefreshKind::nothing()
-            .with_exe(UpdateKind::OnlyIfNotSet)
-            .with_cmd(UpdateKind::OnlyIfNotSet),
-    );
-    let matches = |process: &sysinfo::Process| {
-        if !is_main_process(process) {
-            return false;
-        }
-        command_matches_profile(process.cmd(), profile_id)
-    };
+fn resolve_pid_from_entries(
+    instance_root: Option<&Path>,
+    last_pid: Option<u32>,
+    default_user_data_dir: &Path,
+    entries: &[(u32, Option<String>)],
+) -> Option<u32> {
+    let target = instance_root
+        .map(|root| root.join("electron"))
+        .unwrap_or_else(|| default_user_data_dir.to_path_buf());
+    let target = normalize_path_for_compare(&target);
+    let allow_missing_dir = instance_root.is_none();
+    let matches: Vec<u32> = entries
+        .iter()
+        .filter_map(|(pid, actual)| match actual {
+            Some(actual) if normalize_path_for_compare(Path::new(actual)) == target => Some(*pid),
+            None if allow_missing_dir => Some(*pid),
+            _ => None,
+        })
+        .collect();
     if let Some(pid) = last_pid {
-        if system
-            .process(sysinfo::Pid::from_u32(pid))
-            .is_some_and(matches)
-        {
+        if matches.contains(&pid) {
             return Some(pid);
         }
     }
-    system
-        .processes()
-        .iter()
-        .find_map(|(pid, process)| matches(process).then(|| pid.as_u32()))
+    matches.into_iter().min()
+}
+
+pub fn resolve_pid(instance_root: Option<&Path>, last_pid: Option<u32>) -> Option<u32> {
+    let default_user_data_dir = get_default_user_data_dir().ok()?;
+    resolve_pid_from_entries(
+        instance_root,
+        last_pid,
+        &default_user_data_dir,
+        &collect_process_entries(),
+    )
 }
 
 fn base_command(executable: &Path) -> Command {
@@ -444,9 +609,7 @@ pub fn start_managed(instance: &InstanceProfile, extra_args: &[String]) -> Resul
     let real_home = dirs::home_dir().ok_or_else(|| "无法获取用户主目录".to_string())?;
     let mut command = base_command(&executable);
     configure_managed_environment(&mut command, root, &instance.name, &real_home);
-    command
-        .arg(format!("{}{}", PROFILE_MARKER_PREFIX, instance.id))
-        .args(extra_args);
+    command.args(extra_args);
     if let Some(working_dir) = instance
         .working_dir
         .as_deref()
@@ -470,7 +633,8 @@ pub fn close_all() -> Result<(), String> {
         }
     }
     for instance in &store.instances {
-        if let Some(pid) = resolve_pid(Some(&instance.id), instance.last_pid) {
+        if let Some(pid) = resolve_pid(Some(Path::new(&instance.user_data_dir)), instance.last_pid)
+        {
             if let Err(error) = modules::process::close_pid(pid, 20) {
                 errors.push(format!("{}: {}", instance.name, error));
             }
@@ -619,21 +783,73 @@ mod tests {
     }
 
     #[test]
-    fn process_profile_matching_distinguishes_default_and_managed_instances() {
-        let default = vec![
-            std::ffi::OsString::from("/Applications/ZCode.app/Contents/MacOS/ZCode"),
-            std::ffi::OsString::from("--enable-feature"),
-        ];
-        assert!(command_matches_profile(&default, None));
-        assert!(!command_matches_profile(&default, Some("profile-a")));
+    fn process_collection_uses_helper_user_data_dir_after_main_rewrites_argv() {
+        let output = r#"
+37764     1 ZCode [333]
+37767 37764 /Applications/ZCode.app/Contents/Frameworks/ZCode Helper.app/Contents/MacOS/ZCode Helper --type=gpu-process --user-data-dir=/Users/test/.antigravity_cockpit/instances/zcode/managed/electron --shared-files
+41440     1 ZCode
+41443 41440 /Applications/ZCode.app/Contents/Frameworks/ZCode Helper.app/Contents/MacOS/ZCode Helper --type=gpu-process --user-data-dir=/Users/test/Library/Application Support/ZCode --shared-files
+"#;
+        assert_eq!(
+            collect_process_entries_from_ps(output),
+            vec![
+                (
+                    37764,
+                    Some(
+                        "/Users/test/.antigravity_cockpit/instances/zcode/managed/electron"
+                            .to_string()
+                    )
+                ),
+                (
+                    41440,
+                    Some("/Users/test/Library/Application Support/ZCode".to_string())
+                )
+            ]
+        );
+    }
 
-        let managed = vec![
-            std::ffi::OsString::from("/Applications/ZCode.app/Contents/MacOS/ZCode"),
-            std::ffi::OsString::from("--cockpit-zcode-profile=profile-a"),
+    #[test]
+    fn pid_resolution_distinguishes_default_and_managed_user_data_dirs() {
+        let default_dir = Path::new("/Users/test/Library/Application Support/ZCode");
+        let managed_root = Path::new("/Users/test/.antigravity_cockpit/instances/zcode/managed");
+        let entries = vec![
+            (
+                37764,
+                Some(managed_root.join("electron").to_string_lossy().to_string()),
+            ),
+            (41440, Some(default_dir.to_string_lossy().to_string())),
         ];
-        assert!(!command_matches_profile(&managed, None));
-        assert!(command_matches_profile(&managed, Some("profile-a")));
-        assert!(!command_matches_profile(&managed, Some("profile-b")));
-        assert!(!command_matches_profile(&managed, Some("profile")));
+
+        assert_eq!(
+            resolve_pid_from_entries(Some(managed_root), Some(37764), default_dir, &entries),
+            Some(37764)
+        );
+        assert_eq!(
+            resolve_pid_from_entries(None, Some(41440), default_dir, &entries),
+            Some(41440)
+        );
+        assert_eq!(
+            resolve_pid_from_entries(Some(managed_root), Some(41440), default_dir, &entries),
+            Some(37764)
+        );
+    }
+
+    #[test]
+    fn default_pid_can_fall_back_to_main_process_without_user_data_dir() {
+        let default_dir = Path::new("/Users/test/Library/Application Support/ZCode");
+        let entries = vec![(41440, None)];
+        assert_eq!(
+            resolve_pid_from_entries(None, Some(41440), default_dir, &entries),
+            Some(41440)
+        );
+        assert_eq!(
+            resolve_pid_from_entries(
+                Some(Path::new("/Users/test/managed")),
+                Some(41440),
+                default_dir,
+                &entries,
+            ),
+            None
+        );
     }
 }

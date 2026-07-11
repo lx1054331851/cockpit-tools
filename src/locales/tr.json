@@ -124,6 +124,8 @@
         "failed": "Yetkilendirme başarısız",
         "hint": "Yetkilendirme tamamlanınca bu pencere otomatik güncellenir",
         "openBrowser": "Tarayıcıda aç",
+        "normalWindow": "Normal pencere",
+        "incognitoWindow": "Gizli pencere",
         "success": "Yetkilendirme başarılı",
         "meta": "Süre bitimine: {{expires}}s; yoklama aralığı: {{interval}}s",
         "preparing": "Yetkilendirme bağlantısı hazırlanıyor...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "Varsayılana Sıfırla",
       "codebuddyCnPathSelect": "Seç",
       "codebuddyCnSettingsTitle": "CodeBuddy CN Ayarları",
+      "zcodeAppPath": "ZCode Başlatma Yolu",
+      "zcodeAppPathDesc": "Varsayılan yol için boş bırakın",
       "qoderAppPath": "Qoder Uygulama Yolu",
       "qoderAppPathDesc": "Boş bırakırsanız varsayılan yol kullanılır",
       "qoderAppPathPlaceholder": "Varsayılan yol",
@@ -3602,7 +3606,8 @@
       "appPath": "WorkBuddy Yolu"
     },
     "zcode": {
-      "title": "ZCode Ayarları"
+      "title": "ZCode Ayarları",
+      "appPath": "ZCode Yolu"
     },
     "zed": {
       "title": "Zed Ayarları",

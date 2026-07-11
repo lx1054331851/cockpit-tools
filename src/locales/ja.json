@@ -124,6 +124,8 @@
         "failed": "認可失敗",
         "hint": "認可完了後、このウィンドウは自動更新されます",
         "openBrowser": "ブラウザで開く",
+        "normalWindow": "通常ウィンドウ",
+        "incognitoWindow": "シークレット",
         "success": "認可成功",
         "meta": "有効期限: {{expires}}s; ポーリング間隔: {{interval}}s",
         "preparing": "認可リンクを準備中...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "デフォルトにリセット",
       "codebuddyCnPathSelect": "選択",
       "codebuddyCnSettingsTitle": "CodeBuddy CN 設定",
+      "zcodeAppPath": "ZCode 起動パス",
+      "zcodeAppPathDesc": "空欄の場合は既定のパスを使用します",
       "qoderAppPath": "Qoder 起動パス",
       "qoderAppPathDesc": "空欄の場合はデフォルトパスを使用",
       "qoderAppPathPlaceholder": "デフォルトパス",
@@ -3602,7 +3606,8 @@
       "appPath": "WorkBuddy パス"
     },
     "zcode": {
-      "title": "ZCode 設定"
+      "title": "ZCode 設定",
+      "appPath": "ZCode パス"
     },
     "zed": {
       "title": "Zed 設定",

@@ -81,6 +81,7 @@ interface GeneralConfig {
   codebuddy_app_path?: string;
   codebuddy_cn_app_path?: string;
   qoder_app_path?: string;
+  zcode_app_path?: string;
   trae_app_path?: string;
   zed_app_path?: string;
   opencode_sync_on_switch?: boolean;
@@ -406,6 +407,7 @@ export function useAutoRefresh() {
                     codebuddyAppPath: config.codebuddy_app_path ?? '',
                     codebuddyCnAppPath: config.codebuddy_cn_app_path ?? '',
                     qoderAppPath: config.qoder_app_path ?? '',
+                    zcodeAppPath: config.zcode_app_path ?? '',
                     traeAppPath: config.trae_app_path ?? '',
                     zedAppPath: config.zed_app_path ?? '',
                     opencodeSyncOnSwitch: config.opencode_sync_on_switch ?? false,

@@ -124,6 +124,8 @@
         "failed": "Autorisierung fehlgeschlagen",
         "hint": "Nach der Autorisierung wird dieses Fenster automatisch aktualisiert",
         "openBrowser": "Im Browser öffnen",
+        "normalWindow": "Normales Fenster",
+        "incognitoWindow": "Inkognitofenster",
         "success": "Autorisierung erfolgreich",
         "meta": "Läuft ab in: {{expires}}s; Abfrageintervall: {{interval}}s",
         "preparing": "Autorisierungslink wird vorbereitet...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "Auf Standard zurücksetzen",
       "codebuddyCnPathSelect": "Auswählen",
       "codebuddyCnSettingsTitle": "CodeBuddy CN Einstellungen",
+      "zcodeAppPath": "ZCode-Startpfad",
+      "zcodeAppPathDesc": "Leer lassen, um den Standardpfad zu verwenden",
       "qoderAppPath": "Qoder App-Pfad",
       "qoderAppPathDesc": "Wenn leer, wird der Standardpfad verwendet",
       "qoderAppPathPlaceholder": "Standardpfad",
@@ -3602,7 +3606,8 @@
       "appPath": "WorkBuddy-Pfad"
     },
     "zcode": {
-      "title": "ZCode-Einstellungen"
+      "title": "ZCode-Einstellungen",
+      "appPath": "ZCode-Pfad"
     },
     "zed": {
       "title": "Zed-Einstellungen",

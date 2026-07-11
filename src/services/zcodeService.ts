@@ -53,8 +53,8 @@ export async function submitZcodeOAuthCallbackUrl(
   await invoke('zcode_oauth_submit_callback_url', { loginId, callbackUrl });
 }
 
-export async function openZcodeOAuthWindow(authUrl: string): Promise<void> {
-  await invoke('zcode_oauth_open_window', { authUrl });
+export async function openZcodeOAuthWindow(authUrl: string, incognito = false): Promise<void> {
+  await invoke('zcode_oauth_open_window', { authUrl, incognito });
 }
 
 export async function cancelZcodeOAuthLogin(loginId?: string): Promise<void> {

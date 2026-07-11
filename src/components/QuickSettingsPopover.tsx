@@ -92,6 +92,7 @@ interface GeneralConfig {
   codebuddy_app_path: string;
   codebuddy_cn_app_path: string;
   qoder_app_path: string;
+  zcode_app_path: string;
   trae_app_path: string;
   trae_solo_app_path: string;
   trae_cn_app_path: string;
@@ -196,6 +197,7 @@ type AppPathTarget =
   | 'codebuddy'
   | 'codebuddy_cn'
   | 'qoder'
+  | 'zcode'
   | 'trae'
   | 'trae_solo'
   | 'trae_cn'
@@ -276,6 +278,8 @@ const getAppPathKeyForTarget = (target: AppPathTarget): keyof GeneralConfig => {
       return 'codebuddy_cn_app_path';
     case 'qoder':
       return 'qoder_app_path';
+    case 'zcode':
+      return 'zcode_app_path';
     case 'trae':
       return 'trae_app_path';
     case 'trae_solo':
@@ -993,6 +997,7 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
           codebuddyAppPath: merged.codebuddy_app_path,
           codebuddyCnAppPath: merged.codebuddy_cn_app_path,
           qoderAppPath: merged.qoder_app_path,
+          zcodeAppPath: merged.zcode_app_path,
           traeAppPath: merged.trae_app_path,
           traeSoloAppPath: merged.trae_solo_app_path,
           traeCnAppPath: merged.trae_cn_app_path,
@@ -1375,7 +1380,7 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
     }
   };
 
-  const showAppPathSection = type !== 'gemini' && type !== 'zcode';
+  const showAppPathSection = type !== 'gemini';
   const antigravityLaunchOnSwitch = config?.antigravity_launch_on_switch ?? true;
 
   const getAppPath = (): string => {
@@ -1404,7 +1409,7 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
       case 'qoder':
         return config.qoder_app_path;
       case 'zcode':
-        return '';
+        return config.zcode_app_path || '';
       case 'trae':
         return config.trae_app_path;
       case 'trae_solo':
@@ -1447,7 +1452,7 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
       case 'qoder':
         return t('quickSettings.qoder.appPath', 'Qoder 路径');
       case 'zcode':
-        return '';
+        return t('quickSettings.zcode.appPath', 'ZCode 启动路径');
       case 'trae':
         return t('quickSettings.trae.appPath', 'Trae 路径');
       case 'trae_solo':
@@ -1488,7 +1493,7 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
       case 'qoder':
         return 'qoder';
       case 'zcode':
-        return 'antigravity';
+        return 'zcode';
       case 'trae':
         return 'trae';
       case 'trae_solo':
@@ -2316,6 +2321,19 @@ export function QuickSettingsPopover({ type }: QuickSettingsPopoverProps) {
                     }}
                   />
                   <div className="qs-path-actions">
+                    {type === 'zcode' && (
+                      <button
+                        className="qs-btn"
+                        onClick={() => {
+                          setAppLaunchCandidates([]);
+                          saveConfig({ zcode_app_path: '' });
+                        }}
+                        disabled={pathDetecting || !getAppPath().trim()}
+                        title={t('common.clear', '清除')}
+                      >
+                        {t('common.clear', '清除')}
+                      </button>
+                    )}
                     <button
                       className="qs-btn"
                       onClick={() => handlePickAppPath(getAppTarget())}

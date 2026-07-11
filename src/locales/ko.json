@@ -124,6 +124,8 @@
         "failed": "인증 실패",
         "hint": "인증이 완료되면 이 창이 자동으로 업데이트됩니다",
         "openBrowser": "브라우저에서 열기",
+        "normalWindow": "일반 창",
+        "incognitoWindow": "시크릿 창",
         "success": "인증 성공",
         "meta": "만료까지: {{expires}}s; 폴링 간격: {{interval}}s",
         "preparing": "인증 링크 준비 중...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "기본값으로 초기화",
       "codebuddyCnPathSelect": "선택",
       "codebuddyCnSettingsTitle": "CodeBuddy CN 설정",
+      "zcodeAppPath": "ZCode 실행 경로",
+      "zcodeAppPathDesc": "비워 두면 기본 경로를 사용합니다",
       "qoderAppPath": "Qoder 앱 경로",
       "qoderAppPathDesc": "비워두면 기본 경로를 사용합니다",
       "qoderAppPathPlaceholder": "기본 경로",
@@ -3602,7 +3606,8 @@
       "appPath": "WorkBuddy 경로"
     },
     "zcode": {
-      "title": "ZCode 설정"
+      "title": "ZCode 설정",
+      "appPath": "ZCode 경로"
     },
     "zed": {
       "title": "Zed 설정",

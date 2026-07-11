@@ -124,6 +124,8 @@
         "failed": "Ошибка авторизации",
         "hint": "После авторизации это окно обновится автоматически",
         "openBrowser": "Открыть в браузере",
+        "normalWindow": "Обычное окно",
+        "incognitoWindow": "Приватное окно",
         "success": "Авторизация успешна",
         "meta": "Истекает через: {{expires}}с; интервал опроса: {{interval}}с",
         "preparing": "Подготовка ссылки авторизации...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "Сбросить по умолчанию",
       "codebuddyCnPathSelect": "Выбрать",
       "codebuddyCnSettingsTitle": "Настройки CodeBuddy CN",
+      "zcodeAppPath": "Путь запуска ZCode",
+      "zcodeAppPathDesc": "Оставьте пустым для пути по умолчанию",
       "qoderAppPath": "Путь приложения Qoder",
       "qoderAppPathDesc": "Оставьте пустым для использования пути по умолчанию",
       "qoderAppPathPlaceholder": "Путь по умолчанию",
@@ -3602,7 +3606,8 @@
       "appPath": "Путь WorkBuddy"
     },
     "zcode": {
-      "title": "Настройки ZCode"
+      "title": "Настройки ZCode",
+      "appPath": "Путь ZCode"
     },
     "zed": {
       "title": "Настройки Zed",

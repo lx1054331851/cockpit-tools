@@ -124,6 +124,7 @@ export function ZcodeAccountsPage() {
     oauthWaitingDefault: '等待 ZCode OAuth 回调...',
     oauthOpenButtonKey: 'zcode.oauth.openWindow',
     oauthOpenButtonDefault: '打开授权窗口',
+    showOauthIncognitoOpenButton: true,
     tokenDescKey: 'zcode.token.desc',
     tokenDescDefault: '粘贴由 Cockpit 导出的 ZCode 账号 JSON。',
     importLocalDescKey: 'zcode.import.localDesc',

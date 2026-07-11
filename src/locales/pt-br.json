@@ -124,6 +124,8 @@
         "failed": "Autorização falhou",
         "hint": "Após autorizar, esta janela será atualizada automaticamente",
         "openBrowser": "Abrir no navegador",
+        "normalWindow": "Janela normal",
+        "incognitoWindow": "Janela privada",
         "success": "Autorização bem-sucedida",
         "meta": "Expira em: {{expires}}s; Intervalo de polling: {{interval}}s",
         "preparing": "Preparando informações de autorização...",
@@ -759,6 +761,8 @@
       "codebuddyCnPathReset": "Redefinir para padrão",
       "codebuddyCnPathSelect": "Selecionar",
       "codebuddyCnSettingsTitle": "Configurações do CodeBuddy CN",
+      "zcodeAppPath": "Caminho de inicialização do ZCode",
+      "zcodeAppPathDesc": "Deixe em branco para usar o caminho padrão",
       "qoderAppPath": "Caminho do aplicativo Qoder",
       "qoderAppPathDesc": "Deixe em branco para usar o caminho padrão",
       "qoderAppPathPlaceholder": "Caminho padrão",
@@ -3602,7 +3606,8 @@
       "appPath": "Caminho do WorkBuddy"
     },
     "zcode": {
-      "title": "Configurações do ZCode"
+      "title": "Configurações do ZCode",
+      "appPath": "Caminho do ZCode"
     },
     "zed": {
       "title": "Configurações do Zed",
