@@ -11496,12 +11496,17 @@ fn build_request_state_snapshot(runtime: &GatewayRuntime) -> CodexLocalAccessSta
     build_state_snapshot_inner(runtime, false)
 }
 
+fn build_fresh_state_snapshot(runtime: &mut GatewayRuntime) -> CodexLocalAccessState {
+    recompute_time_windows(&mut runtime.stats, now_ms());
+    build_state_snapshot(runtime)
+}
+
 async fn snapshot_state() -> Result<CodexLocalAccessState, String> {
     ensure_runtime_loaded_without_start().await?;
     if let Err(err) = ensure_gateway_matches_runtime().await {
         let mut runtime = gateway_runtime().lock().await;
         runtime.last_error = Some(err);
-        return Ok(build_state_snapshot(&runtime));
+        return Ok(build_fresh_state_snapshot(&mut runtime));
     }
     let mut runtime = gateway_runtime().lock().await;
     if runtime
@@ -11515,13 +11520,13 @@ async fn snapshot_state() -> Result<CodexLocalAccessState, String> {
     {
         runtime.last_error = None;
     }
-    Ok(build_state_snapshot(&runtime))
+    Ok(build_fresh_state_snapshot(&mut runtime))
 }
 
 async fn snapshot_state_without_gateway_reload() -> Result<CodexLocalAccessState, String> {
     ensure_runtime_loaded_without_start().await?;
-    let runtime = gateway_runtime().lock().await;
-    Ok(build_state_snapshot(&runtime))
+    let mut runtime = gateway_runtime().lock().await;
+    Ok(build_fresh_state_snapshot(&mut runtime))
 }
 
 pub async fn get_local_access_state() -> Result<CodexLocalAccessState, String> {
@@ -19760,18 +19765,18 @@ mod tests {
         canonical_model_for_client_model, classify_upstream_error_category,
         cleanup_profile_takeover_without_backup, cleanup_provider_gateway_profile_model_overrides,
         collect_local_access_profile_takeover_dirs_from_store, compare_routing_candidates,
-        default_codex_model_ids, effective_api_key_account_ids, extract_usage_capture,
-        filter_bound_oauth_quota_reserve_account, insert_local_access_usage_event,
-        inspect_local_access_profile_config, is_codex_local_access_auth_text,
-        is_codex_local_access_config_for_api_key, is_image_generation_capability_error,
-        is_local_access_eligible_account, is_provider_gateway_eligible_account,
-        is_responses_completion_event, is_stream_incomplete_error_message,
-        is_upstream_response_failed_error_message, legacy_stream_error_category,
-        local_access_chat_completions_url, macos_proxy_url_from_scutil_map,
-        max_credential_attempts_for_strategy, merge_collection_and_account_excluded_models,
-        model_pricing, model_provider_direct_test_client_model,
-        model_provider_test_uses_provider_gateway, normalize_account_id_list,
-        normalize_account_model_rules, normalize_collection_api_keys,
+        default_codex_model_ids, effective_api_key_account_ids, empty_stats_snapshot,
+        extract_usage_capture, filter_bound_oauth_quota_reserve_account,
+        insert_local_access_usage_event, inspect_local_access_profile_config,
+        is_codex_local_access_auth_text, is_codex_local_access_config_for_api_key,
+        is_image_generation_capability_error, is_local_access_eligible_account,
+        is_provider_gateway_eligible_account, is_responses_completion_event,
+        is_stream_incomplete_error_message, is_upstream_response_failed_error_message,
+        legacy_stream_error_category, local_access_chat_completions_url,
+        macos_proxy_url_from_scutil_map, max_credential_attempts_for_strategy,
+        merge_collection_and_account_excluded_models, model_pricing,
+        model_provider_direct_test_client_model, model_provider_test_uses_provider_gateway,
+        normalize_account_id_list, normalize_account_model_rules, normalize_collection_api_keys,
         normalize_custom_routing_rules, normalized_sidecar_error_category,
         open_local_access_logs_db_once, parse_codex_retry_after,
         parse_responses_payload_from_upstream, parse_websocket_upstream_error,
@@ -19781,13 +19786,13 @@ mod tests {
         provider_gateway_bound_oauth_account_id_for_account,
         provider_gateway_default_model_for_account,
         provider_gateway_image_generation_mode_for_account, provider_gateway_models_for_account,
-        read_http_request, recover_invalid_stats_file, remove_account_refs_from_collection,
-        remove_codex_local_access_config, reprice_request_logs_for_collection,
-        request_image_generation_mode, resolve_plan_rank, resolve_supported_model_alias,
-        resolve_upstream_target, restore_config_toml_from_takeover_backup,
-        sanitize_collection_with_accounts, scutil_proxy_map,
-        should_retry_single_account_upstream_status, should_treat_response_as_stream,
-        should_try_next_account, sidecar_account_manifest_value,
+        read_http_request, recompute_time_windows, recover_invalid_stats_file,
+        remove_account_refs_from_collection, remove_codex_local_access_config,
+        reprice_request_logs_for_collection, request_image_generation_mode, resolve_plan_rank,
+        resolve_supported_model_alias, resolve_upstream_target,
+        restore_config_toml_from_takeover_backup, sanitize_collection_with_accounts,
+        scutil_proxy_map, should_retry_single_account_upstream_status,
+        should_treat_response_as_stream, should_try_next_account, sidecar_account_manifest_value,
         sidecar_api_key_account_scope_values, sidecar_api_key_manifest_values,
         sidecar_auth_file_name, sidecar_auth_json_for_account, sidecar_auths_dir,
         sidecar_cached_account_usable_after_prepare_error, sidecar_client_api_keys,
@@ -19808,7 +19813,7 @@ mod tests {
         CODEX_AUTO_REVIEW_MODEL_ID, CODEX_IMAGE_MODEL_ID,
         CODEX_LOCAL_ACCESS_TEST_DISABLE_IMAGE_GENERATION_HEADER, CODEX_PROFILE_AUTH_FILE,
         CODEX_PROFILE_CONFIG_FILE, CODEX_PROVIDER_MODEL_BACKUP_FILE,
-        CODEX_PROVIDER_MODEL_CATALOG_FILE, DEFAULT_MAX_RETRY_INTERVAL_MS,
+        CODEX_PROVIDER_MODEL_CATALOG_FILE, DAY_WINDOW_MS, DEFAULT_MAX_RETRY_INTERVAL_MS,
         DEFAULT_MODEL_PRICING_VERSION, DEFAULT_SESSION_AFFINITY_TTL_MS, MAX_HTTP_REQUEST_BYTES,
     };
     use crate::models::codex::{
@@ -19819,7 +19824,8 @@ mod tests {
         CodexLocalAccessAccountModelRule, CodexLocalAccessClientBaseUrlHost,
         CodexLocalAccessCustomRoutingRule, CodexLocalAccessImageGenerationMode,
         CodexLocalAccessProviderGateway, CodexLocalAccessQuotaReserve, CodexLocalAccessRequestKind,
-        CodexLocalAccessRoutingStrategy, CodexLocalAccessStats, CodexLocalAccessTimeouts,
+        CodexLocalAccessRoutingStrategy, CodexLocalAccessStats, CodexLocalAccessStatsWindow,
+        CodexLocalAccessTimeouts, CodexLocalAccessUsageEvent,
     };
     use crate::models::{
         DefaultInstanceSettings, InstanceLaunchMode, InstanceProfile, InstanceStore,
@@ -21981,6 +21987,49 @@ supports_websockets = false
             .count();
         assert_eq!(backups, 1);
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn api_key_usage_stats_are_isolated_by_time_window() {
+        let now = 20 * DAY_WINDOW_MS;
+        let event =
+            |timestamp: i64, api_key_id: &str, total_tokens: u64| CodexLocalAccessUsageEvent {
+                timestamp,
+                api_key_id: api_key_id.to_string(),
+                api_key_label: api_key_id.to_string(),
+                request_kind: CodexLocalAccessRequestKind::Text,
+                success: true,
+                total_tokens,
+                ..Default::default()
+            };
+        let mut stats = empty_stats_snapshot();
+        stats.events = vec![
+            event(now - 10 * DAY_WINDOW_MS, "key-a", 400),
+            event(now - 2 * DAY_WINDOW_MS, "key-a", 200),
+            event(now - DAY_WINDOW_MS / 2, "key-a", 100),
+            event(now - DAY_WINDOW_MS / 2, "key-b", 50),
+        ];
+
+        recompute_time_windows(&mut stats, now);
+
+        let usage = |window: &CodexLocalAccessStatsWindow, api_key_id: &str| {
+            let usage = &window
+                .api_keys
+                .iter()
+                .find(|item| item.api_key_id == api_key_id)
+                .expect("API key stats should exist")
+                .usage;
+            (usage.request_count, usage.total_tokens)
+        };
+        assert_eq!(usage(&stats.daily, "key-a"), (1, 100));
+        assert_eq!(usage(&stats.daily, "key-b"), (1, 50));
+        assert_eq!(usage(&stats.weekly, "key-a"), (2, 300));
+        assert_eq!(usage(&stats.monthly, "key-a"), (3, 700));
+
+        recompute_time_windows(&mut stats, now + 2 * DAY_WINDOW_MS);
+        assert!(stats.daily.api_keys.is_empty());
+        assert_eq!(usage(&stats.weekly, "key-a"), (2, 300));
+        assert_eq!(usage(&stats.monthly, "key-a"), (3, 700));
     }
 
     #[test]

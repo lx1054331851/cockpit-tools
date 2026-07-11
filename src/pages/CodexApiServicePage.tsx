@@ -709,20 +709,11 @@ export function CodexApiServicePage() {
   const selectedTimeoutPresetIsCustom = Boolean(
     selectedTimeoutPreset && !selectedTimeoutPreset.builtin,
   );
-  const selectedStatsWindow =
-    useMemo<CodexLocalAccessStatsWindow | null>(() => {
-      if (!stats) return null;
-      return stats[statsRange];
-    }, [stats, statsRange]);
-  const apiKeyStatsById = useMemo(
-    () =>
-      new Map(
-        (selectedStatsWindow?.apiKeys ?? []).map((item) => [
-          item.apiKeyId,
-          item,
-        ]),
-      ),
-    [selectedStatsWindow?.apiKeys],
+  const selectedStatsWindow: CodexLocalAccessStatsWindow | null = stats
+    ? stats[statsRange]
+    : null;
+  const apiKeyStatsById = new Map(
+    (selectedStatsWindow?.apiKeys ?? []).map((item) => [item.apiKeyId, item]),
   );
   const totals = selectedStatsWindow?.totals;
   const memberIds = collection?.accountIds ?? [];
@@ -978,6 +969,13 @@ export function CodexApiServicePage() {
     setProxyInput(nextState.collection?.upstreamProxyUrl ?? "");
     return nextState;
   }, []);
+
+  const handleStatsRangeChange = useCallback(
+    (nextRange: StatsRangeKey) => {
+      setStatsRange(nextRange);
+    },
+    [],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -2471,16 +2469,25 @@ export function CodexApiServicePage() {
     {
       key: "daily" as const,
       label: t("codex.localAccess.statsRange.daily", "日"),
+      window: "24h",
+      title: t("codex.apiService.statsRange.last24Hours", "近 24 小时"),
     },
     {
       key: "weekly" as const,
       label: t("codex.localAccess.statsRange.weekly", "周"),
+      window: "7d",
+      title: t("codex.apiService.statsRange.last7Days", "近 7 天"),
     },
     {
       key: "monthly" as const,
       label: t("codex.localAccess.statsRange.monthly", "月"),
+      window: "30d",
+      title: t("codex.apiService.statsRange.last30Days", "近 30 天"),
     },
   ];
+  const selectedStatsRangeOption =
+    statsRangeOptions.find((option) => option.key === statsRange) ??
+    statsRangeOptions[0];
   const requestLogKindOptions: Array<{
     value: RequestLogKindFilter;
     label: string;
@@ -2819,6 +2826,45 @@ export function CodexApiServicePage() {
           </div>
         )}
 
+        <section className="codex-api-service-usage-toolbar">
+          <div className="codex-api-service-usage-context">
+            <Activity size={16} />
+            <div>
+              <strong>
+                {t("codex.apiService.usage.title", "用量统计")}
+              </strong>
+              <span>
+                {selectedStatsRangeOption.title}
+                {stats?.updatedAt
+                  ? ` · ${t("codex.apiService.usage.lastRecorded", "最近入账")} ${formatDateTime(stats.updatedAt)}`
+                  : ""}
+              </span>
+            </div>
+          </div>
+          <div
+            className="codex-api-service-range-tabs"
+            role="group"
+            aria-label={t(
+              "codex.apiService.keys.usageRange",
+              "Key 用量统计周期",
+            )}
+          >
+            {statsRangeOptions.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={statsRange === option.key ? "active" : ""}
+                aria-pressed={statsRange === option.key}
+                title={option.title}
+                onClick={() => handleStatsRangeChange(option.key)}
+              >
+                <span>{option.label}</span>
+                <small>{option.window}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section className="codex-api-service-summary-grid">
           {summaryCards.map((item) => (
             <div key={item.key} className="codex-api-service-summary-card">
@@ -3114,26 +3160,6 @@ export function CodexApiServicePage() {
             <div className="codex-api-service-panel-head">
               <h2>{t("codex.localAccess.apiKeysTitle", "客户端 Key")}</h2>
               <div className="codex-api-service-head-actions">
-                <div
-                  className="codex-api-service-range-tabs"
-                  role="group"
-                  aria-label={t(
-                    "codex.apiService.keys.usageRange",
-                    "Key 用量统计周期",
-                  )}
-                >
-                  {statsRangeOptions.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={statsRange === option.key ? "active" : ""}
-                      aria-pressed={statsRange === option.key}
-                      onClick={() => setStatsRange(option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
@@ -3217,9 +3243,11 @@ export function CodexApiServicePage() {
                           ? t("common.enabled", "已启用")
                           : t("common.disabled", "已停用")}
                       </span>
-                      <span>{formatDateTime(apiKey.lastUsedAt)}</span>
-                      <span>
-                        {formatCompactNumber(keyStats?.usage.requestCount ?? 0)}
+                      <span className="codex-api-service-key-last-used">
+                        <small>
+                          {t("codex.apiService.keys.lastUsed", "最近使用")}
+                        </small>
+                        <strong>{formatDateTime(apiKey.lastUsedAt)}</strong>
                       </span>
                       <div className="codex-api-service-row-actions">
                         <button
@@ -3228,6 +3256,7 @@ export function CodexApiServicePage() {
                           onClick={() =>
                             void handleCopy(`apiKey:${apiKey.id}`, apiKey.key)
                           }
+                          title={t("common.copy", "复制")}
                         >
                           {copiedField === `apiKey:${apiKey.id}` ? (
                             <Check size={14} />
@@ -3242,6 +3271,11 @@ export function CodexApiServicePage() {
                             void handleToggleApiKey(apiKey.id, !apiKey.enabled)
                           }
                           disabled={busy}
+                          title={
+                            apiKey.enabled
+                              ? t("common.disable", "停用")
+                              : t("common.enable", "启用")
+                          }
                         >
                           <Power size={14} />
                         </button>
@@ -3250,6 +3284,10 @@ export function CodexApiServicePage() {
                           className="folder-icon-btn"
                           onClick={() => void handleRotateApiKey(apiKey.id)}
                           disabled={busy}
+                          title={t(
+                            "codex.localAccess.apiKeyRotate",
+                            "轮换 Key",
+                          )}
                         >
                           <RefreshCw size={14} />
                         </button>
@@ -3260,60 +3298,86 @@ export function CodexApiServicePage() {
                           disabled={
                             busy || (collection?.apiKeys.length ?? 0) <= 1
                           }
+                          title={t("common.delete", "删除")}
                         >
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
-                    <div className="api-key-usage-strip">
-                      <span
-                        className={
+                    <div className="api-key-details-row">
+                      <div
+                        className={`api-key-routing-summary ${
                           !persistedInheritAccountPool &&
                           persistedAccountIds.length === 0
                             ? "warning"
-                            : undefined
-                        }
+                            : ""
+                        }`}
                       >
-                        {persistedInheritAccountPool
-                          ? t(
-                              "codex.apiService.keys.accountScopeInheritedCount",
-                              "账号池：继承 {{count}} 个",
-                              { count: memberIds.length },
-                            )
-                          : persistedAccountIds.length === 0
-                            ? t(
-                                "codex.apiService.keys.accountScopeUnavailable",
-                                "账号池：无可用账号",
-                              )
-                          : t(
-                              "codex.apiService.keys.accountScopeCount",
-                              "账号池：{{selected}}/{{total}}",
-                              {
-                                selected: persistedAccountIds.length,
-                                total: persistedInheritAccountPool
-                                  ? memberIds.length
-                                  : keySelectableAccountIds.length,
-                              },
-                            )}
-                      </span>
-                      <span>
-                        {t("codex.localAccess.stats.accountRequests", {
-                          count: keyUsage?.requestCount ?? 0,
-                          defaultValue: "{{count}} 次",
-                        })}
-                      </span>
-                      <span>
-                        {formatAccountTokenUsage(keyUsage)}
-                      </span>
-                      <span>
-                        {t("codex.localAccess.stats.successRate", {
-                          rate: keySuccessRate,
-                          defaultValue: "成功率 {{rate}}%",
-                        })}
-                      </span>
-                      <span>
-                        {formatUsdCost(keyUsage?.estimatedCostUsd ?? 0)}
-                      </span>
+                        <Route size={16} />
+                        <div>
+                          <span>
+                            {t("codex.apiService.keys.routingAccounts", "分流账号")}
+                          </span>
+                          <strong>
+                            {persistedInheritAccountPool
+                              ? t(
+                                  "codex.apiService.keys.accountScopeInheritedCount",
+                                  "继承服务池 · {{count}} 个账号",
+                                  { count: memberIds.length },
+                                )
+                              : persistedAccountIds.length === 0
+                                ? t(
+                                    "codex.apiService.keys.accountScopeUnavailable",
+                                    "无可用账号",
+                                  )
+                                : t(
+                                    "codex.apiService.keys.accountScopeCount",
+                                    "自定义 · {{selected}}/{{total}} 个账号",
+                                    {
+                                      selected: persistedAccountIds.length,
+                                      total: keySelectableAccountIds.length,
+                                    },
+                                  )}
+                          </strong>
+                        </div>
+                      </div>
+                      <div
+                        key={statsRange}
+                        className="api-key-usage-grid"
+                        aria-live="polite"
+                        aria-label={`${selectedStatsRangeOption.title} Key 用量`}
+                      >
+                        <div className="api-key-usage-grid-head">
+                          <Activity size={14} />
+                          <span>{selectedStatsRangeOption.title}</span>
+                        </div>
+                        <div>
+                          <span>
+                            {t("codex.localAccess.stats.requests", "请求")}
+                          </span>
+                          <strong>
+                            {formatCompactNumber(keyUsage?.requestCount ?? 0)}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Token</span>
+                          <strong>{formatAccountTokenUsage(keyUsage)}</strong>
+                        </div>
+                        <div>
+                          <span>
+                            {t("codex.localAccess.stats.successRateLabel", "成功率")}
+                          </span>
+                          <strong>{keySuccessRate}%</strong>
+                        </div>
+                        <div>
+                          <span>
+                            {t("codex.localAccess.stats.estimatedCost", "估算费用")}
+                          </span>
+                          <strong>
+                            {formatUsdCost(keyUsage?.estimatedCostUsd ?? 0)}
+                          </strong>
+                        </div>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -4039,26 +4103,6 @@ export function CodexApiServicePage() {
                 ))}
               </div>
               <div className="codex-api-service-head-actions">
-                <div
-                  className="codex-api-service-range-tabs"
-                  role="group"
-                  aria-label={t(
-                    "codex.apiService.keys.usageRange",
-                    "Key 用量统计周期",
-                  )}
-                >
-                  {statsRangeOptions.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={statsRange === option.key ? "active" : ""}
-                      aria-pressed={statsRange === option.key}
-                      onClick={() => setStatsRange(option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
                 <button
                   type="button"
                   className="btn btn-danger btn-sm"

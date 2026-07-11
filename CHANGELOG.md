@@ -7,6 +7,25 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.1.9] - 2026-07-11
+
+### Changed
+
+- **Client Key routing and usage are easier to scan**: the shared usage range now sits above the service totals, identifies its rolling 24-hour, 7-day, or 30-day window, and each Key separates its routing-account scope from labeled request, token, success-rate, and estimated-cost metrics.
+
+### Fixed
+
+- **Refreshing statistics now expires old events from rolling windows**: state snapshots recompute all three time windows against the current time, while switching the range updates the already-loaded view immediately without waiting for another backend reload.
+
+---
+## [1.1.8] - 2026-07-11
+
+### Fixed
+
+- **Client Key usage now refreshes reliably when switching daily, weekly, and monthly ranges**: range changes reload the latest local statistics and rebuild each Key's request, token, success-rate, and cost view from the selected window.
+- **Local Windows packages now include a sidecar compatible with OAuth quota-reserve startup arguments**.
+
+---
 ## [1.1.7] - 2026-07-10
 
 ### Changed
