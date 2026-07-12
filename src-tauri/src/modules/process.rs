@@ -789,6 +789,15 @@ fn windows_app_launch_signature(app: &str) -> Option<WindowsAppLaunchSignature> 
             common_paths: &["Qoder\\Qoder.exe"],
             supports_multi_instance: true,
         }),
+        "zcode" => Some(WindowsAppLaunchSignature {
+            label: "ZCode",
+            exe_names: &["ZCode.exe"],
+            command_names: &["zcode"],
+            protocol_names: &["zcode"],
+            display_keywords: &["zcode", "z.ai"],
+            common_paths: &["ZCode\\ZCode.exe"],
+            supports_multi_instance: true,
+        }),
         "trae" => Some(WindowsAppLaunchSignature {
             label: "Trae",
             exe_names: &["Trae.exe"],
@@ -1868,6 +1877,13 @@ fn update_app_path_in_config(app: &str, path: &Path) {
                 return;
             }
         }
+        "zcode" => {
+            if current.zcode_app_path != normalized {
+                current.zcode_app_path = normalized;
+            } else {
+                return;
+            }
+        }
         "trae" => {
             if current.trae_app_path != normalized {
                 current.trae_app_path = normalized;
@@ -1926,6 +1942,7 @@ fn resolve_macos_app_root_from_config(app: &str) -> Option<String> {
         "vscode" => current.vscode_app_path,
         "codebuddy" => current.codebuddy_app_path,
         "codebuddy_cn" => current.codebuddy_cn_app_path,
+        "zcode" => current.zcode_app_path,
         _ => String::new(),
     };
     let trimmed = raw.trim();
@@ -2652,6 +2669,72 @@ fn detect_qoder_exec_path() -> Option<std::path::PathBuf> {
         for candidate in candidates {
             let path = std::path::PathBuf::from(candidate);
             if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
+fn detect_zcode_exec_path() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut candidates = vec![std::path::PathBuf::from(
+            "/Applications/ZCode.app/Contents/MacOS/ZCode",
+        )];
+        if let Some(home) = dirs::home_dir() {
+            candidates.push(home.join("Applications/ZCode.app/Contents/MacOS/ZCode"));
+        }
+        if let Some(path) = candidates.into_iter().find(|path| path.is_file()) {
+            return Some(path);
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut candidates = Vec::new();
+        if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+            candidates
+                .push(std::path::PathBuf::from(&local_appdata).join("Programs/ZCode/ZCode.exe"));
+            candidates.push(std::path::PathBuf::from(local_appdata).join("ZCode/ZCode.exe"));
+        }
+        for variable in ["PROGRAMFILES", "PROGRAMFILES(X86)"] {
+            if let Ok(root) = std::env::var(variable) {
+                candidates.push(std::path::PathBuf::from(root).join("ZCode/ZCode.exe"));
+            }
+        }
+        if let Some(path) = candidates.into_iter().find(|path| path.is_file()) {
+            return Some(path);
+        }
+        if let Some(path) = detect_windows_exec_path_by_signatures(
+            "ZCode",
+            &["ZCode.exe"],
+            &["zcode"],
+            &["zcode"],
+            &["zcode", "z.ai"],
+        ) {
+            return Some(path);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        for candidate in [
+            "/usr/bin/zcode",
+            "/usr/local/bin/zcode",
+            "/opt/ZCode/zcode",
+            "/opt/zcode/zcode",
+            "/snap/bin/zcode",
+        ] {
+            let path = std::path::PathBuf::from(candidate);
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+        if let Some(home) = dirs::home_dir() {
+            let path = home.join(".local/bin/zcode");
+            if path.is_file() {
                 return Some(path);
             }
         }
@@ -3985,6 +4068,25 @@ fn resolve_qoder_launch_path() -> Result<std::path::PathBuf, String> {
     Err(app_path_missing_error("qoder"))
 }
 
+pub fn resolve_zcode_launch_path() -> Result<std::path::PathBuf, String> {
+    if let Some(custom) = normalize_custom_path(Some(&config::get_user_config().zcode_app_path)) {
+        if let Some(exec) = resolve_macos_exec_path(&custom, "ZCode") {
+            return Ok(exec);
+        }
+        return Err(app_path_missing_error("zcode"));
+    }
+
+    if let Some(detected) = detect_zcode_exec_path() {
+        update_app_path_in_config("zcode", &detected);
+        let detected = detected.to_string_lossy();
+        if let Some(exec) = resolve_macos_exec_path(&detected, "ZCode") {
+            return Ok(exec);
+        }
+    }
+
+    Err(app_path_missing_error("zcode"))
+}
+
 pub fn ensure_zed_launch_path_configured() -> Result<(), String> {
     resolve_zed_launch_path().map(|_| ())
 }
@@ -4231,6 +4333,15 @@ pub fn detect_and_save_app_path(app: &str, force: bool) -> Option<String> {
             if let Some(detected) = detect_qoder_exec_path() {
                 update_app_path_in_config("qoder", &detected);
                 return Some(config::get_user_config().qoder_app_path);
+            }
+        }
+        "zcode" => {
+            if !force && !current.zcode_app_path.trim().is_empty() {
+                return Some(current.zcode_app_path);
+            }
+            if let Some(detected) = detect_zcode_exec_path() {
+                update_app_path_in_config("zcode", &detected);
+                return Some(config::get_user_config().zcode_app_path);
             }
         }
         "trae" | "trae_solo" | "trae_cn" | "trae_solo_cn" => {
@@ -8717,7 +8828,13 @@ fn try_launch_via_shortcut(shortcut_pattern: &str) -> Result<Option<u32>, String
                         .to_string_lossy()
                         .to_string();
                     let name_lower = name.to_lowercase();
-                    if name_lower.contains(shortcut_pattern) && name_lower.ends_with(".lnk") {
+                    let matches_pattern = if shortcut_pattern == "antigravity" {
+                        name_lower.contains("antigravity")
+                            && !name_lower.contains("antigravity ide")
+                    } else {
+                        name_lower.contains(shortcut_pattern)
+                    };
+                    if matches_pattern && name_lower.ends_with(".lnk") {
                         crate::modules::logger::log_info(&format!(
                             "[Shortcut Launch] 找到任务栏快捷方式: {}, 尝试通过快捷方式启动",
                             name
@@ -9537,7 +9654,7 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
         let app_root = app_root.ok_or_else(|| app_path_missing_error("codex"))?;
 
         let codex_home_trimmed = codex_home.trim();
-        let args = build_codex_app_launch_args(extra_args, codex_home_trimmed);
+        let args = build_codex_app_launch_args(extra_args);
 
         // 使用 open -a 启动，避免 macOS Responsible Process 归因
         // 注意：CODEX_HOME 环境变量无法通过 open -a 传递，
@@ -9640,7 +9757,7 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
                 .stdout(Stdio::null())
                 .stderr(Stdio::null());
         }
-        let args = build_codex_app_launch_args(extra_args, codex_home_trimmed);
+        let args = build_codex_app_launch_args(extra_args);
         for arg in &args {
             cmd.arg(arg);
         }
@@ -9656,8 +9773,7 @@ pub fn start_codex_with_args(codex_home: &str, extra_args: &[String]) -> Result<
                 if err.kind() == std::io::ErrorKind::PermissionDenied
                     && launch_path_text.contains("\\windowsapps\\")
                 {
-                    let mut store_args =
-                        build_codex_app_launch_args(extra_args, codex_home_trimmed);
+                    let mut store_args = build_codex_app_launch_args(extra_args);
                     store_args.push(format!(
                         "--user-data-dir={}",
                         app_user_data_dir.to_string_lossy()
@@ -9753,40 +9869,17 @@ pub fn start_codex_default_fast_after_close(extra_args: &[String]) -> Result<u32
     start_codex_default_internal(extra_args, true)
 }
 
-fn build_codex_app_launch_args(extra_args: &[String], codex_home: &str) -> Vec<String> {
-    let mut args = Vec::new();
-    let mut index = 0usize;
-    while index < extra_args.len() {
-        let trimmed = extra_args[index].trim();
-        if trimmed.is_empty() {
-            index += 1;
-            continue;
-        }
-        if trimmed == "--remote-debugging-port" {
-            index += 1;
-            if index < extra_args.len() && !extra_args[index].trim().starts_with("--") {
-                index += 1;
-            }
-            continue;
-        }
-        if trimmed.starts_with("--remote-debugging-port=") {
-            index += 1;
-            continue;
-        }
-        args.push(trimmed.to_string());
-        index += 1;
-    }
-    args.push(crate::modules::codex_model_injector::remote_debugging_arg(
-        codex_home.trim(),
-    ));
-    args
+fn build_codex_app_launch_args(extra_args: &[String]) -> Vec<String> {
+    extra_args
+        .iter()
+        .map(|arg| arg.trim())
+        .filter(|arg| !arg.is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 fn build_codex_default_launch_args(extra_args: &[String]) -> Vec<String> {
-    let default_home = crate::modules::codex_account::get_codex_home()
-        .to_string_lossy()
-        .to_string();
-    build_codex_app_launch_args(extra_args, &default_home)
+    build_codex_app_launch_args(extra_args)
 }
 
 fn start_codex_default_internal(
@@ -12926,6 +13019,27 @@ mod codex_macos_launch_tests {
         assert!(!is_codex_macos_main_process_command_line(
             "/applications/chatgpt.app/contents/resources/codex app-server"
         ));
+    }
+}
+
+#[cfg(test)]
+mod codex_launch_args_tests {
+    use super::build_codex_app_launch_args;
+
+    #[test]
+    fn keeps_user_launch_args_without_adding_remote_debugging() {
+        assert!(build_codex_app_launch_args(&[]).is_empty());
+        assert_eq!(
+            build_codex_app_launch_args(&[
+                " --remote-debugging-port=9333 ".to_string(),
+                "".to_string(),
+                " --disable-gpu ".to_string(),
+            ]),
+            vec![
+                "--remote-debugging-port=9333".to_string(),
+                "--disable-gpu".to_string(),
+            ]
+        );
     }
 }
 

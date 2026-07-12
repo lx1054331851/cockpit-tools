@@ -126,6 +126,7 @@ interface CodexAccountState {
     apiModelVisionSupport?: Record<string, boolean>,
     apiVisionRoutingModel?: string,
     apiWireApi?: CodexProviderWireApi,
+    apiSupportsWebsockets?: boolean,
     apiKeyWriteMode?: CodexApiKeyWriteMode,
   ) => Promise<CodexAccount>;
   updateApiKeyBoundOAuthAccount: (
@@ -430,6 +431,7 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
     apiModelVisionSupport?: Record<string, boolean>,
     apiVisionRoutingModel?: string,
     apiWireApi?: CodexProviderWireApi,
+    apiSupportsWebsockets?: boolean,
     apiKeyWriteMode?: CodexApiKeyWriteMode,
   ) => {
     const account = await codexService.updateCodexApiKeyCredentials(
@@ -444,6 +446,7 @@ export const useCodexAccountStore = create<CodexAccountState>((set, get) => ({
       apiModelVisionSupport,
       apiVisionRoutingModel,
       apiWireApi,
+      apiSupportsWebsockets,
       apiKeyWriteMode,
     );
     await get().fetchAccounts();

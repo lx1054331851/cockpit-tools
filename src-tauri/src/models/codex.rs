@@ -105,6 +105,8 @@ pub struct CodexAccount {
     pub api_model_catalog: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_wire_api: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub api_supports_websockets: bool,
     #[serde(default)]
     pub api_key_write_mode: CodexApiKeyWriteMode,
     #[serde(default)]
@@ -392,6 +394,7 @@ impl CodexAccount {
             api_provider_name: None,
             api_model_catalog: Vec::new(),
             api_wire_api: None,
+            api_supports_websockets: false,
             api_key_write_mode: CodexApiKeyWriteMode::Standard,
             api_supports_vision: false,
             api_model_vision_support: HashMap::new(),
@@ -459,6 +462,7 @@ impl CodexAccount {
         account.api_provider_name = api_provider_name;
         account.api_model_catalog = api_model_catalog;
         account.api_wire_api = None;
+        account.api_supports_websockets = false;
         account.api_supports_vision = false;
         account.api_model_vision_support = HashMap::new();
         account.api_vision_routing_model = None;
@@ -472,5 +476,32 @@ impl CodexAccount {
 
     pub fn update_last_used(&mut self) {
         self.last_used = chrono::Utc::now().timestamp();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_account_without_websocket_field_defaults_to_false() {
+        let account = CodexAccount::new_api_key(
+            "legacy-account".to_string(),
+            "api-key-account".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay.example.com/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            Vec::new(),
+        );
+        let mut value = serde_json::to_value(account).expect("serialize account");
+        value
+            .as_object_mut()
+            .expect("account object")
+            .remove("api_supports_websockets");
+
+        let restored: CodexAccount = serde_json::from_value(value).expect("deserialize account");
+        assert!(!restored.api_supports_websockets);
     }
 }

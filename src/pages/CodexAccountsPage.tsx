@@ -53,6 +53,7 @@ import {
   Terminal,
   Link2,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 import { useCodexAccountStore } from "../stores/useCodexAccountStore";
 import { useCodexInstanceStore } from "../stores/useCodexInstanceStore";
@@ -135,6 +136,7 @@ import { CodexModelProviderManager } from "../components/codex/CodexModelProvide
 import { CodexSpeedSelect } from "../components/codex/CodexSpeedSelect";
 import { QuickSettingsPopover } from "../components/QuickSettingsPopover";
 import { useProviderAccountsPage } from "../hooks/useProviderAccountsPage";
+import { usePlatformRuntimeSupport } from "../hooks/usePlatformRuntimeSupport";
 import {
   MultiSelectFilterDropdown,
   type MultiSelectFilterOption,
@@ -866,6 +868,7 @@ function resolveApiProviderPresetDefaults(
 }
 
 export function CodexAccountsPage() {
+  const isMacOS = usePlatformRuntimeSupport("macos-only");
   const sponsorModule = useSponsorStore((state) => state.state.sponsorModule);
   const fetchSponsorState = useSponsorStore((state) => state.fetchState);
   const [activeTab, setActiveTab] = useState<CodexTab>("overview");
@@ -3669,6 +3672,7 @@ export function CodexAccountsPage() {
       apiProviderName?: string;
       apiModelCatalog?: string[];
       apiWireApi?: "responses" | "chat_completions";
+      apiSupportsWebsockets?: boolean;
       apiSupportsVision?: boolean;
       apiModelVisionSupport?: Record<string, boolean>;
       apiVisionRoutingModel?: string;
@@ -3729,6 +3733,7 @@ export function CodexAccountsPage() {
           apiProviderName: managedProvider.name,
           apiModelCatalog: managedProvider.modelCatalog,
           apiWireApi: managedProvider.wireApi ?? undefined,
+          apiSupportsWebsockets: managedProvider.supportsWebsockets,
           apiSupportsVision: managedProvider.supportsVision,
           apiModelVisionSupport: Object.fromEntries(
             Object.entries(managedProvider.modelCapabilities ?? {}).map(
@@ -4507,6 +4512,22 @@ export function CodexAccountsPage() {
       await navigator.clipboard.writeText(oauthUrl).catch(() => {});
       setOauthUrlCopied(true);
       setTimeout(() => setOauthUrlCopied(false), 1200);
+    }
+  };
+
+  const handleOpenOauthIncognitoWindow = async () => {
+    if (!oauthUrl) return;
+    setAddStatus("idle");
+    setAddMessage("");
+    try {
+      await codexService.openCodexOAuthIncognitoWindow(oauthUrl);
+    } catch (error) {
+      setAddStatus("error");
+      setAddMessage(
+        t("common.shared.oauth.failed", "授权失败") +
+          ": " +
+          String(error).replace(/^Error:\s*/, ""),
+      );
     }
   };
 
@@ -5880,6 +5901,7 @@ export function CodexAccountsPage() {
         ),
         selectedQuickSwitchProvider.visionRoutingModel,
         selectedQuickSwitchProvider.wireApi ?? undefined,
+        selectedQuickSwitchProvider.supportsWebsockets,
       );
       setMessage({
         text: t("codex.quickSwitch.success", {
@@ -5975,6 +5997,7 @@ export function CodexAccountsPage() {
             apiModelCatalog: savedProvider.modelCatalog,
             apiSupportsVision: savedProvider.supportsVision,
             apiWireApi: savedProvider.wireApi ?? undefined,
+            apiSupportsWebsockets: savedProvider.supportsWebsockets,
             accountName: savedProvider.name,
           };
           try {
@@ -6017,6 +6040,7 @@ export function CodexAccountsPage() {
         finalProviderPayload.apiVisionRoutingModel,
         finalProviderPayload.accountName,
         finalProviderPayload.apiWireApi,
+        finalProviderPayload.apiSupportsWebsockets,
         apiKeyWriteModeInput,
       );
       await fetchAccounts();
@@ -7167,6 +7191,7 @@ export function CodexAccountsPage() {
         providerPayload.apiModelVisionSupport,
         providerPayload.apiVisionRoutingModel,
         providerPayload.apiWireApi,
+        providerPayload.apiSupportsWebsockets,
       );
       if (
         validation.apiBaseUrl &&
@@ -7190,6 +7215,7 @@ export function CodexAccountsPage() {
             website: providerPayload.sponsorTemplate?.website,
             apiKeyUrl: providerPayload.sponsorTemplate?.apiKeyUrl,
             wireApi: providerPayload.apiWireApi,
+            supportsWebsockets: providerPayload.apiSupportsWebsockets,
             integrationType: providerPayload.sponsorTemplate?.integrationType,
           });
           try {
@@ -13402,6 +13428,21 @@ export function CodexAccountsPage() {
                                   "Open in Browser",
                                 )}
                           </button>
+                          {!isOauthTimeoutState && isMacOS && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-full"
+                              onClick={() =>
+                                void handleOpenOauthIncognitoWindow()
+                              }
+                            >
+                              <ShieldCheck size={16} />
+                              {t(
+                                "common.shared.oauth.incognitoWindow",
+                                "无痕窗口",
+                              )}
+                            </button>
+                          )}
                           <div className="oauth-link">
                             <label>
                               {t(
