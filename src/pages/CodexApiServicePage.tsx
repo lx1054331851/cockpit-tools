@@ -656,6 +656,17 @@ export function CodexApiServicePage() {
         .filter((account): account is CodexAccount => Boolean(account)),
     [memberIds, localAccessAccounts],
   );
+  const accountDisplayNames = useMemo(() => {
+    const next = new Map<string, string>();
+    localAccessAccounts.forEach((account) => {
+      const displayName = buildCodexAccountPresentation(account, t).displayName;
+      const accountId = account.id.trim();
+      const email = account.email.trim();
+      if (accountId) next.set(accountId, displayName);
+      if (email) next.set(email, displayName);
+    });
+    return next;
+  }, [localAccessAccounts, t]);
   const accountModelRuleCount = collection?.accountModelRules.length ?? 0;
   const accountModelRuleAllSelected =
     memberAccounts.length > 0 &&
@@ -3933,6 +3944,12 @@ export function CodexApiServicePage() {
                     );
                     const errorDetail =
                       truncateRequestLogErrorDetail(fullErrorDetail);
+                    const accountDisplayName =
+                      accountDisplayNames.get((event.accountId || "").trim()) ||
+                      accountDisplayNames.get((event.email || "").trim()) ||
+                      event.email ||
+                      event.accountId ||
+                      "-";
                     return (
                       <div
                         key={`${event.timestamp}-${event.requestId || event.apiKeyId}-${index}`}
@@ -3966,7 +3983,7 @@ export function CodexApiServicePage() {
                             {event.apiKeyLabel || event.apiKeyId || "-"}
                           </span>
                           <span>
-                            {maskAccountText(event.email || event.accountId)}
+                            {maskAccountText(accountDisplayName)}
                           </span>
                           <span>{formatLatencyMs(event.latencyMs)}</span>
                           <span>
