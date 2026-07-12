@@ -3331,7 +3331,8 @@
       "hiddenTask": "Пакетный импорт Codex",
       "taskRunning": "Обработка {{current}} / {{total}}",
       "taskPreview": "Предпросмотр готов: {{total}}",
-      "reopen": "Открыть задачу"
+      "reopen": "Открыть задачу",
+      "dismissTask": "Сбросить"
     },
     "autoRepairMode": {
       "label": "Логика автоисправления",

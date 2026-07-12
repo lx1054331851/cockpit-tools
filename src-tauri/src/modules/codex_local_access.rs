@@ -7424,6 +7424,182 @@ fn sidecar_account_manifest_value(
     value
 }
 
+/// Hosts that must not be treated as a real upstream for the local API sidecar.
+fn is_loopback_http_host(host: &str) -> bool {
+    matches!(
+        host.trim().to_ascii_lowercase().as_str(),
+        "localhost" | "127.0.0.1" | "0.0.0.0" | "::1" | "[::1]"
+    )
+}
+
+fn parse_http_url_host_port(raw: &str) -> Option<(String, u16)> {
+    let parsed = Url::parse(raw.trim()).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return None;
+    }
+    let host = parsed.host_str()?.to_ascii_lowercase();
+    let port = parsed
+        .port_or_known_default()
+        .or_else(|| match parsed.scheme() {
+            "https" => Some(443),
+            "http" => Some(80),
+            _ => None,
+        })?;
+    Some((host, port))
+}
+
+/// True when `raw` is the Cockpit API Service client URL (gateway), not a real upstream.
+fn is_local_access_gateway_base_url(
+    raw: &str,
+    collection: &CodexLocalAccessCollection,
+) -> bool {
+    if profile_base_url_matches(Some(raw), &build_collection_base_url(collection)) {
+        return true;
+    }
+    let Some((host, port)) = parse_http_url_host_port(raw) else {
+        return false;
+    };
+    // Same loopback port as the running local API service ⇒ self-referential for sidecar.
+    is_loopback_http_host(&host) && port == collection.port
+}
+
+/// True when `raw` must not be used as a sidecar upstream Base URL.
+/// Rejects the local gateway URL and any loopback host (polluted account sync).
+fn is_unsafe_sidecar_upstream_base_url(
+    raw: &str,
+    collection: &CodexLocalAccessCollection,
+) -> bool {
+    if is_local_access_gateway_base_url(raw, collection) {
+        return true;
+    }
+    parse_http_url_host_port(raw)
+        .map(|(host, _)| is_loopback_http_host(&host))
+        .unwrap_or(false)
+}
+
+fn normalize_upstream_base_url_string(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.trim_end_matches('/').to_string())
+}
+
+/// Look up real provider Base URL from a Cockpit data directory store.
+fn lookup_codex_model_provider_base_url_in_dir(
+    data_dir: &Path,
+    provider_id: Option<&str>,
+    provider_name: Option<&str>,
+) -> Option<String> {
+    let path = data_dir.join("codex_model_providers.json");
+    if !path.exists() {
+        return None;
+    }
+    let raw = std::fs::read_to_string(path).ok()?;
+    let items = serde_json::from_str::<Value>(&raw).ok()?;
+    let arr = items.as_array()?;
+    let id = provider_id.map(str::trim).filter(|value| !value.is_empty());
+    let name = provider_name.map(str::trim).filter(|value| !value.is_empty());
+
+    let read_base = |item: &Value| -> Option<String> {
+        item.get("baseUrl")
+            .or_else(|| item.get("base_url"))
+            .and_then(Value::as_str)
+            .and_then(normalize_upstream_base_url_string)
+    };
+
+    if let Some(id) = id {
+        for item in arr {
+            let item_id = item.get("id").and_then(Value::as_str).unwrap_or("").trim();
+            if item_id == id {
+                if let Some(base) = read_base(item) {
+                    return Some(base);
+                }
+            }
+        }
+    }
+    if let Some(name) = name {
+        for item in arr {
+            let item_name = item
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim();
+            if item_name.eq_ignore_ascii_case(name) {
+                if let Some(base) = read_base(item) {
+                    return Some(base);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Look up real provider Base URL from Cockpit's model-provider store.
+fn lookup_codex_model_provider_base_url(
+    provider_id: Option<&str>,
+    provider_name: Option<&str>,
+) -> Option<String> {
+    let data_dir = account::get_data_dir().ok()?;
+    lookup_codex_model_provider_base_url_in_dir(&data_dir, provider_id, provider_name)
+}
+
+/// Resolve the real upstream Base URL for sidecar `codex-api-key` entries.
+/// Never returns the local API Service client/gateway URL (would self-route).
+fn resolve_sidecar_upstream_base_url(
+    account: &CodexAccount,
+    collection: &CodexLocalAccessCollection,
+) -> Option<String> {
+    resolve_sidecar_upstream_base_url_with(account, collection, |provider_id, provider_name| {
+        lookup_codex_model_provider_base_url(provider_id, provider_name)
+    })
+}
+
+fn resolve_sidecar_upstream_base_url_with(
+    account: &CodexAccount,
+    collection: &CodexLocalAccessCollection,
+    lookup_provider: impl Fn(Option<&str>, Option<&str>) -> Option<String>,
+) -> Option<String> {
+    let candidate = account
+        .api_base_url
+        .as_deref()
+        .and_then(normalize_upstream_base_url_string);
+
+    if let Some(url) = candidate.as_ref() {
+        if !is_unsafe_sidecar_upstream_base_url(url, collection) {
+            return Some(url.clone());
+        }
+    }
+
+    if let Some(recovered) = lookup_provider(
+        account.api_provider_id.as_deref(),
+        account.api_provider_name.as_deref(),
+    ) {
+        if !is_unsafe_sidecar_upstream_base_url(&recovered, collection) {
+            return Some(recovered);
+        }
+    }
+
+    // Polluted gateway / loopback URL on a built-in OpenAI key: fall back to official default.
+    if matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin)
+        && candidate
+            .as_ref()
+            .map(|url| is_unsafe_sidecar_upstream_base_url(url, collection))
+            .unwrap_or(false)
+    {
+        return Some(DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string());
+    }
+
+    // Empty base URL + OpenAI builtin → official default.
+    if candidate.is_none()
+        && matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin)
+    {
+        return Some(DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string());
+    }
+
+    None
+}
+
 fn sidecar_codex_key_config_value(
     account: &CodexAccount,
     collection: &CodexLocalAccessCollection,
@@ -7433,12 +7609,14 @@ fn sidecar_codex_key_config_value(
     if api_key.is_empty() {
         return None;
     }
-    let base_url = account
-        .api_base_url
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or(DEFAULT_OPENAI_RESPONSES_BASE_URL);
+    let Some(base_url) = resolve_sidecar_upstream_base_url(account, collection) else {
+        logger::log_codex_api_warn(&format!(
+            "[CodexLocalAccess][sidecar] 跳过上游 Base URL 为本地网关或无法恢复真实上游的 API Key 账号: account_id={} api_base_url={:?}",
+            account.id,
+            account.api_base_url
+        ));
+        return None;
+    };
     let excluded_models = merge_collection_and_account_excluded_models(collection, &account.id);
     let mut value = json!({
         "api-key": api_key,
@@ -15827,18 +16005,44 @@ fn resolve_upstream_target(target: &str) -> Result<String, String> {
 }
 
 fn account_upstream_base_url(account: &CodexAccount) -> String {
-    if account.is_api_key_auth() {
-        account
-            .api_base_url
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or(DEFAULT_OPENAI_RESPONSES_BASE_URL)
-            .trim_end_matches('/')
-            .to_string()
-    } else {
-        UPSTREAM_CODEX_BASE_URL.to_string()
+    if !account.is_api_key_auth() {
+        return UPSTREAM_CODEX_BASE_URL.to_string();
     }
+
+    let candidate = account
+        .api_base_url
+        .as_deref()
+        .and_then(normalize_upstream_base_url_string);
+
+    // Prefer non-loopback account URL.
+    if let Some(url) = candidate.as_ref() {
+        if parse_http_url_host_port(url)
+            .map(|(host, _)| !is_loopback_http_host(&host))
+            .unwrap_or(true)
+        {
+            return url.clone();
+        }
+    }
+
+    // Recover real upstream when account was polluted with a local gateway URL.
+    if let Some(recovered) = lookup_codex_model_provider_base_url(
+        account.api_provider_id.as_deref(),
+        account.api_provider_name.as_deref(),
+    ) {
+        if parse_http_url_host_port(&recovered)
+            .map(|(host, _)| !is_loopback_http_host(&host))
+            .unwrap_or(true)
+        {
+            return recovered;
+        }
+    }
+
+    if matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin) {
+        return DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string();
+    }
+
+    // Intentional local provider (e.g. Ollama on another port): keep as-is.
+    candidate.unwrap_or_else(|| DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string())
 }
 
 fn account_upstream_token(account: &CodexAccount) -> Result<String, String> {
@@ -19942,6 +20146,9 @@ mod tests {
         pin_account_to_front_for_strategy, prepare_gateway_request,
         prepare_gateway_request_with_default_service_tier, prepare_sidecar_launch_config_in_dir,
         prepare_websocket_initial_request, profile_base_url_matches,
+        is_local_access_gateway_base_url, lookup_codex_model_provider_base_url_in_dir,
+        resolve_sidecar_upstream_base_url, resolve_sidecar_upstream_base_url_with,
+        sidecar_codex_key_config_value,
         provider_gateway_bound_oauth_account_id_for_account,
         provider_gateway_default_model_for_account,
         provider_gateway_image_generation_mode_for_account, provider_gateway_model_slots,
@@ -24609,6 +24816,120 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
         );
 
         fs::remove_dir_all(&dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn treats_collection_client_url_as_local_gateway_not_upstream() {
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.port = 53549;
+        collection.client_base_url_host = CodexLocalAccessClientBaseUrlHost::Localhost;
+        assert!(is_local_access_gateway_base_url(
+            "http://localhost:53549/v1",
+            &collection
+        ));
+        assert!(is_local_access_gateway_base_url(
+            "http://127.0.0.1:53549/v1",
+            &collection
+        ));
+        assert!(!is_local_access_gateway_base_url(
+            "https://relay.example/v1",
+            &collection
+        ));
+        assert!(!is_local_access_gateway_base_url(
+            "http://127.0.0.1:11434/v1",
+            &collection
+        ));
+    }
+
+    #[test]
+    fn resolves_sidecar_upstream_from_model_provider_when_account_holds_gateway_url() {
+        let data_dir = make_temp_dir("codex-sidecar-upstream-providers");
+        fs::write(
+            data_dir.join("codex_model_providers.json"),
+            r#"[{"id":"relay","name":"Relay","baseUrl":"https://relay.example/v1"}]"#,
+        )
+        .expect("write providers");
+
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.port = 53549;
+        let account = CodexAccount::new_api_key(
+            "api-polluted-1".to_string(),
+            "polluted@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("http://localhost:53549/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            vec![],
+        );
+
+        assert_eq!(
+            lookup_codex_model_provider_base_url_in_dir(&data_dir, Some("relay"), None).as_deref(),
+            Some("https://relay.example/v1")
+        );
+        // Avoid mutating process-global COCKPIT_TOOLS_DATA_DIR (races other tests).
+        let resolved = resolve_sidecar_upstream_base_url_with(
+            &account,
+            &collection,
+            |id, name| lookup_codex_model_provider_base_url_in_dir(&data_dir, id, name),
+        );
+        assert_eq!(resolved.as_deref(), Some("https://relay.example/v1"));
+
+        // sidecar_codex_key_config_value uses the same resolve rules with production lookup;
+        // with a safe recovered URL injected via resolve_with, the written base-url matches.
+        // When account already has a non-gateway URL, config writes it directly:
+        let direct = CodexAccount::new_api_key(
+            "api-direct-1".to_string(),
+            "direct@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay.example/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            vec![],
+        );
+        let config = sidecar_codex_key_config_value(&direct, &collection, None)
+            .expect("sidecar key for real upstream");
+        assert_eq!(
+            config.get("base-url").and_then(Value::as_str),
+            Some("https://relay.example/v1")
+        );
+
+        fs::remove_dir_all(&data_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn skips_sidecar_key_when_gateway_url_cannot_be_recovered() {
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.port = 53549;
+        let account = CodexAccount::new_api_key(
+            "api-polluted-2".to_string(),
+            "polluted2@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("http://localhost:53549/v1".to_string()),
+            Some("missing-provider".to_string()),
+            Some("Missing".to_string()),
+            vec![],
+        );
+        assert!(resolve_sidecar_upstream_base_url(&account, &collection).is_none());
+        assert!(sidecar_codex_key_config_value(&account, &collection, None).is_none());
+    }
+
+    #[test]
+    fn sidecar_codex_key_skips_loopback_base_url_without_provider_recovery() {
+        let account = CodexAccount::new_api_key(
+            "api-loopback-1".to_string(),
+            "api-key@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("http://localhost:53549/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            Vec::new(),
+        );
+        let collection = test_local_access_collection(vec![account.id.clone()]);
+        assert!(sidecar_codex_key_config_value(&account, &collection, None).is_none());
     }
 
     #[test]

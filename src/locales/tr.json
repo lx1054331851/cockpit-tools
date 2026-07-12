@@ -3331,7 +3331,8 @@
       "hiddenTask": "Codex toplu içe aktarma",
       "taskRunning": "{{current}} / {{total}} işleniyor",
       "taskPreview": "{{total}} önizleme hazır",
-      "reopen": "Görevi aç"
+      "reopen": "Görevi aç",
+      "dismissTask": "Kapat"
     },
     "autoRepairMode": {
       "label": "Otomatik onarım mantığı",

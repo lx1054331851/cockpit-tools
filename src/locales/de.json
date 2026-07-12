@@ -3331,7 +3331,8 @@
       "hiddenTask": "Codex-Stapelimport",
       "taskRunning": "{{current}} / {{total}} wird verarbeitet",
       "taskPreview": "{{total}} Vorschauobjekt(e) bereit",
-      "reopen": "Aufgabe anzeigen"
+      "reopen": "Aufgabe anzeigen",
+      "dismissTask": "Verwerfen"
     },
     "autoRepairMode": {
       "label": "Auto-Reparaturlogik",

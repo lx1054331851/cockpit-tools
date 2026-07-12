@@ -3331,7 +3331,8 @@
       "hiddenTask": "Hromadný import Codex",
       "taskRunning": "Zpracovává se {{current}} / {{total}}",
       "taskPreview": "Náhledů připraveno: {{total}}",
-      "reopen": "Zobrazit úlohu"
+      "reopen": "Zobrazit úlohu",
+      "dismissTask": "Zrušit"
     },
     "autoRepairMode": {
       "label": "Logika auto opravy",

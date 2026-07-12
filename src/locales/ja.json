@@ -3331,7 +3331,8 @@
       "hiddenTask": "Codex 一括インポートタスク",
       "taskRunning": "{{current}} / {{total}} 件を処理中",
       "taskPreview": "{{total}} 件のプレビューを作成済み",
-      "reopen": "タスクを表示"
+      "reopen": "タスクを表示",
+      "dismissTask": "破棄"
     },
     "autoRepairMode": {
       "label": "自動修復ロジック",

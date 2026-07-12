@@ -3331,7 +3331,8 @@
       "hiddenTask": "Codex 일괄 가져오기 작업",
       "taskRunning": "{{current}} / {{total}} 처리 중",
       "taskPreview": "미리보기 {{total}}개 준비됨",
-      "reopen": "작업 보기"
+      "reopen": "작업 보기",
+      "dismissTask": "닫기"
     },
     "autoRepairMode": {
       "label": "자동 복구 로직",

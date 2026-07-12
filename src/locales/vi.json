@@ -3331,7 +3331,8 @@
       "hiddenTask": "Tác vụ nhập hàng loạt Codex",
       "taskRunning": "Đang xử lý {{current}} / {{total}}",
       "taskPreview": "Đã có {{total}} bản xem trước",
-      "reopen": "Xem tác vụ"
+      "reopen": "Xem tác vụ",
+      "dismissTask": "Bỏ"
     },
     "autoRepairMode": {
       "label": "Logic tự sửa",

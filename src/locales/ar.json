@@ -3378,7 +3378,8 @@
       "hiddenTask": "مهمة استيراد Codex دفعة واحدة",
       "taskRunning": "جارٍ معالجة {{current}} / {{total}}",
       "taskPreview": "{{total}} عنصر معاينة جاهز",
-      "reopen": "عرض المهمة"
+      "reopen": "عرض المهمة",
+      "dismissTask": "تجاهل"
     },
     "autoRepairMode": {
       "label": "منطق الإصلاح التلقائي",

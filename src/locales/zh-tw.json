@@ -3331,7 +3331,8 @@
       "hiddenTask": "Codex 批量匯入任務",
       "taskRunning": "正在處理 {{current}} / {{total}}",
       "taskPreview": "已產生 {{total}} 筆預覽",
-      "reopen": "查看任務"
+      "reopen": "查看任務",
+      "dismissTask": "捨棄"
     },
     "autoRepairMode": {
       "label": "自動修復邏輯",

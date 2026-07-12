@@ -3542,7 +3542,8 @@
       "hiddenTask": "Codex batch import task",
       "taskRunning": "Processing {{current}} / {{total}}",
       "taskPreview": "{{total}} preview item(s) ready",
-      "reopen": "View task"
+      "reopen": "View task",
+      "dismissTask": "Dismiss"
     },
     "autoRepairMode": {
       "label": "Auto Repair Logic",

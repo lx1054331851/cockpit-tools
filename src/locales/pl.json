@@ -3331,7 +3331,8 @@
       "hiddenTask": "Import zbiorczy Codex",
       "taskRunning": "Przetwarzanie {{current}} / {{total}}",
       "taskPreview": "Gotowe podglądy: {{total}}",
-      "reopen": "Pokaż zadanie"
+      "reopen": "Pokaż zadanie",
+      "dismissTask": "Odrzuć"
     },
     "autoRepairMode": {
       "label": "Logika autonaprawy",

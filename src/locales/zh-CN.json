@@ -3542,7 +3542,8 @@
       "hiddenTask": "Codex 批量导入任务",
       "taskRunning": "正在处理 {{current}} / {{total}}",
       "taskPreview": "已生成 {{total}} 条预览",
-      "reopen": "查看任务"
+      "reopen": "查看任务",
+      "dismissTask": "丢弃"
     },
     "autoRepairMode": {
       "label": "自动修复逻辑",

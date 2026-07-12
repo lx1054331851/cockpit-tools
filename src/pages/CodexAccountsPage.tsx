@@ -5633,7 +5633,26 @@ export function CodexAccountsPage() {
       resetBatchImportState();
       return;
     }
+    // Busy scan/parse: minimize to sticky task bar so progress can be reopened.
+    if (batchImportBusy) {
+      setBatchImportOpen(false);
+      return;
+    }
+    // Idle preview/error with nothing selectable: discard so the sticky bar
+    // does not stay forever after a failed all-invalid import.
+    const selectableCount = (batchImportPreview?.items ?? []).filter(
+      (item) => item.selectable && item.status !== "invalid",
+    ).length;
+    if (!batchImportPreview || selectableCount === 0) {
+      resetBatchImportState();
+      return;
+    }
     setBatchImportOpen(false);
+  };
+
+  const handleDismissBatchImportTask = () => {
+    if (batchImportBusy) return;
+    resetBatchImportState();
   };
 
   const toggleBatchImportItem = (itemId: string) => {
@@ -13308,13 +13327,25 @@ export function CodexAccountsPage() {
                           : t("codex.batchImport.preparing")}
                     </span>
                   </div>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setBatchImportOpen(true)}
-                  >
-                    <FileText size={14} />
-                    <span>{t("codex.batchImport.reopen")}</span>
-                  </button>
+                  <div className="codex-batch-import-task__actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setBatchImportOpen(true)}
+                    >
+                      <FileText size={14} />
+                      <span>{t("codex.batchImport.reopen", "查看任务")}</span>
+                    </button>
+                    {!batchImportBusy && (
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleDismissBatchImportTask}
+                        title={t("codex.batchImport.dismissTask", "丢弃任务")}
+                      >
+                        <X size={14} />
+                        <span>{t("codex.batchImport.dismissTask", "丢弃")}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {overviewLayoutMode === "compact" ? (

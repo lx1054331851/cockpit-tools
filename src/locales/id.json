@@ -3378,7 +3378,8 @@
       "hiddenTask": "Tugas impor massal Codex",
       "taskRunning": "Memproses {{current}} / {{total}}",
       "taskPreview": "{{total}} pratinjau siap",
-      "reopen": "Lihat tugas"
+      "reopen": "Lihat tugas",
+      "dismissTask": "Buang"
     },
     "autoRepairMode": {
       "label": "Logika perbaikan otomatis",

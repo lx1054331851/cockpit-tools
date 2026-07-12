@@ -3331,7 +3331,8 @@
       "hiddenTask": "Importação em lote do Codex",
       "taskRunning": "Processando {{current}} / {{total}}",
       "taskPreview": "{{total}} prévia(s) pronta(s)",
-      "reopen": "Ver tarefa"
+      "reopen": "Ver tarefa",
+      "dismissTask": "Descartar"
     },
     "autoRepairMode": {
       "label": "Lógica de reparo automático",

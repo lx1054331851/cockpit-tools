@@ -3331,7 +3331,8 @@
       "hiddenTask": "Importazione batch Codex",
       "taskRunning": "Elaborazione {{current}} / {{total}}",
       "taskPreview": "{{total}} anteprime pronte",
-      "reopen": "Vedi attività"
+      "reopen": "Vedi attività",
+      "dismissTask": "Ignora"
     },
     "autoRepairMode": {
       "label": "Logica autoriparazione",
