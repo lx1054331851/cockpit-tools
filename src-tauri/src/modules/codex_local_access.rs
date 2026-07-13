@@ -2,7 +2,8 @@ use crate::models::codex::{CodexAccount, CodexApiProviderMode, CodexAppSpeed, Co
 use crate::models::codex_local_access::{
     CodexLocalAccessAccountCooldown, CodexLocalAccessAccountHealth,
     CodexLocalAccessAccountModelRule, CodexLocalAccessAccountStats, CodexLocalAccessApiKey,
-    CodexLocalAccessApiKeyStats, CodexLocalAccessChatMessage, CodexLocalAccessChatResult,
+    CodexLocalAccessApiKeyStats, CodexLocalAccessAppendAccountSkipped,
+    CodexLocalAccessAppendAccountsResult, CodexLocalAccessChatMessage, CodexLocalAccessChatResult,
     CodexLocalAccessClientBaseUrlHost, CodexLocalAccessCollection,
     CodexLocalAccessCustomRoutingRule, CodexLocalAccessGatewayMode,
     CodexLocalAccessImageGenerationMode, CodexLocalAccessImageGenerationStatus,
@@ -4431,6 +4432,7 @@ fn normalize_custom_routing_rule(
         weight: rule
             .weight
             .clamp(CUSTOM_ROUTING_WEIGHT_MIN, CUSTOM_ROUTING_WEIGHT_MAX),
+        is_backup: rule.is_backup,
     })
 }
 
@@ -4547,7 +4549,7 @@ fn merge_collection_and_account_excluded_models(
     normalize_model_rule_list(rules)
 }
 
-fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str, (i32, u32)> {
+fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str, (i32, u32, bool)> {
     rules
         .iter()
         .map(|rule| {
@@ -4558,6 +4560,7 @@ fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str,
                         .clamp(CUSTOM_ROUTING_PRIORITY_MIN, CUSTOM_ROUTING_PRIORITY_MAX),
                     rule.weight
                         .clamp(CUSTOM_ROUTING_WEIGHT_MIN, CUSTOM_ROUTING_WEIGHT_MAX),
+                    rule.is_backup,
                 ),
             )
         })
@@ -4566,7 +4569,7 @@ fn custom_rule_map(rules: &[CodexLocalAccessCustomRoutingRule]) -> HashMap<&str,
 
 fn weighted_group_order(
     group: &[String],
-    weights: &HashMap<&str, (i32, u32)>,
+    weights: &HashMap<&str, (i32, u32, bool)>,
     start: usize,
 ) -> Vec<String> {
     if group.len() <= 1 {
@@ -4576,7 +4579,7 @@ fn weighted_group_order(
     let total_weight = group.iter().fold(0usize, |sum, account_id| {
         let weight = weights
             .get(account_id.as_str())
-            .map(|(_, weight)| *weight)
+            .map(|(_, weight, _)| *weight)
             .unwrap_or(CUSTOM_ROUTING_WEIGHT_MIN) as usize;
         sum.saturating_add(weight.max(1))
     });
@@ -4589,7 +4592,7 @@ fn weighted_group_order(
     for (index, account_id) in group.iter().enumerate() {
         let weight = weights
             .get(account_id.as_str())
-            .map(|(_, weight)| *weight)
+            .map(|(_, weight, _)| *weight)
             .unwrap_or(CUSTOM_ROUTING_WEIGHT_MIN) as usize;
         if slot < weight {
             first_index = index;
@@ -4609,27 +4612,30 @@ fn apply_custom_routing_strategy(
     start: usize,
 ) -> Vec<String> {
     let rule_map = custom_rule_map(rules);
-    let mut priority_groups: Vec<(i32, Vec<String>)> = Vec::new();
+    let mut priority_groups: Vec<(bool, i32, Vec<String>)> = Vec::new();
 
     for account_id in account_ids {
-        let priority = rule_map
+        let (priority, is_backup) = rule_map
             .get(account_id.as_str())
-            .map(|(priority, _)| *priority)
-            .unwrap_or(CUSTOM_ROUTING_PRIORITY_MIN);
-        if let Some((_, group)) = priority_groups
-            .iter_mut()
-            .find(|(group_priority, _)| *group_priority == priority)
+            .map(|(priority, _, is_backup)| (*priority, *is_backup))
+            .unwrap_or((CUSTOM_ROUTING_PRIORITY_MIN, false));
+        if let Some((_, _, group)) =
+            priority_groups
+                .iter_mut()
+                .find(|(group_is_backup, group_priority, _)| {
+                    *group_is_backup == is_backup && *group_priority == priority
+                })
         {
             group.push(account_id.clone());
         } else {
-            priority_groups.push((priority, vec![account_id.clone()]));
+            priority_groups.push((is_backup, priority, vec![account_id.clone()]));
         }
     }
 
-    priority_groups.sort_by(|left, right| right.0.cmp(&left.0));
+    priority_groups.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| right.1.cmp(&left.1)));
 
     let mut ordered = Vec::with_capacity(account_ids.len());
-    for (_, group) in priority_groups {
+    for (_, _, group) in priority_groups {
         ordered.extend(weighted_group_order(&group, &rule_map, start));
     }
     ordered
@@ -4719,6 +4725,44 @@ fn pin_account_to_front(
         ordered.push(account_id);
     }
     ordered
+}
+
+fn pin_account_to_front_for_strategy(
+    account_ids: Vec<String>,
+    preferred_account_id: Option<&str>,
+    strategy: CodexLocalAccessRoutingStrategy,
+    custom_rules: &[CodexLocalAccessCustomRoutingRule],
+) -> Vec<String> {
+    if strategy != CodexLocalAccessRoutingStrategy::Custom {
+        return pin_account_to_front(account_ids, preferred_account_id);
+    }
+
+    let rule_map = custom_rule_map(custom_rules);
+    let mut regular = Vec::with_capacity(account_ids.len());
+    let mut backup = Vec::new();
+    for account_id in account_ids {
+        if rule_map
+            .get(account_id.as_str())
+            .map(|(_, _, is_backup)| *is_backup)
+            .unwrap_or(false)
+        {
+            backup.push(account_id);
+        } else {
+            regular.push(account_id);
+        }
+    }
+
+    let preferred_is_backup = preferred_account_id
+        .and_then(|account_id| rule_map.get(account_id.trim()))
+        .map(|(_, _, is_backup)| *is_backup)
+        .unwrap_or(false);
+    if preferred_is_backup {
+        backup = pin_account_to_front(backup, preferred_account_id);
+    } else {
+        regular = pin_account_to_front(regular, preferred_account_id);
+    }
+    regular.extend(backup);
+    regular
 }
 
 fn format_retry_after_duration(wait: Duration) -> String {
@@ -7380,6 +7424,182 @@ fn sidecar_account_manifest_value(
     value
 }
 
+/// Hosts that must not be treated as a real upstream for the local API sidecar.
+fn is_loopback_http_host(host: &str) -> bool {
+    matches!(
+        host.trim().to_ascii_lowercase().as_str(),
+        "localhost" | "127.0.0.1" | "0.0.0.0" | "::1" | "[::1]"
+    )
+}
+
+fn parse_http_url_host_port(raw: &str) -> Option<(String, u16)> {
+    let parsed = Url::parse(raw.trim()).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return None;
+    }
+    let host = parsed.host_str()?.to_ascii_lowercase();
+    let port = parsed
+        .port_or_known_default()
+        .or_else(|| match parsed.scheme() {
+            "https" => Some(443),
+            "http" => Some(80),
+            _ => None,
+        })?;
+    Some((host, port))
+}
+
+/// True when `raw` is the Cockpit API Service client URL (gateway), not a real upstream.
+fn is_local_access_gateway_base_url(
+    raw: &str,
+    collection: &CodexLocalAccessCollection,
+) -> bool {
+    if profile_base_url_matches(Some(raw), &build_collection_base_url(collection)) {
+        return true;
+    }
+    let Some((host, port)) = parse_http_url_host_port(raw) else {
+        return false;
+    };
+    // Same loopback port as the running local API service ⇒ self-referential for sidecar.
+    is_loopback_http_host(&host) && port == collection.port
+}
+
+/// True when `raw` must not be used as a sidecar upstream Base URL.
+/// Rejects the local gateway URL and any loopback host (polluted account sync).
+fn is_unsafe_sidecar_upstream_base_url(
+    raw: &str,
+    collection: &CodexLocalAccessCollection,
+) -> bool {
+    if is_local_access_gateway_base_url(raw, collection) {
+        return true;
+    }
+    parse_http_url_host_port(raw)
+        .map(|(host, _)| is_loopback_http_host(&host))
+        .unwrap_or(false)
+}
+
+fn normalize_upstream_base_url_string(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.trim_end_matches('/').to_string())
+}
+
+/// Look up real provider Base URL from a Cockpit data directory store.
+fn lookup_codex_model_provider_base_url_in_dir(
+    data_dir: &Path,
+    provider_id: Option<&str>,
+    provider_name: Option<&str>,
+) -> Option<String> {
+    let path = data_dir.join("codex_model_providers.json");
+    if !path.exists() {
+        return None;
+    }
+    let raw = std::fs::read_to_string(path).ok()?;
+    let items = serde_json::from_str::<Value>(&raw).ok()?;
+    let arr = items.as_array()?;
+    let id = provider_id.map(str::trim).filter(|value| !value.is_empty());
+    let name = provider_name.map(str::trim).filter(|value| !value.is_empty());
+
+    let read_base = |item: &Value| -> Option<String> {
+        item.get("baseUrl")
+            .or_else(|| item.get("base_url"))
+            .and_then(Value::as_str)
+            .and_then(normalize_upstream_base_url_string)
+    };
+
+    if let Some(id) = id {
+        for item in arr {
+            let item_id = item.get("id").and_then(Value::as_str).unwrap_or("").trim();
+            if item_id == id {
+                if let Some(base) = read_base(item) {
+                    return Some(base);
+                }
+            }
+        }
+    }
+    if let Some(name) = name {
+        for item in arr {
+            let item_name = item
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim();
+            if item_name.eq_ignore_ascii_case(name) {
+                if let Some(base) = read_base(item) {
+                    return Some(base);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Look up real provider Base URL from Cockpit's model-provider store.
+fn lookup_codex_model_provider_base_url(
+    provider_id: Option<&str>,
+    provider_name: Option<&str>,
+) -> Option<String> {
+    let data_dir = account::get_data_dir().ok()?;
+    lookup_codex_model_provider_base_url_in_dir(&data_dir, provider_id, provider_name)
+}
+
+/// Resolve the real upstream Base URL for sidecar `codex-api-key` entries.
+/// Never returns the local API Service client/gateway URL (would self-route).
+fn resolve_sidecar_upstream_base_url(
+    account: &CodexAccount,
+    collection: &CodexLocalAccessCollection,
+) -> Option<String> {
+    resolve_sidecar_upstream_base_url_with(account, collection, |provider_id, provider_name| {
+        lookup_codex_model_provider_base_url(provider_id, provider_name)
+    })
+}
+
+fn resolve_sidecar_upstream_base_url_with(
+    account: &CodexAccount,
+    collection: &CodexLocalAccessCollection,
+    lookup_provider: impl Fn(Option<&str>, Option<&str>) -> Option<String>,
+) -> Option<String> {
+    let candidate = account
+        .api_base_url
+        .as_deref()
+        .and_then(normalize_upstream_base_url_string);
+
+    if let Some(url) = candidate.as_ref() {
+        if !is_unsafe_sidecar_upstream_base_url(url, collection) {
+            return Some(url.clone());
+        }
+    }
+
+    if let Some(recovered) = lookup_provider(
+        account.api_provider_id.as_deref(),
+        account.api_provider_name.as_deref(),
+    ) {
+        if !is_unsafe_sidecar_upstream_base_url(&recovered, collection) {
+            return Some(recovered);
+        }
+    }
+
+    // Polluted gateway / loopback URL on a built-in OpenAI key: fall back to official default.
+    if matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin)
+        && candidate
+            .as_ref()
+            .map(|url| is_unsafe_sidecar_upstream_base_url(url, collection))
+            .unwrap_or(false)
+    {
+        return Some(DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string());
+    }
+
+    // Empty base URL + OpenAI builtin → official default.
+    if candidate.is_none()
+        && matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin)
+    {
+        return Some(DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string());
+    }
+
+    None
+}
+
 fn sidecar_codex_key_config_value(
     account: &CodexAccount,
     collection: &CodexLocalAccessCollection,
@@ -7389,12 +7609,14 @@ fn sidecar_codex_key_config_value(
     if api_key.is_empty() {
         return None;
     }
-    let base_url = account
-        .api_base_url
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or(DEFAULT_OPENAI_RESPONSES_BASE_URL);
+    let Some(base_url) = resolve_sidecar_upstream_base_url(account, collection) else {
+        logger::log_codex_api_warn(&format!(
+            "[CodexLocalAccess][sidecar] 跳过上游 Base URL 为本地网关或无法恢复真实上游的 API Key 账号: account_id={} api_base_url={:?}",
+            account.id,
+            account.api_base_url
+        ));
+        return None;
+    };
     let excluded_models = merge_collection_and_account_excluded_models(collection, &account.id);
     let mut value = json!({
         "api-key": api_key,
@@ -7817,6 +8039,7 @@ async fn prepare_sidecar_launch_config_in_dir(
             "accountId": rule.account_id.clone(),
             "priority": rule.priority,
             "weight": rule.weight,
+            "isBackup": rule.is_backup,
         })).collect::<Vec<_>>(),
         "accountModelRules": collection.account_model_rules.iter().map(|rule| json!({
             "accountId": rule.account_id.clone(),
@@ -10189,7 +10412,9 @@ fn sanitize_collection_with_accounts(
     Ok((changed, valid_account_ids))
 }
 
-async fn ensure_runtime_loaded_without_start() -> Result<(), String> {
+async fn ensure_runtime_loaded_without_start_with_profile_restore(
+    restore_disabled_profiles: bool,
+) -> Result<(), String> {
     {
         let runtime = gateway_runtime().lock().await;
         if runtime.loaded {
@@ -10252,7 +10477,7 @@ async fn ensure_runtime_loaded_without_start() -> Result<(), String> {
     }
 
     if let Some(collection) = next_collection.as_ref() {
-        if !collection.enabled {
+        if restore_disabled_profiles && !collection.enabled {
             if let Err(err) = restore_takeover_profiles_after_disable(collection) {
                 logger::log_codex_api_warn(&format!(
                     "Codex API 服务处于停用状态，但恢复 Live 配置失败: {}",
@@ -10281,6 +10506,10 @@ async fn ensure_runtime_loaded_without_start() -> Result<(), String> {
     Ok(())
 }
 
+async fn ensure_runtime_loaded_without_start() -> Result<(), String> {
+    ensure_runtime_loaded_without_start_with_profile_restore(true).await
+}
+
 async fn ensure_runtime_loaded() -> Result<(), String> {
     ensure_runtime_loaded_without_start().await?;
     ensure_bound_oauth_quota_monitor_started();
@@ -10299,6 +10528,30 @@ async fn ensure_runtime_loaded() -> Result<(), String> {
         ensure_local_access_profile_takeovers_from_runtime().await?;
         trigger_bound_oauth_quota_refresh_in_background(
             "API 服务运行态检查",
+            BOUND_OAUTH_QUOTA_RESERVE_REFRESH_INTERVAL,
+        );
+    }
+
+    Ok(())
+}
+
+async fn ensure_runtime_loaded_for_app_startup() -> Result<(), String> {
+    ensure_runtime_loaded_without_start_with_profile_restore(false).await?;
+    ensure_bound_oauth_quota_monitor_started();
+
+    let should_start = {
+        let runtime = gateway_runtime().lock().await;
+        runtime
+            .collection
+            .as_ref()
+            .map(|collection| collection.enabled)
+            .unwrap_or(false)
+    };
+
+    if should_start {
+        ensure_gateway_matches_runtime().await?;
+        trigger_bound_oauth_quota_refresh_in_background(
+            "API 服务启动恢复",
             BOUND_OAUTH_QUOTA_RESERVE_REFRESH_INTERVAL,
         );
     }
@@ -14062,6 +14315,108 @@ pub async fn stream_chat_local_access_with_dialog(
     }
 }
 
+fn new_local_access_collection() -> Result<CodexLocalAccessCollection, String> {
+    let now = now_ms();
+    Ok(CodexLocalAccessCollection {
+        enabled: false,
+        port: allocate_initial_local_port(CODEX_LOCAL_ACCESS_LOCALHOST_BIND_HOST)?,
+        api_key: generate_local_api_key(),
+        api_keys: Vec::new(),
+        access_scope: CodexLocalAccessScope::Localhost,
+        client_base_url_host: CodexLocalAccessClientBaseUrlHost::default(),
+        image_generation_mode: CodexLocalAccessImageGenerationMode::default(),
+        gateway_mode: CodexLocalAccessGatewayMode::default(),
+        upstream_proxy_url: None,
+        routing_strategy: CodexLocalAccessRoutingStrategy::default(),
+        custom_routing_rules: Vec::new(),
+        account_model_rules: Vec::new(),
+        model_aliases: Vec::new(),
+        model_pricing_version: DEFAULT_MODEL_PRICING_VERSION,
+        model_pricings: Vec::new(),
+        excluded_models: Vec::new(),
+        session_affinity: true,
+        session_affinity_ttl_ms: DEFAULT_SESSION_AFFINITY_TTL_MS,
+        session_affinity_default_enabled_migrated: true,
+        max_retry_credentials: 0,
+        max_retry_interval_ms: DEFAULT_MAX_RETRY_INTERVAL_MS,
+        timeouts: CodexLocalAccessTimeouts::default(),
+        active_timeout_preset_id: BUILTIN_TIMEOUT_PRESET_LONG_WAIT_ID.to_string(),
+        timeout_presets: Vec::new(),
+        disable_cooling: false,
+        restrict_free_accounts: true,
+        debug_logs: true,
+        bound_oauth_account_id: None,
+        bound_oauth_quota_reserve: None,
+        account_ids: Vec::new(),
+        created_at: now,
+        updated_at: now,
+    })
+}
+
+fn append_eligible_local_access_account_ids(
+    current_account_ids: &[String],
+    requested_account_ids: Vec<String>,
+    accounts: &[CodexAccount],
+    restrict_free_accounts: bool,
+) -> (
+    Vec<String>,
+    Vec<String>,
+    Vec<String>,
+    Vec<CodexLocalAccessAppendAccountSkipped>,
+) {
+    let account_by_id: HashMap<&str, &CodexAccount> = accounts
+        .iter()
+        .map(|account| (account.id.as_str(), account))
+        .collect();
+    let mut next_account_ids = current_account_ids.to_vec();
+    let mut current_ids: HashSet<String> = current_account_ids.iter().cloned().collect();
+    let mut requested_seen = HashSet::new();
+    let mut synced_account_ids = Vec::new();
+    let mut added_account_ids = Vec::new();
+    let mut skipped_accounts = Vec::new();
+
+    for account_id in requested_account_ids {
+        let account_id = account_id.trim().to_string();
+        if account_id.is_empty() || !requested_seen.insert(account_id.clone()) {
+            continue;
+        }
+        let Some(account) = account_by_id.get(account_id.as_str()).copied() else {
+            skipped_accounts.push(CodexLocalAccessAppendAccountSkipped {
+                account_id,
+                reason: "not_found".to_string(),
+            });
+            continue;
+        };
+        let ineligible_reason = if account_requires_provider_gateway(account) {
+            Some("chat_completions_api_key")
+        } else if restrict_free_accounts && is_free_plan_type(account.plan_type.as_deref()) {
+            Some("free_restricted")
+        } else {
+            None
+        };
+        if let Some(reason) = ineligible_reason {
+            skipped_accounts.push(CodexLocalAccessAppendAccountSkipped {
+                account_id,
+                reason: reason.to_string(),
+            });
+            continue;
+        }
+
+        synced_account_ids.push(account_id.clone());
+        if current_ids.insert(account_id.clone()) {
+            next_account_ids.push(account_id.clone());
+            added_account_ids.push(account_id);
+        }
+    }
+
+    (
+        next_account_ids,
+        synced_account_ids,
+        added_account_ids,
+        skipped_accounts,
+    )
+}
+
 pub async fn save_local_access_accounts(
     account_ids: Vec<String>,
     restrict_free_accounts: bool,
@@ -14070,43 +14425,10 @@ pub async fn save_local_access_accounts(
 
     let mut collection = {
         let runtime = gateway_runtime().lock().await;
-        runtime
-            .collection
-            .clone()
-            .unwrap_or(CodexLocalAccessCollection {
-                enabled: false,
-                port: allocate_initial_local_port(CODEX_LOCAL_ACCESS_LOCALHOST_BIND_HOST)?,
-                api_key: generate_local_api_key(),
-                api_keys: Vec::new(),
-                access_scope: CodexLocalAccessScope::Localhost,
-                client_base_url_host: CodexLocalAccessClientBaseUrlHost::default(),
-                image_generation_mode: CodexLocalAccessImageGenerationMode::default(),
-                gateway_mode: CodexLocalAccessGatewayMode::default(),
-                upstream_proxy_url: None,
-                routing_strategy: CodexLocalAccessRoutingStrategy::default(),
-                custom_routing_rules: Vec::new(),
-                account_model_rules: Vec::new(),
-                model_aliases: Vec::new(),
-                model_pricing_version: DEFAULT_MODEL_PRICING_VERSION,
-                model_pricings: Vec::new(),
-                excluded_models: Vec::new(),
-                session_affinity: true,
-                session_affinity_ttl_ms: DEFAULT_SESSION_AFFINITY_TTL_MS,
-                session_affinity_default_enabled_migrated: true,
-                max_retry_credentials: 0,
-                max_retry_interval_ms: DEFAULT_MAX_RETRY_INTERVAL_MS,
-                timeouts: CodexLocalAccessTimeouts::default(),
-                active_timeout_preset_id: BUILTIN_TIMEOUT_PRESET_LONG_WAIT_ID.to_string(),
-                timeout_presets: Vec::new(),
-                disable_cooling: false,
-                restrict_free_accounts: true,
-                debug_logs: true,
-                bound_oauth_account_id: None,
-                bound_oauth_quota_reserve: None,
-                account_ids: Vec::new(),
-                created_at: now_ms(),
-                updated_at: now_ms(),
-            })
+        match runtime.collection.clone() {
+            Some(collection) => collection,
+            None => new_local_access_collection()?,
+        }
     };
 
     let accounts = codex_account::list_accounts_checked()?;
@@ -14146,6 +14468,63 @@ pub async fn save_local_access_accounts(
         trigger_gateway_reload_in_background("保存 API 服务账号集合");
     }
     snapshot_state_without_gateway_reload().await
+}
+
+pub async fn append_local_access_accounts(
+    account_ids: Vec<String>,
+) -> Result<CodexLocalAccessAppendAccountsResult, String> {
+    ensure_runtime_loaded_without_start().await?;
+
+    let existing_collection = {
+        let runtime = gateway_runtime().lock().await;
+        runtime.collection.clone()
+    };
+    let restrict_free_accounts = existing_collection
+        .as_ref()
+        .map(|collection| collection.restrict_free_accounts)
+        .unwrap_or(true);
+    let accounts = codex_account::list_accounts_checked()?;
+    let current_account_ids = existing_collection
+        .as_ref()
+        .map(|collection| collection.account_ids.as_slice())
+        .unwrap_or(&[]);
+    let (next_account_ids, synced_account_ids, added_account_ids, skipped_accounts) =
+        append_eligible_local_access_account_ids(
+            current_account_ids,
+            account_ids,
+            &accounts,
+            restrict_free_accounts,
+        );
+
+    if !added_account_ids.is_empty() {
+        let mut collection = match existing_collection {
+            Some(collection) => collection,
+            None => new_local_access_collection()?,
+        };
+        collection.account_ids = next_account_ids;
+        collection.updated_at = now_ms();
+        let (changed, _) = sanitize_collection_with_accounts(&mut collection, &accounts)?;
+        if changed {
+            collection.updated_at = now_ms();
+        }
+        save_collection_to_disk(&collection)?;
+
+        let should_reload_gateway = collection.enabled;
+        {
+            let mut runtime = gateway_runtime().lock().await;
+            sync_runtime_collection(&mut runtime, collection);
+        }
+        if should_reload_gateway {
+            trigger_gateway_reload_in_background("导入账号同步加入 API 服务");
+        }
+    }
+
+    Ok(CodexLocalAccessAppendAccountsResult {
+        state: snapshot_state_without_gateway_reload().await?,
+        synced_account_ids,
+        added_account_ids,
+        skipped_accounts,
+    })
 }
 
 pub async fn update_local_access_routing_strategy(
@@ -15095,7 +15474,7 @@ pub async fn set_local_access_enabled(enabled: bool) -> Result<CodexLocalAccessS
 }
 
 pub async fn restore_local_access_gateway() {
-    if let Err(err) = ensure_runtime_loaded().await {
+    if let Err(err) = ensure_runtime_loaded_for_app_startup().await {
         let mut runtime = gateway_runtime().lock().await;
         runtime.loaded = true;
         runtime.last_error = Some(err.clone());
@@ -15626,18 +16005,44 @@ fn resolve_upstream_target(target: &str) -> Result<String, String> {
 }
 
 fn account_upstream_base_url(account: &CodexAccount) -> String {
-    if account.is_api_key_auth() {
-        account
-            .api_base_url
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or(DEFAULT_OPENAI_RESPONSES_BASE_URL)
-            .trim_end_matches('/')
-            .to_string()
-    } else {
-        UPSTREAM_CODEX_BASE_URL.to_string()
+    if !account.is_api_key_auth() {
+        return UPSTREAM_CODEX_BASE_URL.to_string();
     }
+
+    let candidate = account
+        .api_base_url
+        .as_deref()
+        .and_then(normalize_upstream_base_url_string);
+
+    // Prefer non-loopback account URL.
+    if let Some(url) = candidate.as_ref() {
+        if parse_http_url_host_port(url)
+            .map(|(host, _)| !is_loopback_http_host(&host))
+            .unwrap_or(true)
+        {
+            return url.clone();
+        }
+    }
+
+    // Recover real upstream when account was polluted with a local gateway URL.
+    if let Some(recovered) = lookup_codex_model_provider_base_url(
+        account.api_provider_id.as_deref(),
+        account.api_provider_name.as_deref(),
+    ) {
+        if parse_http_url_host_port(&recovered)
+            .map(|(host, _)| !is_loopback_http_host(&host))
+            .unwrap_or(true)
+        {
+            return recovered;
+        }
+    }
+
+    if matches!(account.api_provider_mode, CodexApiProviderMode::OpenaiBuiltin) {
+        return DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string();
+    }
+
+    // Intentional local provider (e.g. Ollama on another port): keep as-is.
+    candidate.unwrap_or_else(|| DEFAULT_OPENAI_RESPONSES_BASE_URL.to_string())
 }
 
 fn account_upstream_token(account: &CodexAccount) -> Result<String, String> {
@@ -17408,7 +17813,7 @@ async fn proxy_request_with_account_pool(
             start,
             affinity_account_id.as_deref(),
         );
-        let strategy_account_ids = pin_account_to_front(
+        let strategy_account_ids = pin_account_to_front_for_strategy(
             apply_routing_strategy(
                 &ordered_account_ids,
                 strategy,
@@ -17416,6 +17821,8 @@ async fn proxy_request_with_account_pool(
                 start,
             ),
             affinity_account_id.as_deref(),
+            strategy,
+            &collection.custom_routing_rules,
         );
         let mut attempted_in_round = false;
         let mut round_cooldown_wait: Option<Duration> = None;
@@ -18497,7 +18904,7 @@ async fn proxy_websocket_with_account_pool(
         start,
         affinity_account_id.as_deref(),
     );
-    let strategy_account_ids = pin_account_to_front(
+    let strategy_account_ids = pin_account_to_front_for_strategy(
         apply_routing_strategy(
             &ordered_account_ids,
             strategy,
@@ -18505,6 +18912,8 @@ async fn proxy_websocket_with_account_pool(
             start,
         ),
         affinity_account_id.as_deref(),
+        strategy,
+        &collection.custom_routing_rules,
     );
 
     let mut attempts = 0usize;
@@ -19709,10 +20118,10 @@ mod tests {
     use super::{
         account_model_rule_blocks_model, account_requires_bound_oauth_local_gateway,
         account_requires_provider_gateway, account_upstream_base_url, align_codex_prompt_cache,
-        append_usage_event, apply_codex_official_headers, apply_routing_strategy,
-        backup_current_profile_model_before_provider_gateway, bound_oauth_quota_refresh_failures,
-        bound_oauth_quota_reserve_blocks_account, bridge_websocket_streams,
-        build_account_scoped_upstream_body, build_base_url_with_host,
+        append_eligible_local_access_account_ids, append_usage_event, apply_codex_official_headers,
+        apply_routing_strategy, backup_current_profile_model_before_provider_gateway,
+        bound_oauth_quota_refresh_failures, bound_oauth_quota_reserve_blocks_account,
+        bridge_websocket_streams, build_account_scoped_upstream_body, build_base_url_with_host,
         build_chat_completion_payload, build_chat_completion_stream_body,
         build_codex_client_models_response, build_collection_base_url, build_images_api_payload,
         build_local_access_api_key, build_local_models_response,
@@ -19734,9 +20143,13 @@ mod tests {
         normalize_account_model_rules, normalize_custom_routing_rules,
         normalized_sidecar_error_category, open_local_access_logs_db_once, parse_codex_retry_after,
         parse_responses_payload_from_upstream, parse_websocket_upstream_error,
-        prepare_gateway_request, prepare_gateway_request_with_default_service_tier,
-        prepare_sidecar_launch_config_in_dir, prepare_websocket_initial_request,
-        profile_base_url_matches, provider_gateway_bound_oauth_account_id_for_account,
+        pin_account_to_front_for_strategy, prepare_gateway_request,
+        prepare_gateway_request_with_default_service_tier, prepare_sidecar_launch_config_in_dir,
+        prepare_websocket_initial_request, profile_base_url_matches,
+        is_local_access_gateway_base_url, lookup_codex_model_provider_base_url_in_dir,
+        resolve_sidecar_upstream_base_url, resolve_sidecar_upstream_base_url_with,
+        sidecar_codex_key_config_value,
+        provider_gateway_bound_oauth_account_id_for_account,
         provider_gateway_default_model_for_account,
         provider_gateway_image_generation_mode_for_account, provider_gateway_model_slots,
         provider_gateway_models_for_account, read_http_request, recover_invalid_stats_file,
@@ -20448,11 +20861,13 @@ wire_api = "responses"
                 account_id: "account-b".to_string(),
                 priority: 10,
                 weight: 2,
+                is_backup: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "account-c".to_string(),
                 priority: 5,
                 weight: 1,
+                is_backup: false,
             },
         ];
         collection.account_model_rules = vec![CodexLocalAccessAccountModelRule {
@@ -20847,6 +21262,61 @@ wire_api = "responses"
         );
         account.plan_type = Some(plan_type.to_string());
         account
+    }
+
+    #[test]
+    fn append_local_access_accounts_is_incremental_and_reports_skips() {
+        let existing = test_account_with_plan("plus");
+        let mut added = test_account_with_plan("team");
+        added.id = "added".to_string();
+        let free = test_account_with_plan("free");
+        let mut chat = CodexAccount::new_api_key(
+            "chat".to_string(),
+            "chat@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://example.com/v1".to_string()),
+            None,
+            None,
+            Vec::new(),
+        );
+        chat.api_wire_api = Some("chat_completions".to_string());
+
+        let (next_ids, synced_ids, added_ids, skipped) = append_eligible_local_access_account_ids(
+            &[existing.id.clone(), "preserved".to_string()],
+            vec![
+                existing.id.clone(),
+                "added".to_string(),
+                "added".to_string(),
+                free.id.clone(),
+                "chat".to_string(),
+                "missing".to_string(),
+            ],
+            &[existing.clone(), added, free.clone(), chat],
+            true,
+        );
+
+        assert_eq!(
+            next_ids,
+            vec![
+                existing.id.clone(),
+                "preserved".to_string(),
+                "added".to_string()
+            ]
+        );
+        assert_eq!(synced_ids, vec![existing.id, "added".to_string()]);
+        assert_eq!(added_ids, vec!["added".to_string()]);
+        assert_eq!(
+            skipped
+                .iter()
+                .map(|item| (item.account_id.as_str(), item.reason.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (free.id.as_str(), "free_restricted"),
+                ("chat", "chat_completions_api_key"),
+                ("missing", "not_found"),
+            ]
+        );
     }
 
     fn make_test_jwt(payload: Value) -> String {
@@ -22132,16 +22602,19 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 account_id: "acc-low".to_string(),
                 priority: 10,
                 weight: 1,
+                is_backup: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-high-a".to_string(),
                 priority: 40,
                 weight: 1,
+                is_backup: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-high-b".to_string(),
                 priority: 40,
                 weight: 1,
+                is_backup: false,
             },
         ];
 
@@ -22153,6 +22626,40 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
         );
 
         assert_eq!(ordered, vec!["acc-high-a", "acc-high-b", "acc-low"]);
+    }
+
+    #[test]
+    fn custom_routing_keeps_backup_accounts_after_regular_accounts() {
+        let account_ids = vec!["backup".to_string(), "regular".to_string()];
+        let rules = vec![
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "backup".to_string(),
+                priority: 100,
+                weight: 1,
+                is_backup: true,
+            },
+            CodexLocalAccessCustomRoutingRule {
+                account_id: "regular".to_string(),
+                priority: 0,
+                weight: 1,
+                is_backup: false,
+            },
+        ];
+
+        let ordered = apply_routing_strategy(
+            &account_ids,
+            CodexLocalAccessRoutingStrategy::Custom,
+            &rules,
+            0,
+        );
+        let affinity_ordered = pin_account_to_front_for_strategy(
+            ordered,
+            Some("backup"),
+            CodexLocalAccessRoutingStrategy::Custom,
+            &rules,
+        );
+
+        assert_eq!(affinity_ordered, vec!["regular", "backup"]);
     }
 
     #[test]
@@ -22208,11 +22715,13 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 account_id: "acc-heavy".to_string(),
                 priority: 20,
                 weight: 3,
+                is_backup: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-light".to_string(),
                 priority: 20,
                 weight: 1,
+                is_backup: false,
             },
         ];
 
@@ -22251,21 +22760,25 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                 account_id: " acc-a ".to_string(),
                 priority: 120,
                 weight: 0,
+                is_backup: true,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-a".to_string(),
                 priority: 20,
                 weight: 10,
+                is_backup: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-removed".to_string(),
                 priority: 30,
                 weight: 5,
+                is_backup: false,
             },
             CodexLocalAccessCustomRoutingRule {
                 account_id: "acc-b".to_string(),
                 priority: -5,
                 weight: 500,
+                is_backup: false,
             },
         ];
 
@@ -22278,11 +22791,13 @@ data: {"type":"response.completed","response":{"id":"resp_123","usage":{"input_t
                     account_id: "acc-a".to_string(),
                     priority: 100,
                     weight: 1,
+                    is_backup: true,
                 },
                 CodexLocalAccessCustomRoutingRule {
                     account_id: "acc-b".to_string(),
                     priority: 0,
                     weight: 100,
+                    is_backup: false,
                 },
             ]
         );
@@ -24301,6 +24816,120 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
         );
 
         fs::remove_dir_all(&dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn treats_collection_client_url_as_local_gateway_not_upstream() {
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.port = 53549;
+        collection.client_base_url_host = CodexLocalAccessClientBaseUrlHost::Localhost;
+        assert!(is_local_access_gateway_base_url(
+            "http://localhost:53549/v1",
+            &collection
+        ));
+        assert!(is_local_access_gateway_base_url(
+            "http://127.0.0.1:53549/v1",
+            &collection
+        ));
+        assert!(!is_local_access_gateway_base_url(
+            "https://relay.example/v1",
+            &collection
+        ));
+        assert!(!is_local_access_gateway_base_url(
+            "http://127.0.0.1:11434/v1",
+            &collection
+        ));
+    }
+
+    #[test]
+    fn resolves_sidecar_upstream_from_model_provider_when_account_holds_gateway_url() {
+        let data_dir = make_temp_dir("codex-sidecar-upstream-providers");
+        fs::write(
+            data_dir.join("codex_model_providers.json"),
+            r#"[{"id":"relay","name":"Relay","baseUrl":"https://relay.example/v1"}]"#,
+        )
+        .expect("write providers");
+
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.port = 53549;
+        let account = CodexAccount::new_api_key(
+            "api-polluted-1".to_string(),
+            "polluted@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("http://localhost:53549/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            vec![],
+        );
+
+        assert_eq!(
+            lookup_codex_model_provider_base_url_in_dir(&data_dir, Some("relay"), None).as_deref(),
+            Some("https://relay.example/v1")
+        );
+        // Avoid mutating process-global COCKPIT_TOOLS_DATA_DIR (races other tests).
+        let resolved = resolve_sidecar_upstream_base_url_with(
+            &account,
+            &collection,
+            |id, name| lookup_codex_model_provider_base_url_in_dir(&data_dir, id, name),
+        );
+        assert_eq!(resolved.as_deref(), Some("https://relay.example/v1"));
+
+        // sidecar_codex_key_config_value uses the same resolve rules with production lookup;
+        // with a safe recovered URL injected via resolve_with, the written base-url matches.
+        // When account already has a non-gateway URL, config writes it directly:
+        let direct = CodexAccount::new_api_key(
+            "api-direct-1".to_string(),
+            "direct@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay.example/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            vec![],
+        );
+        let config = sidecar_codex_key_config_value(&direct, &collection, None)
+            .expect("sidecar key for real upstream");
+        assert_eq!(
+            config.get("base-url").and_then(Value::as_str),
+            Some("https://relay.example/v1")
+        );
+
+        fs::remove_dir_all(&data_dir).expect("cleanup temp dir");
+    }
+
+    #[test]
+    fn skips_sidecar_key_when_gateway_url_cannot_be_recovered() {
+        let mut collection = test_local_access_collection(Vec::new());
+        collection.port = 53549;
+        let account = CodexAccount::new_api_key(
+            "api-polluted-2".to_string(),
+            "polluted2@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("http://localhost:53549/v1".to_string()),
+            Some("missing-provider".to_string()),
+            Some("Missing".to_string()),
+            vec![],
+        );
+        assert!(resolve_sidecar_upstream_base_url(&account, &collection).is_none());
+        assert!(sidecar_codex_key_config_value(&account, &collection, None).is_none());
+    }
+
+    #[test]
+    fn sidecar_codex_key_skips_loopback_base_url_without_provider_recovery() {
+        let account = CodexAccount::new_api_key(
+            "api-loopback-1".to_string(),
+            "api-key@example.com".to_string(),
+            "sk-test".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("http://localhost:53549/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            Vec::new(),
+        );
+        let collection = test_local_access_collection(vec![account.id.clone()]);
+        assert!(sidecar_codex_key_config_value(&account, &collection, None).is_none());
     }
 
     #[test]
