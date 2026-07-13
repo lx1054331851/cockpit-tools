@@ -109,6 +109,10 @@ import {
 import { filterCodexLocalAccessAccountIds } from "../utils/codexLocalAccessAccounts";
 import { isBlockingCodexQuotaError } from "../utils/codexQuotaError";
 import { buildCodexAccountPresentation } from "../presentation/platformAccountPresentation";
+import {
+  readCodexImportSyncApiService,
+  writeCodexImportSyncApiService,
+} from "../utils/codexImportPreferences";
 
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -168,7 +172,9 @@ import {
   type InstanceProfile,
 } from "../types/instance";
 import {
+  CODEX_ADDITIONAL_QUOTA_VISIBILITY_CHANGED_EVENT,
   CODEX_CODE_REVIEW_QUOTA_VISIBILITY_CHANGED_EVENT,
+  isCodexAdditionalQuotaVisibleByDefault,
   isCodexCodeReviewQuotaVisibleByDefault,
 } from "../utils/codexPreferences";
 import { emitAccountsChanged } from "../utils/accountSyncEvents";
@@ -946,6 +952,12 @@ export function CodexAccountsPage() {
   const [groupQuickAddGroupId, setGroupQuickAddGroupId] = useState<
     string | null
   >(null);
+  const [codexAddTargetGroupId, setCodexAddTargetGroupId] = useState<
+    string | null
+  >(null);
+  const [batchImportTargetGroupId, setBatchImportTargetGroupId] = useState<
+    string | null
+  >(null);
   const [groupDeleteConfirm, setGroupDeleteConfirm] = useState<{
     id: string;
     name: string;
@@ -988,6 +1000,14 @@ export function CodexAccountsPage() {
   >("panel");
   const [localAccessSaving, setLocalAccessSaving] = useState(false);
   const [localAccessStarting, setLocalAccessStarting] = useState(false);
+  const [syncImportedToApiService, setSyncImportedToApiService] = useState(
+    readCodexImportSyncApiService,
+  );
+  const [importApiServiceGuideCount, setImportApiServiceGuideCount] =
+    useState<number | null>(null);
+  const [externalImportSyncError, setExternalImportSyncError] = useState<
+    string | null
+  >(null);
   const [localAccessRefreshing, setLocalAccessRefreshing] = useState(false);
   const [localAccessPortKilling, setLocalAccessPortKilling] = useState(false);
   const [showLocalAccessHideConfirm, setShowLocalAccessHideConfirm] =
@@ -1035,10 +1055,80 @@ export function CodexAccountsPage() {
         return false;
       }
     });
+  const ensureLocalAccessEntryVisible = useCallback(async () => {
+    if (localAccessEntryVisible) return;
+    await invoke("set_codex_local_access_entry_visible", { enabled: true });
+    setLocalAccessEntryVisible(true);
+    window.dispatchEvent(new Event("codex-local-access-state-updated"));
+    window.dispatchEvent(new Event("config-updated"));
+  }, [localAccessEntryVisible]);
+  const handleExternalImportedAccounts = useCallback(
+    async (accountIds: string[]) => {
+      setExternalImportSyncError(null);
+      if (!readCodexImportSyncApiService()) return;
+      try {
+        const result =
+          await codexLocalAccessService.appendCodexLocalAccessAccounts(
+            accountIds,
+          );
+        setLocalAccessState(result.state);
+        if (result.syncedAccountIds.length > 0) {
+          await ensureLocalAccessEntryVisible();
+          setImportApiServiceGuideCount(result.syncedAccountIds.length);
+        }
+      } catch (error) {
+        setExternalImportSyncError(String(error).replace(/^Error:\s*/, ""));
+      }
+    },
+    [ensureLocalAccessEntryVisible],
+  );
 
+  const [codexGroupsReady, setCodexGroupsReady] = useState(false);
   const reloadCodexGroups = useCallback(async () => {
     setCodexGroups(await getCodexAccountGroups());
+    setCodexGroupsReady(true);
   }, []);
+
+  const codexAddTargetGroup = useMemo(() => {
+    if (!codexAddTargetGroupId) return null;
+    return (
+      codexGroups.find((group) => group.id === codexAddTargetGroupId) ?? null
+    );
+  }, [codexAddTargetGroupId, codexGroups]);
+
+  const resolveValidCodexGroupId = useCallback(
+    (groupId?: string | null) => {
+      const normalized = groupId?.trim();
+      if (!normalized) return null;
+      return codexGroups.some((group) => group.id === normalized)
+        ? normalized
+        : null;
+    },
+    [codexGroups],
+  );
+
+  const assignCodexAccountsToTargetGroup = useCallback(
+    async (
+      targetAccounts: Array<CodexAccount | null | undefined>,
+      targetGroupId = codexAddTargetGroupId,
+    ) => {
+      const resolvedGroupId = resolveValidCodexGroupId(targetGroupId);
+      if (!resolvedGroupId) return;
+
+      const accountIds = Array.from(
+        new Set(
+          targetAccounts
+            .map((account) => account?.id?.trim())
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      if (accountIds.length === 0) return;
+
+      await assignAccountsToCodexGroup(resolvedGroupId, accountIds);
+      await reloadCodexGroups();
+    },
+    [codexAddTargetGroupId, reloadCodexGroups, resolveValidCodexGroupId],
+  );
 
   useEffect(() => {
     reloadCodexGroups();
@@ -1097,6 +1187,17 @@ export function CodexAccountsPage() {
   const clearGroupFilter = useCallback(() => {
     setGroupFilter([]);
   }, []);
+
+  /** Drop stale group filter IDs after groups are loaded (not on empty initial state). */
+  useEffect(() => {
+    if (!codexGroupsReady) return;
+    const validIds = new Set(codexGroups.map((group) => group.id));
+    setGroupFilter((prev) => {
+      if (prev.length === 0) return prev;
+      const next = prev.filter((id) => validIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [codexGroups, codexGroupsReady]);
 
   const [overviewLayoutMode, setOverviewLayoutMode] =
     useState<CodexOverviewLayoutMode>(() => {
@@ -1219,6 +1320,7 @@ export function CodexAccountsPage() {
         )
       : "",
     defaultSortBy: readCodexCustomSortActive() ? "custom" : undefined,
+    onExternalImportCompleted: handleExternalImportedAccounts,
   });
 
   const {
@@ -1296,6 +1398,41 @@ export function CodexAccountsPage() {
     saveJsonFile,
   } = page;
   const [isAllFilteredSelected, setIsAllFilteredSelected] = useState(false);
+
+  /** Clear every overview filter so the table matches the full account total. */
+  const clearAllOverviewFilters = useCallback(() => {
+    setSearchQuery("");
+    setFilterTypes([]);
+    clearTagFilter();
+    setGroupFilter([]);
+    setActiveGroupId(null);
+    setSelected(new Set());
+  }, [clearTagFilter, setSearchQuery, setSelected]);
+
+  const handleSyncImportedToApiServiceChange = useCallback(
+    (enabled: boolean) => {
+      setSyncImportedToApiService(enabled);
+      writeCodexImportSyncApiService(enabled);
+    },
+    [],
+  );
+
+  const syncImportedAccountsToApiService = useCallback(
+    async (accountIds: string[]) => {
+      if (!syncImportedToApiService || accountIds.length === 0) return null;
+      const result =
+        await codexLocalAccessService.appendCodexLocalAccessAccounts(
+          accountIds,
+        );
+      setLocalAccessState(result.state);
+      if (result.syncedAccountIds.length > 0) {
+        await ensureLocalAccessEntryVisible();
+        setImportApiServiceGuideCount(result.syncedAccountIds.length);
+      }
+      return result;
+    },
+    [ensureLocalAccessEntryVisible, syncImportedToApiService],
+  );
 
   const reauthTargetAccountId = reauthTargetAccount?.id?.trim() ?? "";
   const reauthTargetEmail = reauthTargetAccount?.email?.trim() ?? "";
@@ -1489,6 +1626,7 @@ export function CodexAccountsPage() {
     setBatchImportResult(null);
     setBatchImportFilePaths([]);
     setBatchImportCheckQuota(false);
+    setBatchImportTargetGroupId(null);
     try {
       localStorage.removeItem(CODEX_BATCH_IMPORT_SESSION_STORAGE_KEY);
     } catch {
@@ -1590,6 +1728,9 @@ export function CodexAccountsPage() {
   const openCodexAddModal = useCallback(
     (tab: string, targetAccount?: CodexAccount | null) => {
       setReauthTargetAccount(targetAccount ?? null);
+      setCodexAddTargetGroupId(
+        targetAccount ? null : resolveValidCodexGroupId(activeGroupId),
+      );
       setReauthEmailCopied(false);
       if (!targetAccount) {
         setPendingOAuthEmailInput("");
@@ -1599,11 +1740,12 @@ export function CodexAccountsPage() {
       setPendingOAuthNoteModalOpen(false);
       openAddModal(tab);
     },
-    [openAddModal],
+    [activeGroupId, openAddModal, resolveValidCodexGroupId],
   );
 
   const closeCodexAddModal = useCallback(() => {
     setReauthTargetAccount(null);
+    setCodexAddTargetGroupId(null);
     setReauthEmailCopied(false);
     setPendingOAuthEmailInput("");
     setPendingOAuthNoteForm(EMPTY_CODEX_ACCOUNT_NOTE_FORM);
@@ -1624,6 +1766,7 @@ export function CodexAccountsPage() {
   useEffect(() => {
     if (showAddModal) return;
     setReauthTargetAccount(null);
+    setCodexAddTargetGroupId(null);
     setReauthEmailCopied(false);
     setPendingOAuthEmailInput("");
     setPendingOAuthNoteForm(EMPTY_CODEX_ACCOUNT_NOTE_FORM);
@@ -3400,6 +3543,9 @@ export function CodexAccountsPage() {
   const [showCodeReviewQuota, setShowCodeReviewQuota] = useState<boolean>(
     isCodexCodeReviewQuotaVisibleByDefault,
   );
+  const [showAdditionalQuota, setShowAdditionalQuota] = useState<boolean>(
+    isCodexAdditionalQuotaVisibleByDefault,
+  );
   const [customSortOrder, setCustomSortOrder] = useState<string[]>(
     readCodexCustomSortOrder,
   );
@@ -4050,15 +4196,26 @@ export function CodexAccountsPage() {
     const syncCodeReviewVisibility = () => {
       setShowCodeReviewQuota(isCodexCodeReviewQuotaVisibleByDefault());
     };
+    const syncAdditionalQuotaVisibility = () => {
+      setShowAdditionalQuota(isCodexAdditionalQuotaVisibleByDefault());
+    };
 
     window.addEventListener(
       CODEX_CODE_REVIEW_QUOTA_VISIBILITY_CHANGED_EVENT,
       syncCodeReviewVisibility as EventListener,
     );
+    window.addEventListener(
+      CODEX_ADDITIONAL_QUOTA_VISIBILITY_CHANGED_EVENT,
+      syncAdditionalQuotaVisibility as EventListener,
+    );
     return () => {
       window.removeEventListener(
         CODEX_CODE_REVIEW_QUOTA_VISIBILITY_CHANGED_EVENT,
         syncCodeReviewVisibility as EventListener,
+      );
+      window.removeEventListener(
+        CODEX_ADDITIONAL_QUOTA_VISIBILITY_CHANGED_EVENT,
+        syncAdditionalQuotaVisibility as EventListener,
       );
     };
   }, []);
@@ -4143,6 +4300,7 @@ export function CodexAccountsPage() {
         );
       }
       await fetchAccounts();
+      await assignCodexAccountsToTargetGroup([account]);
       await emitAccountsChanged({
         platformId: "codex",
         accountId: account.id,
@@ -4168,6 +4326,7 @@ export function CodexAccountsPage() {
     }
   }, [
     buildPendingOAuthNoteUpdate,
+    assignCodexAccountsToTargetGroup,
     fetchAccounts,
     pendingOAuthEmailInput,
     resetAddModalState,
@@ -4200,42 +4359,50 @@ export function CodexAccountsPage() {
     [t],
   );
 
-  const completeOauthSuccess = useCallback(async () => {
-    oauthLog("授权完成并保存成功", { loginId: oauthLoginIdRef.current });
-    await fetchAccounts();
-    await fetchCurrentAccount();
-    await emitAccountsChanged({
-      platformId: "codex",
-      reason: "oauth",
-    });
-    setAddStatus("success");
-    setAddMessage(t("common.shared.oauth.success", "授权成功"));
-    oauthActiveRef.current = false;
-    oauthCompletingRef.current = false;
-    oauthLoginIdRef.current = null;
-    setOauthUrl("");
-    setOauthUrlCopied(false);
-    setOauthPrepareError(null);
-    setOauthPortInUse(null);
-    setOauthTimeoutInfo(null);
-    setOauthCallbackInput("");
-    setOauthCallbackSubmitting(false);
-    setOauthCallbackError(null);
-    setOauthTokenExchangeRetryVisible(false);
-    setTimeout(() => {
-      setShowAddModal(false);
-      resetAddModalState();
-    }, 1200);
-  }, [
-    fetchAccounts,
-    fetchCurrentAccount,
-    t,
-    oauthLog,
-    setAddStatus,
-    setAddMessage,
-    setShowAddModal,
-    resetAddModalState,
-  ]);
+  const completeOauthSuccess = useCallback(
+    async (account?: CodexAccount | null) => {
+      oauthLog("授权完成并保存成功", { loginId: oauthLoginIdRef.current });
+      await fetchAccounts();
+      await fetchCurrentAccount();
+      if (!reauthTargetAccountId) {
+        await assignCodexAccountsToTargetGroup([account]);
+      }
+      await emitAccountsChanged({
+        platformId: "codex",
+        reason: "oauth",
+      });
+      setAddStatus("success");
+      setAddMessage(t("common.shared.oauth.success", "授权成功"));
+      oauthActiveRef.current = false;
+      oauthCompletingRef.current = false;
+      oauthLoginIdRef.current = null;
+      setOauthUrl("");
+      setOauthUrlCopied(false);
+      setOauthPrepareError(null);
+      setOauthPortInUse(null);
+      setOauthTimeoutInfo(null);
+      setOauthCallbackInput("");
+      setOauthCallbackSubmitting(false);
+      setOauthCallbackError(null);
+      setOauthTokenExchangeRetryVisible(false);
+      setTimeout(() => {
+        setShowAddModal(false);
+        resetAddModalState();
+      }, 1200);
+    },
+    [
+      assignCodexAccountsToTargetGroup,
+      fetchAccounts,
+      fetchCurrentAccount,
+      reauthTargetAccountId,
+      t,
+      oauthLog,
+      setAddStatus,
+      setAddMessage,
+      setShowAddModal,
+      resetAddModalState,
+    ],
+  );
 
   const completeOauthError = useCallback(
     (e: unknown, allowTokenExchangeRetry = false) => {
@@ -4281,11 +4448,11 @@ export function CodexAccountsPage() {
         setAddMessage(t("codex.oauth.exchanging", "正在交换令牌..."));
         oauthCompletingRef.current = true;
         try {
-          await codexService.completeCodexOAuthLogin(
+          const account = await codexService.completeCodexOAuthLogin(
             loginId,
             reauthTargetAccountId || null,
           );
-          await completeOauthSuccess();
+          await completeOauthSuccess(account);
         } catch (e) {
           completeOauthError(e, true);
         } finally {
@@ -4550,11 +4717,11 @@ export function CodexAccountsPage() {
       setAddStatus("loading");
       setAddMessage(t("codex.oauth.exchanging", "正在交换令牌..."));
       tokenExchangeStarted = true;
-      await codexService.completeCodexOAuthLogin(
+      const account = await codexService.completeCodexOAuthLogin(
         loginId,
         reauthTargetAccountId || null,
       );
-      await completeOauthSuccess();
+      await completeOauthSuccess(account);
     } catch (e) {
       completeOauthError(e, tokenExchangeStarted);
       setOauthCallbackError(String(e).replace(/^Error:\s*/, ""));
@@ -4574,11 +4741,11 @@ export function CodexAccountsPage() {
     setAddMessage(t("codex.oauth.exchanging", "正在交换令牌..."));
     oauthCompletingRef.current = true;
     try {
-      await codexService.completeCodexOAuthLogin(
+      const account = await codexService.completeCodexOAuthLogin(
         loginId,
         reauthTargetAccountId || null,
       );
-      await completeOauthSuccess();
+      await completeOauthSuccess(account);
     } catch (e) {
       completeOauthError(e, true);
       setOauthCallbackError(String(e).replace(/^Error:\s*/, ""));
@@ -5272,6 +5439,7 @@ export function CodexAccountsPage() {
       await fetchAccounts();
       await new Promise((resolve) => setTimeout(resolve, 180));
       await fetchAccounts();
+      await assignCodexAccountsToTargetGroup([account]);
       await emitAccountsChanged({
         platformId: "codex",
         reason: "import",
@@ -5424,6 +5592,9 @@ export function CodexAccountsPage() {
       if (!selected || (Array.isArray(selected) && selected.length === 0))
         return;
       const paths = Array.isArray(selected) ? selected : [selected];
+      setBatchImportTargetGroupId(
+        resolveValidCodexGroupId(codexAddTargetGroupId),
+      );
       closeAddModal();
       await startBatchImportFromPaths(paths, false);
     } catch (e) {
@@ -5469,7 +5640,26 @@ export function CodexAccountsPage() {
       resetBatchImportState();
       return;
     }
+    // Busy scan/parse: minimize to sticky task bar so progress can be reopened.
+    if (batchImportBusy) {
+      setBatchImportOpen(false);
+      return;
+    }
+    // Idle preview/error with nothing selectable: discard so the sticky bar
+    // does not stay forever after a failed all-invalid import.
+    const selectableCount = (batchImportPreview?.items ?? []).filter(
+      (item) => item.selectable && item.status !== "invalid",
+    ).length;
+    if (!batchImportPreview || selectableCount === 0) {
+      resetBatchImportState();
+      return;
+    }
     setBatchImportOpen(false);
+  };
+
+  const handleDismissBatchImportTask = () => {
+    if (batchImportBusy) return;
+    resetBatchImportState();
   };
 
   const toggleBatchImportItem = (itemId: string) => {
@@ -5527,11 +5717,27 @@ export function CodexAccountsPage() {
       );
       setBatchImportResult(result);
       await fetchAccounts();
+      await assignCodexAccountsToTargetGroup(
+        result.imported,
+        batchImportTargetGroupId,
+      );
       if (result.imported.length > 0) {
         await emitAccountsChanged({
           platformId: "codex",
           reason: "import",
         });
+        try {
+          await syncImportedAccountsToApiService(
+            result.imported.map((account) => account.id),
+          );
+        } catch (error) {
+          setBatchImportError(
+            t(
+              "codex.importApiService.syncFailed",
+              "账号已导入，但加入 API 服务失败：{{error}}",
+            ).replace("{{error}}", String(error).replace(/^Error:\s*/, "")),
+          );
+        }
       }
       cleanupBatchImportListeners();
       try {
@@ -6045,6 +6251,7 @@ export function CodexAccountsPage() {
       );
       await fetchAccounts();
       await fetchCurrentAccount();
+      await assignCodexAccountsToTargetGroup([account]);
       await emitAccountsChanged({
         platformId: "codex",
         reason: "import",
@@ -6091,6 +6298,7 @@ export function CodexAccountsPage() {
     try {
       const imported = await codexService.importCodexFromJson(trimmed);
       await fetchAccounts();
+      await assignCodexAccountsToTargetGroup(imported);
       if (imported.length > 0) {
         await emitAccountsChanged({
           platformId: "codex",
@@ -6104,9 +6312,26 @@ export function CodexAccountsPage() {
           "成功导入 {{count}} 个账号",
         ).replace("{{count}}", String(imported.length)),
       );
-      setTimeout(() => {
-        closeAddModal();
-      }, 1200);
+      try {
+        const syncResult = await syncImportedAccountsToApiService(
+          imported.map((account) => account.id),
+        );
+        if (syncResult && syncResult.syncedAccountIds.length > 0) {
+          closeAddModal();
+        } else {
+          setTimeout(() => {
+            closeAddModal();
+          }, 1200);
+        }
+      } catch (error) {
+        page.setAddStatus("error");
+        page.setAddMessage(
+          t(
+            "codex.importApiService.syncFailed",
+            "账号已导入，但加入 API 服务失败：{{error}}",
+          ).replace("{{error}}", String(error).replace(/^Error:\s*/, "")),
+        );
+      }
     } catch (e) {
       page.setAddStatus("error");
       page.setAddMessage(
@@ -7987,6 +8212,24 @@ export function CodexAccountsPage() {
   }, [codexGroups, groupQuickAddGroupId]);
 
   useEffect(() => {
+    if (
+      codexAddTargetGroupId &&
+      !codexGroups.some((group) => group.id === codexAddTargetGroupId)
+    ) {
+      setCodexAddTargetGroupId(null);
+    }
+  }, [codexAddTargetGroupId, codexGroups]);
+
+  useEffect(() => {
+    if (
+      batchImportTargetGroupId &&
+      !codexGroups.some((group) => group.id === batchImportTargetGroupId)
+    ) {
+      setBatchImportTargetGroupId(null);
+    }
+  }, [batchImportTargetGroupId, codexGroups]);
+
+  useEffect(() => {
     const existingAccountIds = new Set(accounts.map((account) => account.id));
     const hasStaleAccountIds = codexGroups.some((group) =>
       group.accountIds.some((accountId) => !existingAccountIds.has(accountId)),
@@ -7996,8 +8239,15 @@ export function CodexAccountsPage() {
     }
 
     void (async () => {
-      await cleanupDeletedCodexAccounts(existingAccountIds);
-      await reloadCodexGroups();
+      try {
+        await cleanupDeletedCodexAccounts(existingAccountIds);
+        await reloadCodexGroups();
+      } catch (error) {
+        console.error(
+          "Failed to clean up deleted Codex accounts from groups:",
+          error,
+        );
+      }
     })();
   }, [accounts, codexGroups, reloadCodexGroups]);
 
@@ -8629,6 +8879,42 @@ export function CodexAccountsPage() {
     () => filteredAccounts.map((account) => account.id),
     [filteredAccounts],
   );
+  const overviewTotalCount = overviewAccounts.length;
+  const overviewVisibleCount = filteredAccounts.length;
+  const hasActiveOverviewFilters =
+    Boolean(searchQuery.trim()) ||
+    filterTypes.length > 0 ||
+    tagFilter.length > 0 ||
+    groupFilter.length > 0 ||
+    Boolean(activeGroupId);
+  const showOverviewFilterBanner =
+    hasActiveOverviewFilters && overviewVisibleCount !== overviewTotalCount;
+  const overviewFilterChips = useMemo(() => {
+    const chips: string[] = [];
+    if (activeGroupId) {
+      chips.push(t("codex.filters.chipFolder", "分组目录"));
+    }
+    if (groupFilter.length > 0) {
+      chips.push(t("codex.filters.chipGroup", "分组"));
+    }
+    if (tagFilter.length > 0) {
+      chips.push(t("codex.filters.chipTags", "标签"));
+    }
+    if (searchQuery.trim()) {
+      chips.push(t("codex.filters.chipSearch", "搜索"));
+    }
+    if (filterTypes.length > 0) {
+      chips.push(t("codex.filters.chipPlan", "套餐"));
+    }
+    return chips;
+  }, [
+    activeGroupId,
+    filterTypes.length,
+    groupFilter.length,
+    searchQuery,
+    t,
+    tagFilter.length,
+  ]);
   const errorAccountIds = useMemo(
     () =>
       filteredAccounts
@@ -9111,6 +9397,24 @@ export function CodexAccountsPage() {
       ? t("accounts.defaultGroup", "默认分组")
       : groupKey;
 
+  const resolveVisibleQuotaItems = useCallback(
+    (
+      presentation: ReturnType<typeof buildCodexAccountPresentation>,
+      isApiKeyAccount: boolean,
+      isNewApiAccount: boolean,
+    ) => {
+      if (isApiKeyAccount && !isNewApiAccount) return [];
+      return presentation.quotaItems.filter((item) => {
+        if (!showCodeReviewQuota && item.key === "code_review") return false;
+        if (!showAdditionalQuota && item.key.startsWith("additional:")) {
+          return false;
+        }
+        return true;
+      });
+    },
+    [showAdditionalQuota, showCodeReviewQuota],
+  );
+
   const resolveCompactQuotaItems = useCallback(
     (presentation: ReturnType<typeof buildCodexAccountPresentation>) => {
       const standardQuotaItems = presentation.quotaItems.filter(
@@ -9308,14 +9612,11 @@ export function CodexAccountsPage() {
       const isSavingApiKeyName = savingApiKeyNameId === account.id;
       const planClass = presentation.planClass || "unknown";
       const isSelected = selected.has(account.id);
-      const quotaItems =
-        isApiKeyAccount && !isNewApiAccount
-          ? []
-          : showCodeReviewQuota
-            ? presentation.quotaItems
-            : presentation.quotaItems.filter(
-                (item) => item.key !== "code_review",
-              );
+      const quotaItems = resolveVisibleQuotaItems(
+        presentation,
+        isApiKeyAccount,
+        isNewApiAccount,
+      );
       const reauthErrorMeta = resolveQuotaErrorMeta(
         account.requires_reauth && account.reauth_reason
           ? {
@@ -10414,7 +10715,15 @@ export function CodexAccountsPage() {
                 preferredPlacement="top"
                 ariaLabel={t("codex.speed.title", "速度")}
               />
-              <div className="card-footer codex-local-access-footer">
+              <div
+                className={`card-footer codex-local-access-footer ${
+                  importApiServiceGuideCount !== null &&
+                  !batchImportOpen &&
+                  !externalImportProgress.visible
+                    ? "has-import-guide"
+                    : ""
+                }`}
+              >
                 <div className="card-actions">
                   <button
                     className="card-action-btn"
@@ -10467,21 +10776,74 @@ export function CodexAccountsPage() {
                       className={localAccessRefreshing ? "loading-spinner" : ""}
                     />
                   </button>
-                  <button
-                    className="card-action-btn success"
-                    onClick={() => void handleQuickActivateLocalAccess()}
-                    title={t(
-                      "codex.localAccess.activateAction",
-                      "启动 API 服务",
-                    )}
-                    disabled={localAccessBusy || !localAccessCollection}
-                  >
-                    {localAccessStarting ? (
-                      <RefreshCw size={14} className="loading-spinner" />
-                    ) : (
-                      <Play size={14} />
-                    )}
-                  </button>
+                  <div className="codex-import-api-service-guide-anchor">
+                    {importApiServiceGuideCount !== null &&
+                      !batchImportOpen &&
+                      !externalImportProgress.visible && (
+                        <div
+                          className="codex-local-access-gateway-guide codex-import-api-service-anchor-guide"
+                          role="dialog"
+                          aria-label={t(
+                            "codex.importApiService.guideTitle",
+                            "账号已加入 API 服务",
+                          )}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="codex-local-access-gateway-guide-close"
+                            onClick={() =>
+                              setImportApiServiceGuideCount(null)
+                            }
+                            aria-label={t("common.close", "关闭")}
+                          >
+                            <X size={12} />
+                          </button>
+                          <div className="codex-local-access-gateway-guide-title">
+                            {t(
+                              "codex.importApiService.guideTitle",
+                              "账号已加入 API 服务",
+                            )}
+                          </div>
+                          <p>
+                            {t(
+                              "codex.importApiService.guideDescription",
+                              "已将 {{count}} 个账号加入 API 服务。点击“启动 API 服务”即可切换并使用。",
+                            ).replace(
+                              "{{count}}",
+                              String(importApiServiceGuideCount),
+                            )}
+                          </p>
+                          <button
+                            type="button"
+                            className="codex-local-access-gateway-guide-action"
+                            onClick={() =>
+                              setImportApiServiceGuideCount(null)
+                            }
+                          >
+                            {t("codex.importApiService.later", "稍后")}
+                          </button>
+                        </div>
+                      )}
+                    <button
+                      className="card-action-btn success"
+                      onClick={() => {
+                        setImportApiServiceGuideCount(null);
+                        void handleQuickActivateLocalAccess();
+                      }}
+                      title={t(
+                        "codex.localAccess.activateAction",
+                        "启动 API 服务",
+                      )}
+                      disabled={localAccessBusy || !localAccessCollection}
+                    >
+                      {localAccessStarting ? (
+                        <RefreshCw size={14} className="loading-spinner" />
+                      ) : (
+                        <Play size={14} />
+                      )}
+                    </button>
+                  </div>
                   <button
                     className={`card-action-btn ${localAccessCollection?.enabled ? "" : "success"}`}
                     onClick={() => void handleQuickToggleLocalAccessEnabled()}
@@ -10671,14 +11033,11 @@ export function CodexAccountsPage() {
         isApiKeyAccount && editingApiKeyNameId === account.id;
       const isSavingApiKeyName = savingApiKeyNameId === account.id;
       const planClass = presentation.planClass || "unknown";
-      const quotaItems =
-        isApiKeyAccount && !isNewApiAccount
-          ? []
-          : showCodeReviewQuota
-            ? presentation.quotaItems
-            : presentation.quotaItems.filter(
-                (item) => item.key !== "code_review",
-              );
+      const quotaItems = resolveVisibleQuotaItems(
+        presentation,
+        isApiKeyAccount,
+        isNewApiAccount,
+      );
       const reauthErrorMeta = resolveQuotaErrorMeta(
         account.requires_reauth && account.reauth_reason
           ? {
@@ -11317,6 +11676,18 @@ export function CodexAccountsPage() {
     setActiveTab("overview");
     closeExternalImportProgressModal();
   };
+
+  useEffect(() => {
+    if (externalImportRunning) {
+      setExternalImportSyncError(null);
+    }
+  }, [externalImportRunning]);
+
+  useEffect(() => {
+    if (importApiServiceGuideCount === null) return;
+    setActiveTab("overview");
+    setLocalAccessDetailsExpanded(true);
+  }, [importApiServiceGuideCount]);
 
   const renderApiKeyUsageDetailModal = () => {
     const account = apiKeyUsageDetailAccount;
@@ -12093,6 +12464,25 @@ export function CodexAccountsPage() {
                           {t("codex.batchImport.checkQuotaToggle", "检测账号")}
                         </span>
                       </label>
+                      <label className="codex-batch-import-check-toggle">
+                        <input
+                          type="checkbox"
+                          checked={syncImportedToApiService}
+                          disabled={batchImportBusy}
+                          onChange={(event) =>
+                            handleSyncImportedToApiServiceChange(
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span className="codex-batch-import-check-switch" />
+                        <span>
+                          {t(
+                            "codex.importApiService.toggle",
+                            "同步加入 API 服务",
+                          )}
+                        </span>
+                      </label>
                     </div>
                     <div className="codex-batch-import-actions">
                       <button
@@ -12409,6 +12799,17 @@ export function CodexAccountsPage() {
                   </div>
                 </div>
               )}
+              {externalImportSyncError && (
+                <div className="codex-import-api-service-error" role="alert">
+                  <CircleAlert size={16} />
+                  <span>
+                    {t(
+                      "codex.importApiService.syncFailed",
+                      "账号已导入，但加入 API 服务失败：{{error}}",
+                    ).replace("{{error}}", externalImportSyncError)}
+                  </span>
+                </div>
+              )}
             </div>
             {!externalImportRunning && (
               <div className="modal-footer codex-external-import-footer">
@@ -12520,8 +12921,9 @@ export function CodexAccountsPage() {
               <MultiSelectFilterDropdown
                 options={tierFilterOptions}
                 selectedValues={filterTypes}
-                allLabel={t("common.shared.filter.all", {
+                allLabel={t("codex.filters.allPlans", {
                   count: tierCounts.all,
+                  defaultValue: "全部套餐 ({{count}})",
                 })}
                 filterLabel={t("common.shared.filterLabel", "筛选")}
                 clearLabel={t("accounts.clearFilter", "清空筛选")}
@@ -12702,6 +13104,47 @@ export function CodexAccountsPage() {
             </div>
           </div>
 
+          {(showOverviewFilterBanner || hasActiveOverviewFilters) && (
+            <div
+              className={`codex-overview-filter-banner${
+                showOverviewFilterBanner ? " is-active" : ""
+              }`}
+              role="status"
+            >
+              <div className="codex-overview-filter-banner-main">
+                <span className="codex-overview-filter-banner-count">
+                  {t("codex.filters.visibleOfTotal", {
+                    visible: overviewVisibleCount,
+                    total: overviewTotalCount,
+                    defaultValue: "显示 {{visible}} / 共 {{total}}",
+                  })}
+                </span>
+                {showOverviewFilterBanner && (
+                  <span className="codex-overview-filter-banner-text">
+                    {t("codex.filters.activeBanner", {
+                      visible: overviewVisibleCount,
+                      total: overviewTotalCount,
+                      defaultValue:
+                        "当前筛选仅显示 {{visible}}/{{total}} 个账号",
+                    })}
+                  </span>
+                )}
+                {overviewFilterChips.length > 0 && (
+                  <span className="codex-overview-filter-banner-chips">
+                    {overviewFilterChips.join(" · ")}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary codex-overview-filter-clear-btn"
+                onClick={clearAllOverviewFilters}
+              >
+                {t("codex.filters.clearAll", "清除筛选")}
+              </button>
+            </div>
+          )}
+
           {loading && accounts.length === 0 ? (
             <div className="loading-container">
               <RefreshCw size={24} className="loading-spinner" />
@@ -12753,6 +13196,15 @@ export function CodexAccountsPage() {
               <p>
                 {t("common.shared.noMatch.desc", "请尝试调整搜索或筛选条件")}
               </p>
+              {hasActiveOverviewFilters && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={clearAllOverviewFilters}
+                >
+                  {t("codex.filters.clearAll", "清除筛选")}
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -12964,13 +13416,25 @@ export function CodexAccountsPage() {
                           : t("codex.batchImport.preparing")}
                     </span>
                   </div>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setBatchImportOpen(true)}
-                  >
-                    <FileText size={14} />
-                    <span>{t("codex.batchImport.reopen")}</span>
-                  </button>
+                  <div className="codex-batch-import-task__actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setBatchImportOpen(true)}
+                    >
+                      <FileText size={14} />
+                      <span>{t("codex.batchImport.reopen", "查看任务")}</span>
+                    </button>
+                    {!batchImportBusy && (
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleDismissBatchImportTask}
+                        title={t("codex.batchImport.dismissTask", "丢弃任务")}
+                      >
+                        <X size={14} />
+                        <span>{t("codex.batchImport.dismissTask", "丢弃")}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {overviewLayoutMode === "compact" ? (
@@ -13242,6 +13706,17 @@ export function CodexAccountsPage() {
                   </button>
                 </div>
                 <div className="modal-body">
+                  {codexAddTargetGroup && !reauthTargetAccount && (
+                    <div className="codex-add-target-group-hint">
+                      <FolderPlus size={14} />
+                      <span>
+                        {t("codex.addModal.targetGroup", {
+                          defaultValue: "将添加到分组：{{group}}",
+                          group: codexAddTargetGroup.name,
+                        })}
+                      </span>
+                    </div>
+                  )}
                   {addTab !== "oauth" && <MfaQuickCodeSelect />}
                   {addTab === "oauth" && (
                     <div className="add-section">
@@ -13931,6 +14406,33 @@ export function CodexAccountsPage() {
                           '示例：直接粘贴 session JSON、accessToken、Sub2API 导出 JSON，或 {"accessToken":"eyJ..."}',
                         )}
                       />
+                      <label className="codex-import-api-service-toggle">
+                        <span className="codex-import-api-service-toggle-copy">
+                          <strong>
+                            {t(
+                              "codex.importApiService.toggle",
+                              "同步加入 API 服务",
+                            )}
+                          </strong>
+                          <small>
+                            {t(
+                              "codex.importApiService.description",
+                              "导入成功后，将符合条件的账号加入 API 服务账号池。",
+                            )}
+                          </small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={syncImportedToApiService}
+                          disabled={importing}
+                          onChange={(event) =>
+                            handleSyncImportedToApiServiceChange(
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span className="codex-import-api-service-switch" />
+                      </label>
                       <button
                         className="btn btn-primary btn-full"
                         onClick={handleTokenImport}
@@ -13969,6 +14471,33 @@ export function CodexAccountsPage() {
                       <p className="section-desc">
                         {t("modals.import.fromFilesDesc")}
                       </p>
+                      <label className="codex-import-api-service-toggle">
+                        <span className="codex-import-api-service-toggle-copy">
+                          <strong>
+                            {t(
+                              "codex.importApiService.toggle",
+                              "同步加入 API 服务",
+                            )}
+                          </strong>
+                          <small>
+                            {t(
+                              "codex.importApiService.description",
+                              "导入成功后，将符合条件的账号加入 API 服务账号池。",
+                            )}
+                          </small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={syncImportedToApiService}
+                          disabled={importing}
+                          onChange={(event) =>
+                            handleSyncImportedToApiServiceChange(
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span className="codex-import-api-service-switch" />
+                      </label>
                       <button
                         className="btn btn-secondary btn-full"
                         onClick={handleImportFromFiles}

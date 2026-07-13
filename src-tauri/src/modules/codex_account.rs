@@ -3741,6 +3741,48 @@ pub fn sync_managed_projection_from_auth_dir(
     Ok(account)
 }
 
+/// Local API Service / loopback client URLs must not overwrite a stored real upstream.
+fn is_loopback_or_local_gateway_base_url(raw: Option<&str>) -> bool {
+    let Some(raw) = raw.map(str::trim).filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    let Ok(parsed) = reqwest::Url::parse(raw) else {
+        return false;
+    };
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return false;
+    }
+    let host = parsed
+        .host_str()
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    matches!(
+        host.as_str(),
+        "localhost" | "127.0.0.1" | "0.0.0.0" | "::1" | "[::1]"
+    )
+}
+
+fn is_loopback_http_base_url(raw: Option<&str>) -> bool {
+    let Some(raw) = raw.map(str::trim).filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    let Ok(parsed) = reqwest::Url::parse(raw) else {
+        return false;
+    };
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return false;
+    }
+    match parsed.host() {
+        Some(url::Host::Ipv4(addr)) => addr.is_loopback(),
+        Some(url::Host::Ipv6(addr)) => addr.is_loopback(),
+        Some(url::Host::Domain(host)) => {
+            host.eq_ignore_ascii_case("localhost") || host.eq_ignore_ascii_case("localhost.")
+        }
+        None => false,
+    }
+}
+
 fn sync_api_key_account_from_local_state(account: &mut CodexAccount, base_dir: &Path) {
     let auth_path = base_dir.join("auth.json");
     if !auth_path.exists() || !account.is_api_key_auth() {
@@ -3770,28 +3812,26 @@ fn sync_api_key_account_from_local_state(account: &mut CodexAccount, base_dir: &
     }
 
     let config_provider = read_api_provider_from_config_toml(base_dir);
-    let provider_mode =
-        if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
-            account.api_provider_mode.clone()
-        } else {
-            config_provider.mode.clone()
-        };
-    let provider_id =
-        if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
-            account.api_provider_id.as_deref()
-        } else {
-            config_provider.provider_id.as_deref()
-        };
-    let provider_name =
-        if config_provider.provider_id.as_deref() == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID) {
-            account.api_provider_name.as_deref()
-        } else {
-            config_provider.provider_name.as_deref()
-        };
+    // Local access / provider gateway profiles rewrite client base_url to loopback.
+    // Never treat that runtime endpoint as the account's real upstream provider URL,
+    // or sidecar codex-api-key base-url will form a self-proxy loop after switch.
+    let using_runtime_local_provider = config_provider.provider_id.as_deref()
+        == Some(CODEX_RUNTIME_MODEL_PROVIDER_ID)
+        || is_loopback_http_base_url(config_provider.base_url.as_deref());
+    if using_runtime_local_provider {
+        return;
+    }
+
+    let provider_mode = config_provider.mode.clone();
+    let provider_id = config_provider.provider_id.as_deref();
+    let provider_name = config_provider.provider_name.as_deref();
+    let resolved_base_url = extract_api_base_url_from_auth_file(&auth_file)
+        .or_else(|| config_provider.base_url.clone());
+    if is_loopback_http_base_url(resolved_base_url.as_deref()) {
+        return;
+    }
     let current_provider = infer_api_provider_config(
-        extract_api_base_url_from_auth_file(&auth_file)
-            .or_else(|| config_provider.base_url.clone())
-            .as_deref(),
+        resolved_base_url.as_deref(),
         Some(provider_mode),
         provider_id,
         provider_name,
@@ -3804,6 +3844,12 @@ fn sync_api_key_account_from_local_state(account: &mut CodexAccount, base_dir: &
     );
 
     if account_provider == current_provider {
+        return;
+    }
+
+    // Profile after local API attach uses localhost as the *client* Base URL.
+    // Never write that back as the account's real upstream (breaks sidecar).
+    if is_loopback_or_local_gateway_base_url(current_provider.base_url.as_deref()) {
         return;
     }
 
@@ -7686,9 +7732,10 @@ mod tests {
         looks_like_sub2api_export, now_timestamp, parse_auth_file_last_refresh,
         parse_codex_account_compat, parse_line_delimited_json_values,
         read_api_provider_from_config_toml, read_quick_config_from_config_toml, remove_accounts,
-        resolve_api_provider_config, save_account, save_account_index,
+        is_loopback_http_base_url, resolve_api_provider_config, save_account, save_account_index,
         should_accept_authority_snapshot, sync_account_from_auth_dir,
-        sync_managed_projection_from_auth_dir, upsert_account, upsert_account_for_reauth,
+        sync_api_key_account_from_local_state, sync_managed_projection_from_auth_dir,
+        upsert_account, upsert_account_for_reauth,
         upsert_account_from_access_token, upsert_account_from_access_token_with_hints,
         upsert_account_from_auth_tokens, validate_api_key_credentials, write_account_bundle_to_dir,
         write_api_key_provider_to_config_toml, write_api_provider_to_config_toml,
@@ -10443,6 +10490,58 @@ multi_agent = true
                 .expect("valid api key + base url should pass");
         assert_eq!(api_key, "sk-test-key");
         assert_eq!(api_base_url.as_deref(), Some("https://relay.local/v1"));
+    }
+
+    #[test]
+    fn loopback_http_base_url_detection() {
+        assert!(is_loopback_http_base_url(Some("http://localhost:53549/v1")));
+        assert!(is_loopback_http_base_url(Some("http://127.0.0.1:53549/v1")));
+        assert!(is_loopback_http_base_url(Some("http://[::1]:53549/v1")));
+        assert!(!is_loopback_http_base_url(Some("https://relay.example/v1")));
+        assert!(!is_loopback_http_base_url(None));
+    }
+
+    #[test]
+    fn sync_api_key_account_skips_local_access_loopback_provider() {
+        let base_dir = make_temp_dir("codex-sync-api-key-local-access");
+        fs::write(
+            base_dir.join("auth.json"),
+            r#"{
+              "auth_mode": "apikey",
+              "OPENAI_API_KEY": "sk-test-key"
+            }"#,
+        )
+        .expect("write auth");
+        fs::write(
+            base_dir.join("config.toml"),
+            r#"model_provider = "codex_local_access"
+
+[model_providers.codex_local_access]
+name = "Codex Local Access"
+base_url = "http://localhost:53549/v1"
+wire_api = "responses"
+"#,
+        )
+        .expect("write config");
+
+        let mut account = CodexAccount::new_api_key(
+            "api-1".to_string(),
+            "api-key@example.com".to_string(),
+            "sk-test-key".to_string(),
+            CodexApiProviderMode::Custom,
+            Some("https://relay.example/v1".to_string()),
+            Some("relay".to_string()),
+            Some("Relay".to_string()),
+            Vec::new(),
+        );
+        let original_base = account.api_base_url.clone();
+        let original_provider_id = account.api_provider_id.clone();
+
+        sync_api_key_account_from_local_state(&mut account, &base_dir);
+
+        assert_eq!(account.api_base_url, original_base);
+        assert_eq!(account.api_provider_id, original_provider_id);
+        fs::remove_dir_all(&base_dir).expect("cleanup temp dir");
     }
 
     #[test]

@@ -9,6 +9,7 @@ import type { GitHubCopilotAccount } from "../types/githubCopilot";
 import type { WindsurfAccount } from "../types/windsurf";
 import type { CursorAccount } from "../types/cursor";
 import type { GeminiAccount } from "../types/gemini";
+import type { GrokAccount } from "../types/grok";
 import type { KiroAccount, KiroAccountStatus } from "../types/kiro";
 import type { QoderAccount, QoderSubscriptionInfo } from "../types/qoder";
 import type { TraeAccount } from "../types/trae";
@@ -85,6 +86,13 @@ import {
   getGeminiPlanBadgeClass,
   getGeminiTierQuotaSummary,
 } from "../types/gemini";
+import {
+  formatGrokQuotaUsedTotal,
+  getGrokAccountDisplayEmail,
+  getGrokPlanBadge,
+  getGrokQuotaClass,
+  getGrokQuotaSummaryItems,
+} from "../types/grok";
 import {
   formatKiroResetTime,
   getKiroAccountDisplayEmail,
@@ -1715,6 +1723,53 @@ export function buildGeminiAccountPresentation(
     planLabel,
     planClass: getGeminiPlanBadgeClass(undefined, account),
     isBanned: false,
+    quotaItems,
+  };
+}
+
+export function buildGrokAccountPresentation(
+  account: GrokAccount,
+  t: Translate,
+): UnifiedAccountPresentation {
+  const quotaItems: UnifiedQuotaMetric[] = getGrokQuotaSummaryItems(account, t).map(
+    (item) => {
+      const usedPercent = clampPercent(item.percentage);
+      const remaining = clampPercent(100 - usedPercent);
+      const amountText = formatGrokQuotaUsedTotal(item.used, item.total);
+      const left =
+        item.used != null && item.total != null
+          ? Math.max(0, item.total - item.used)
+          : null;
+      const valueText = amountText
+        ? `${amountText} · ${Math.round(usedPercent)}%`
+        : t("common.shared.quota.leftPercent", "{{value}}% left", {
+            value: Math.round(remaining),
+          });
+      return {
+        key: item.key,
+        label: item.label,
+        percentage: remaining,
+        progressPercent: usedPercent,
+        // Match overview card coloring (used% based), not remaining-only class.
+        quotaClass: getGrokQuotaClass(usedPercent),
+        valueText,
+        resetAt: item.resetAtMs,
+        resetText: formatMetricResetText(item.resetAtMs, t),
+        used: item.used ?? usedPercent,
+        total: item.total ?? 100,
+        left: left ?? remaining,
+        showProgress: true,
+      };
+    },
+  );
+
+  const planBadge = getGrokPlanBadge(account);
+  return {
+    id: account.id,
+    displayName: getGrokAccountDisplayEmail(account),
+    planLabel: planBadge || t("common.none", "暂无"),
+    // Missing tier (暂无) uses Free styling, not red unknown.
+    planClass: planBadge ? "plan-badge-default" : "free",
     quotaItems,
   };
 }
