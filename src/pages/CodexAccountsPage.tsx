@@ -8677,12 +8677,8 @@ export function CodexAccountsPage() {
 
     setLocalAccessRefreshing(true);
     try {
-      const results = await Promise.allSettled(
-        targetIds.map((accountId) => refreshQuota(accountId)),
-      );
-      const successCount = results.filter(
-        (result) => result.status === "fulfilled",
-      ).length;
+      // 后端限流并发（MAX=5），避免 N 路全开 + 每号 fetchAccounts thrash
+      const successCount = await codexService.refreshCodexQuotasBatch(targetIds);
 
       await fetchAccounts();
       await fetchCurrentAccount();
@@ -8705,13 +8701,9 @@ export function CodexAccountsPage() {
         return;
       }
 
-      const firstFailure = results.find(
-        (result): result is PromiseRejectedResult =>
-          result.status === "rejected",
-      );
       setMessage({
         text: t("codex.refreshFailed", {
-          error: String(firstFailure?.reason ?? "").replace(/^Error:\s*/, ""),
+          error: t("common.shared.quota.queryFailed", "配额查询失败"),
         }),
         tone: "error",
       });
@@ -8723,7 +8715,6 @@ export function CodexAccountsPage() {
     fetchAccounts,
     fetchCurrentAccount,
     localAccessCollection,
-    refreshQuota,
     setMessage,
     t,
   ]);
@@ -9245,14 +9236,9 @@ export function CodexAccountsPage() {
 
       setRefreshingGroupId(group.id);
       try {
-        const results = await Promise.allSettled(
-          targetIds.map((accountId) =>
-            codexService.refreshCodexQuota(accountId),
-          ),
-        );
-        const successCount = results.filter(
-          (result) => result.status === "fulfilled",
-        ).length;
+        // 与 refresh_all 同源限流；避免 Promise.allSettled 无上限并发导致部分账号失败
+        const successCount =
+          await codexService.refreshCodexQuotasBatch(targetIds);
 
         await fetchAccounts();
         await fetchCurrentAccount();
@@ -9275,13 +9261,9 @@ export function CodexAccountsPage() {
           return;
         }
 
-        const firstFailure = results.find(
-          (result): result is PromiseRejectedResult =>
-            result.status === "rejected",
-        );
         setMessage({
           text: t("codex.refreshFailed", {
-            error: String(firstFailure?.reason ?? "").replace(/^Error:\s*/, ""),
+            error: t("common.shared.quota.queryFailed", "配额查询失败"),
           }),
           tone: "error",
         });

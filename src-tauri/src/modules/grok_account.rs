@@ -2081,15 +2081,44 @@ pub async fn force_refresh_account(account_id: &str) -> Result<GrokAccountView, 
 
 pub async fn refresh_all_accounts() -> Result<Vec<(String, Result<GrokAccountView, String>)>, String>
 {
+    use futures::future::join_all;
+    use std::sync::Arc;
+    use tokio::sync::Semaphore;
+
+    // 多账号时全串行易拖垮 IPC/超时；过高并发会触发上游限流与 token 旋转压力。
+    // 每账号有独立 token 锁，跨账号限流并发是安全的。
+    const MAX_CONCURRENT: usize = 3;
     let ids: Vec<String> = load_index()?
         .accounts
         .into_iter()
         .map(|item| item.id)
         .collect();
-    let mut results = Vec::new();
-    for id in ids {
-        let result = refresh_account(&id).await;
-        results.push((id, result));
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT));
+    let tasks: Vec<_> = ids
+        .into_iter()
+        .map(|account_id| {
+            let semaphore = semaphore.clone();
+            async move {
+                let _permit = semaphore
+                    .acquire_owned()
+                    .await
+                    .map_err(|error| format!("获取 Grok 刷新并发许可失败: {}", error))?;
+                let result = refresh_account(&account_id).await;
+                Ok::<(String, Result<GrokAccountView, String>), String>((account_id, result))
+            }
+        })
+        .collect();
+
+    let mut results = Vec::with_capacity(tasks.len());
+    for task in join_all(tasks).await {
+        match task {
+            Ok(item) => results.push(item),
+            Err(error) => return Err(error),
+        }
     }
     Ok(results)
 }
