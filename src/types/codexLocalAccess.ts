@@ -2,20 +2,12 @@ export type CodexLocalAccessAddressKind = "local" | "lan";
 export type CodexLocalAccessScope = "localhost" | "lan";
 export type CodexLocalAccessClientBaseUrlHost = "localhost" | "127.0.0.1";
 export type CodexLocalAccessImageGenerationMode =
-  | "enabled"
-  | "images_only"
-  | "disabled";
+  "enabled" | "images_only" | "disabled";
 export type CodexLocalAccessGatewayMode = "legacy" | "sidecar";
 export type CodexLocalAccessRequestKind =
-  | "text"
-  | "image_generation"
-  | "image_edit"
-  | "other";
+  "text" | "image_generation" | "image_edit" | "other";
 export type CodexLocalAccessImageGenerationStatus =
-  | "unknown"
-  | "available"
-  | "unavailable"
-  | "disabled";
+  "unknown" | "available" | "unavailable" | "disabled";
 
 export type CodexLocalAccessRoutingStrategy =
   | "auto"
@@ -31,6 +23,12 @@ export interface CodexLocalAccessCustomRoutingRule {
   accountId: string;
   priority: number;
   weight: number;
+  isBackup: boolean;
+}
+
+export interface CodexLocalAccessOAuthQuotaReserve {
+  hourlyPercent: number;
+  weeklyPercent: number;
 }
 
 export interface CodexLocalAccessAccountModelRule {
@@ -46,9 +44,19 @@ export interface CodexLocalAccessModelAlias {
 
 export interface CodexLocalAccessModelPricing {
   modelId: string;
+  longContextThresholdTokens?: number | null;
   inputUsdPerMillion: number;
   outputUsdPerMillion: number;
   cachedInputUsdPerMillion?: number | null;
+  standardLongInputUsdPerMillion?: number | null;
+  standardLongOutputUsdPerMillion?: number | null;
+  standardLongCachedInputUsdPerMillion?: number | null;
+  priorityInputUsdPerMillion?: number | null;
+  priorityOutputUsdPerMillion?: number | null;
+  priorityCachedInputUsdPerMillion?: number | null;
+  priorityLongInputUsdPerMillion?: number | null;
+  priorityLongOutputUsdPerMillion?: number | null;
+  priorityLongCachedInputUsdPerMillion?: number | null;
 }
 
 export interface CodexLocalAccessApiKey {
@@ -126,6 +134,7 @@ export interface CodexLocalAccessCollection {
   disableCooling: boolean;
   restrictFreeAccounts: boolean;
   boundOauthAccountId?: string | null;
+  boundOauthQuotaReserve?: CodexLocalAccessOAuthQuotaReserve | null;
   accountIds: string[];
   createdAt: number;
   updatedAt: number;
@@ -191,6 +200,7 @@ export interface CodexLocalAccessUsageEvent {
   modelId: string;
   gatewayMode?: CodexLocalAccessGatewayMode | null;
   requestKind: CodexLocalAccessRequestKind;
+  serviceTier?: string | null;
   success: boolean;
   httpStatus?: number | null;
   errorCategory: string;
@@ -275,6 +285,17 @@ export interface CodexLocalAccessProfileAttachment {
   error: string | null;
 }
 
+export interface CodexLocalAccessQuotaReserveStatus {
+  accountId: string;
+  snapshotUpdatedAt: number | null;
+  snapshotFresh: boolean;
+  blocked: boolean;
+  warning: boolean;
+  effectiveWindow: "hourly" | "weekly" | null;
+  effectiveRemainingPercent: number | null;
+  effectiveReservePercent: number | null;
+}
+
 export interface CodexLocalAccessState {
   collection: CodexLocalAccessCollection | null;
   running: boolean;
@@ -288,6 +309,19 @@ export interface CodexLocalAccessState {
   memberCount: number;
   stats: CodexLocalAccessStats;
   accountHealth: CodexLocalAccessAccountHealth[];
+  quotaReserveStatus: CodexLocalAccessQuotaReserveStatus | null;
+}
+
+export interface CodexLocalAccessAppendAccountSkipped {
+  accountId: string;
+  reason: "not_found" | "chat_completions_api_key" | "free_restricted";
+}
+
+export interface CodexLocalAccessAppendAccountsResult {
+  state: CodexLocalAccessState;
+  syncedAccountIds: string[];
+  addedAccountIds: string[];
+  skippedAccounts: CodexLocalAccessAppendAccountSkipped[];
 }
 
 export interface CodexLocalAccessTestResult {

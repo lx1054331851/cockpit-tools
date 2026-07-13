@@ -3,13 +3,13 @@ use crate::models::codex::{
     CodexQuota, CodexTokens,
 };
 use crate::models::codex_local_access::{
-    CodexLocalAccessAccountModelRule, CodexLocalAccessChatMessage, CodexLocalAccessChatResult,
-    CodexLocalAccessClientBaseUrlHost, CodexLocalAccessCustomRoutingRule,
-    CodexLocalAccessGatewayMode, CodexLocalAccessModelAlias, CodexLocalAccessModelPricing,
-    CodexLocalAccessPortCleanupResult, CodexLocalAccessRequestKind,
-    CodexLocalAccessRoutingStrategy, CodexLocalAccessScope, CodexLocalAccessState,
-    CodexLocalAccessTestFailure, CodexLocalAccessTestResult, CodexLocalAccessTimeoutPreset,
-    CodexLocalAccessTimeouts, CodexLocalAccessUsageEventPage,
+    CodexLocalAccessAccountModelRule, CodexLocalAccessAppendAccountsResult,
+    CodexLocalAccessChatMessage, CodexLocalAccessChatResult, CodexLocalAccessClientBaseUrlHost,
+    CodexLocalAccessCustomRoutingRule, CodexLocalAccessGatewayMode, CodexLocalAccessModelAlias,
+    CodexLocalAccessModelPricing, CodexLocalAccessPortCleanupResult, CodexLocalAccessQuotaReserve,
+    CodexLocalAccessRequestKind, CodexLocalAccessRoutingStrategy, CodexLocalAccessScope,
+    CodexLocalAccessState, CodexLocalAccessTestFailure, CodexLocalAccessTestResult,
+    CodexLocalAccessTimeoutPreset, CodexLocalAccessTimeouts, CodexLocalAccessUsageEventPage,
 };
 use crate::modules::{
     account, codex_account, codex_local_access, codex_oauth, codex_quota, codex_session_visibility,
@@ -1178,6 +1178,15 @@ pub async fn codex_oauth_login_start(
     Ok(response)
 }
 
+/// OAuth：在内置无痕 WebView 中打开当前授权地址
+#[tauri::command]
+pub fn codex_oauth_open_incognito_window(
+    app_handle: AppHandle,
+    auth_url: String,
+) -> Result<(), String> {
+    codex_oauth::open_incognito_oauth_window(&app_handle, &auth_url)
+}
+
 /// OAuth：浏览器授权完成后按 loginId 完成登录
 #[tauri::command]
 pub async fn codex_oauth_login_completed(
@@ -1214,7 +1223,10 @@ pub async fn codex_oauth_login_completed(
 
 /// OAuth：按 loginId 取消登录（login_id 为空时取消当前流程）
 #[tauri::command]
-pub fn codex_oauth_login_cancel(login_id: Option<String>) -> Result<(), String> {
+pub fn codex_oauth_login_cancel(
+    app_handle: AppHandle,
+    login_id: Option<String>,
+) -> Result<(), String> {
     logger::log_info(&format!(
         "Codex OAuth cancel 命令触发: login_id={}",
         login_id.as_deref().unwrap_or("<none>")
@@ -1224,7 +1236,8 @@ pub fn codex_oauth_login_cancel(login_id: Option<String>) -> Result<(), String> 
         "Codex OAuth cancel 命令返回: {:?}",
         result.as_ref().map(|_| "ok").map_err(|e| e)
     ));
-    result
+    result?;
+    codex_oauth::close_oauth_window(&app_handle)
 }
 
 /// OAuth：手动提交回调链接（用于本地端口不可达时）
@@ -1238,6 +1251,7 @@ pub fn codex_oauth_submit_callback_url(
     let payload = serde_json::json!({ "loginId": login_id });
     let _ = app_handle.emit("codex-oauth-login-completed", payload.clone());
     let _ = app_handle.emit("ghcp-oauth-login-completed", payload);
+    codex_oauth::close_oauth_window(&app_handle)?;
     Ok(())
 }
 
@@ -1274,6 +1288,7 @@ pub fn add_codex_account_with_api_key(
     api_provider_name: Option<String>,
     api_model_catalog: Option<Vec<String>>,
     api_wire_api: Option<String>,
+    api_supports_websockets: Option<bool>,
     api_supports_vision: Option<bool>,
     api_model_vision_support: Option<std::collections::HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
@@ -1287,6 +1302,7 @@ pub fn add_codex_account_with_api_key(
         api_provider_name,
         api_model_catalog.unwrap_or_default(),
         api_wire_api,
+        api_supports_websockets.unwrap_or(false),
         api_supports_vision.unwrap_or(false),
         api_model_vision_support.unwrap_or_default(),
         api_vision_routing_model,
@@ -1310,6 +1326,7 @@ pub fn update_codex_api_key_credentials(
     api_provider_name: Option<String>,
     api_model_catalog: Option<Vec<String>>,
     api_wire_api: Option<String>,
+    api_supports_websockets: Option<bool>,
     api_supports_vision: Option<bool>,
     api_model_vision_support: Option<std::collections::HashMap<String, bool>>,
     api_vision_routing_model: Option<String>,
@@ -1323,6 +1340,7 @@ pub fn update_codex_api_key_credentials(
         api_provider_name,
         api_model_catalog.unwrap_or_default(),
         api_wire_api,
+        api_supports_websockets.unwrap_or(false),
         api_supports_vision.unwrap_or(false),
         api_model_vision_support.unwrap_or_default(),
         api_vision_routing_model,
@@ -1410,8 +1428,7 @@ pub async fn fetch_codex_account_note_mail_url(
     if mail_url.is_empty() {
         return Err("MAIL_URL_EMPTY".to_string());
     }
-    let parsed = reqwest::Url::parse(mail_url)
-        .map_err(|_| "MAIL_URL_INVALID".to_string())?;
+    let parsed = reqwest::Url::parse(mail_url).map_err(|_| "MAIL_URL_INVALID".to_string())?;
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err("MAIL_URL_UNSUPPORTED_SCHEME".to_string());
     }
@@ -2865,6 +2882,13 @@ pub async fn codex_local_access_save_accounts(
 }
 
 #[tauri::command]
+pub async fn codex_local_access_append_accounts(
+    account_ids: Vec<String>,
+) -> Result<CodexLocalAccessAppendAccountsResult, String> {
+    codex_local_access::append_local_access_accounts(account_ids).await
+}
+
+#[tauri::command]
 pub async fn codex_local_access_remove_account(
     account_id: String,
 ) -> Result<CodexLocalAccessState, String> {
@@ -2880,10 +2904,12 @@ pub async fn codex_local_access_rotate_api_key() -> Result<CodexLocalAccessState
 pub async fn codex_local_access_update_bound_oauth_account(
     bound_oauth_account_id: Option<String>,
     bound_oauth_use_local_gateway: Option<bool>,
+    bound_oauth_quota_reserve: Option<CodexLocalAccessQuotaReserve>,
 ) -> Result<CodexLocalAccessState, String> {
     codex_local_access::update_local_access_bound_oauth_account(
         bound_oauth_account_id,
         bound_oauth_use_local_gateway.unwrap_or(false),
+        bound_oauth_quota_reserve,
     )
     .await
 }
@@ -2967,9 +2993,10 @@ pub async fn codex_local_access_update_model_rules(
 
 #[tauri::command]
 pub async fn codex_local_access_update_model_pricings(
+    app: AppHandle,
     model_pricings: Vec<CodexLocalAccessModelPricing>,
 ) -> Result<CodexLocalAccessState, String> {
-    codex_local_access::update_local_access_model_pricings(model_pricings).await
+    codex_local_access::update_local_access_model_pricings(app, model_pricings).await
 }
 
 #[tauri::command]
