@@ -57,6 +57,8 @@ const ginUserAPIKeyKey = "userApiKey"
 const defaultStreamKeepAliveSeconds = 15
 const quotaReserveMaxSnapshotAge = 3 * time.Minute
 const codexAutoReviewModel = "codex-auto-review"
+const codexSparkModel = "gpt-5.3-codex-spark"
+const codexSparkCatalogTemplateModel = "gpt-5.3-codex"
 const defaultImagesMainModel = "gpt-5.4-mini"
 const defaultImagesToolModel = "gpt-image-2"
 const imagesGenerationsPath = "/v1/images/generations"
@@ -1069,6 +1071,7 @@ func buildCodexClientModelsResponse(models []string) gin.H {
 	}
 	response := gin.H(sdkopenai.CodexClientModelsResponse(sourceModels))
 	if data, ok := response["models"].([]map[string]any); ok {
+		hydrateCodexCompatibilityModels(data)
 		for index, model := range data {
 			slug, _ := model["slug"].(string)
 			if isHiddenCodexClientModel(slug) {
@@ -1085,6 +1088,33 @@ func buildCodexClientModelsResponse(models []string) gin.H {
 	return response
 }
 
+func hydrateCodexCompatibilityModels(models []map[string]any) {
+	var template map[string]any
+	for _, model := range models {
+		if model["slug"] == codexSparkCatalogTemplateModel {
+			template = model
+			break
+		}
+	}
+	if template == nil {
+		return
+	}
+
+	for index, model := range models {
+		if model["slug"] != codexSparkModel {
+			continue
+		}
+		compatibilityModel := make(map[string]any, len(template))
+		for key, value := range template {
+			compatibilityModel[key] = value
+		}
+		compatibilityModel["slug"] = codexSparkModel
+		compatibilityModel["display_name"] = "GPT-5.3 Codex Spark"
+		compatibilityModel["description"] = "GPT-5.3 Codex Spark"
+		models[index] = compatibilityModel
+	}
+}
+
 func displayNameForModel(model string) string {
 	switch model {
 	case "gpt-5-codex":
@@ -1097,7 +1127,7 @@ func displayNameForModel(model string) string {
 		return "GPT-5.4 Mini"
 	case "gpt-5.3-codex":
 		return "GPT-5.3 Codex"
-	case "gpt-5.3-codex-spark":
+	case codexSparkModel:
 		return "GPT-5.3 Codex Spark"
 	case "gpt-5.2":
 		return "GPT-5.2"

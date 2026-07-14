@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,27 @@ func TestCodexClientModelsResponseShape(t *testing.T) {
 	}
 	if reviewModel["visibility"] != "hide" {
 		t.Fatalf("auto review model should be hidden in Codex client catalog: %#v", reviewModel)
+	}
+}
+
+func TestCodexSparkUsesCompleteCodexClientCatalogTemplate(t *testing.T) {
+	response := buildCodexClientModelsResponse([]string{codexSparkCatalogTemplateModel, codexSparkModel})
+	models, ok := response["models"].([]map[string]any)
+	if !ok {
+		t.Fatalf("models response should contain a models array: %#v", response["models"])
+	}
+	template := findCodexClientModelForTest(models, codexSparkCatalogTemplateModel)
+	spark := findCodexClientModelForTest(models, codexSparkModel)
+	if template == nil || spark == nil {
+		t.Fatalf("expected template and Spark models, got %#v", models)
+	}
+	if spark["display_name"] != "GPT-5.3 Codex Spark" || spark["visibility"] != "list" || spark["supported_in_api"] != true {
+		t.Fatalf("Spark should be listed as an API model: %#v", spark)
+	}
+	for _, field := range []string{"available_in_plans", "base_instructions", "minimal_client_version", "model_messages", "prefer_websockets"} {
+		if spark[field] == nil || !reflect.DeepEqual(spark[field], template[field]) {
+			t.Fatalf("Spark should inherit %s from the Codex client template: %#v", field, spark[field])
+		}
 	}
 }
 
