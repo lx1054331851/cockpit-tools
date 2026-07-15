@@ -245,6 +245,8 @@ export interface CodexLocalAccessRequestLogQuery {
   page: number;
   pageSize: number;
   statsRange?: "daily" | "weekly" | "monthly" | null;
+  startAt?: number | null;
+  endAt?: number | null;
   modelQuery?: string | null;
   accountQuery?: string | null;
   apiKeyQuery?: string | null;

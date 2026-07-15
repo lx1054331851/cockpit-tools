@@ -1977,7 +1977,12 @@
         "label": "統計範囲",
         "daily": "日",
         "weekly": "週",
-        "monthly": "月"
+        "monthly": "月",
+        "custom": "カスタム",
+        "start": "開始",
+        "end": "終了",
+        "apply": "適用",
+        "invalid": "終了時刻は開始時刻より前にできません"
       },
       "enableBeforeActivateTitle": "サービスが未有効です",
       "enableBeforeActivateMessage": "APIサービスは現在無効です。先に有効化する必要があります。有効化して切り替えますか？",

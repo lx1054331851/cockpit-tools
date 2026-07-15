@@ -7,6 +7,24 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
 ---
+## [1.3.3] - 2026-07-15
+
+### 新增
+
+- **Codex API 服务支持随机账号路由**：新请求可在符合条件的账号之间随机分配，同时保留会话粘性、冷却、账号健康、配额预留和模型资格规则。
+- **sidecar 网关支持可选的 SSE 立即返回 200**：上游流建立前先提交 `200 OK` 和 `: accepted` SSE 注释；默认关闭，上游失败时会在响应头已提交后通过 SSE 错误事件返回。
+
+### 变更
+
+- **移除 `image_generation` 禁用功能**：不再使用此前用于规避部分供应商返回 `Image generation is not enabled` 的请求过滤和 OAuth 本地网关方案；图片生成功能仍可通过正常的 Codex API 路径使用。
+- **Devin/Windsurf 不再执行后台 Token 保活**：用户未操作时不再自动刷新并回写本地登录，避免后台触发 macOS Keychain 授权；手动切号和启动绑定实例时仍会按需注入凭据。
+
+### 修复
+
+- **修复 Codex API 服务绑定 OAuth 后启动被误判失败的问题**：使用 OAuth `auth.json` / Keychain 登录态的 profile 现在可以通过本地 API 接管校验；仅 API Key profile 继续使用生图兼容配置。
+- **修复 Windows 特殊挂载目录下 Codex 账号无法批量导入或删除的问题**：任务快照目录不可创建时不再阻断批量操作，已有目录也不再重复执行目录创建。
+
+---
 ## [1.3.2] - 2026-07-15
 
 ### 重要更新

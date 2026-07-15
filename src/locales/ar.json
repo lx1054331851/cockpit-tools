@@ -2024,7 +2024,12 @@
         "label": "نطاق الإحصاءات",
         "daily": "يوم",
         "weekly": "أسبوع",
-        "monthly": "شهر"
+        "monthly": "شهر",
+        "custom": "مخصص",
+        "start": "البداية",
+        "end": "النهاية",
+        "apply": "تطبيق",
+        "invalid": "لا يمكن أن يسبق وقت النهاية وقت البداية"
       },
       "enableBeforeActivateTitle": "الخدمة غير مفعلة",
       "enableBeforeActivateMessage": "خدمة API غير مفعلة حاليًا، ويجب تفعيلها أولًا. هل تريد التفعيل والتبديل الآن؟",

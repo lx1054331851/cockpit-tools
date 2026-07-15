@@ -1977,7 +1977,12 @@
         "label": "Zeitraum",
         "daily": "Tag",
         "weekly": "Woche",
-        "monthly": "Monat"
+        "monthly": "Monat",
+        "custom": "Benutzerdefiniert",
+        "start": "Start",
+        "end": "Ende",
+        "apply": "Anwenden",
+        "invalid": "Die Endzeit darf nicht vor der Startzeit liegen"
       },
       "enableBeforeActivateTitle": "Dienst nicht aktiviert",
       "enableBeforeActivateMessage": "Der API-Dienst ist derzeit deaktiviert und muss zuerst aktiviert werden. Jetzt aktivieren und wechseln?",

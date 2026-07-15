@@ -1977,7 +1977,12 @@
         "label": "Período",
         "daily": "Dia",
         "weekly": "Semana",
-        "monthly": "Mês"
+        "monthly": "Mês",
+        "custom": "Personalizado",
+        "start": "Início",
+        "end": "Fim",
+        "apply": "Aplicar",
+        "invalid": "O horário final não pode ser anterior ao inicial"
       },
       "enableBeforeActivateTitle": "Serviço desativado",
       "enableBeforeActivateMessage": "O serviço de API está desativado no momento e precisa ser ativado primeiro. Ativar e alternar agora?",

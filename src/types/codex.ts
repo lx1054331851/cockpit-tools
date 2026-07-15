@@ -33,7 +33,6 @@ export interface CodexAccount {
   api_model_vision_support?: Record<string, boolean>;
   api_vision_routing_model?: string | null;
   bound_oauth_account_id?: string | null;
-  bound_oauth_use_local_gateway?: boolean;
   user_id?: string;
   plan_type?: string;
   subscription_active_until?: string;

@@ -2247,7 +2247,12 @@
         "label": "Stats Range",
         "daily": "Day",
         "weekly": "Week",
-        "monthly": "Month"
+        "monthly": "Month",
+        "custom": "Custom",
+        "start": "Start",
+        "end": "End",
+        "apply": "Apply",
+        "invalid": "End time cannot be earlier than start time"
       },
       "quotaPool": {
         "title": "Quota Pool",

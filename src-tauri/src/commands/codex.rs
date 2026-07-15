@@ -19,7 +19,7 @@ use crate::modules::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
@@ -73,9 +73,7 @@ fn get_codex_batch_delete_jobs_dir() -> PathBuf {
     let data_dir = account::get_data_dir()
         .or_else(|_| account::resolve_data_dir())
         .unwrap_or_else(|_| PathBuf::from(".antigravity_cockpit"));
-    let dir = data_dir.join(CODEX_BATCH_DELETE_JOBS_DIR);
-    let _ = fs::create_dir_all(&dir);
-    dir
+    data_dir.join(CODEX_BATCH_DELETE_JOBS_DIR)
 }
 
 fn sanitize_codex_batch_delete_job_id(job_id: &str) -> Result<String, String> {
@@ -97,14 +95,32 @@ fn codex_batch_delete_job_snapshot_path(job_id: &str) -> Result<PathBuf, String>
     Ok(get_codex_batch_delete_jobs_dir().join(format!("{}.json", safe_id)))
 }
 
+fn ensure_codex_batch_delete_jobs_dir(path: &Path) -> Result<(), String> {
+    if path.is_dir() {
+        return Ok(());
+    }
+    if path.exists() {
+        return Err(format!(
+            "创建 Codex 批量删除任务目录失败: path={} 不是目录",
+            path.display()
+        ));
+    }
+    fs::create_dir(path).map_err(|error| {
+        format!(
+            "创建 Codex 批量删除任务目录失败: path={}, error={}",
+            path.display(),
+            error
+        )
+    })
+}
+
 fn save_codex_batch_delete_job_snapshot(
     job_id: &str,
     job: &CodexBatchDeleteJob,
 ) -> Result<(), String> {
     let path = codex_batch_delete_job_snapshot_path(job_id)?;
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("创建 Codex 批量删除任务目录失败: {}", error))?;
+        ensure_codex_batch_delete_jobs_dir(parent)?;
     }
     let content = serde_json::to_string_pretty(job)
         .map_err(|error| format!("序列化 Codex 批量删除任务失败: {}", error))?;
@@ -315,7 +331,9 @@ fn start_codex_batch_delete_job(
         created_at: now,
         updated_at: now,
     };
-    save_codex_batch_delete_job_snapshot(&job_id, &job)?;
+    // 任务快照用于崩溃恢复，但不能阻断实际删除。某些 Windows 数据目录位于
+    // junction/reparse point 下时，创建新目录可能返回 ERROR_UNTRUSTED_MOUNT_POINT。
+    save_codex_batch_delete_job_snapshot_best_effort(&job_id, &job);
     {
         let mut jobs = CODEX_BATCH_DELETE_JOBS.lock().unwrap();
         jobs.insert(job_id.clone(), job);
@@ -1454,14 +1472,8 @@ pub fn update_codex_api_key_credentials(
 pub async fn update_codex_api_key_bound_oauth_account(
     account_id: String,
     bound_oauth_account_id: Option<String>,
-    bound_oauth_use_local_gateway: Option<bool>,
 ) -> Result<CodexAccount, String> {
-    codex_account::update_api_key_bound_oauth_account(
-        &account_id,
-        bound_oauth_account_id,
-        bound_oauth_use_local_gateway.unwrap_or(false),
-    )
-    .await
+    codex_account::update_api_key_bound_oauth_account(&account_id, bound_oauth_account_id).await
 }
 
 #[tauri::command]
@@ -3065,12 +3077,10 @@ pub async fn codex_local_access_rotate_api_key() -> Result<CodexLocalAccessState
 #[tauri::command]
 pub async fn codex_local_access_update_bound_oauth_account(
     bound_oauth_account_id: Option<String>,
-    bound_oauth_use_local_gateway: Option<bool>,
     bound_oauth_quota_reserve: Option<CodexLocalAccessQuotaReserve>,
 ) -> Result<CodexLocalAccessState, String> {
     codex_local_access::update_local_access_bound_oauth_account(
         bound_oauth_account_id,
-        bound_oauth_use_local_gateway.unwrap_or(false),
         bound_oauth_quota_reserve,
     )
     .await
@@ -3086,6 +3096,8 @@ pub async fn codex_local_access_query_request_logs(
     page: u32,
     page_size: u32,
     stats_range: Option<String>,
+    start_at: Option<i64>,
+    end_at: Option<i64>,
     model_query: Option<String>,
     account_query: Option<String>,
     api_key_query: Option<String>,
@@ -3098,6 +3110,8 @@ pub async fn codex_local_access_query_request_logs(
         page,
         page_size,
         stats_range,
+        start_at,
+        end_at,
         model_query,
         account_query,
         api_key_query,
@@ -3107,6 +3121,14 @@ pub async fn codex_local_access_query_request_logs(
         error_category,
     )
     .await
+}
+
+#[tauri::command]
+pub async fn codex_local_access_query_stats(
+    start_at: i64,
+    end_at: i64,
+) -> Result<crate::models::codex_local_access::CodexLocalAccessStatsWindow, String> {
+    codex_local_access::query_local_access_stats_window(start_at, end_at).await
 }
 
 #[tauri::command]
@@ -3239,13 +3261,6 @@ pub async fn codex_local_access_update_client_base_url_host(
     client_base_url_host: CodexLocalAccessClientBaseUrlHost,
 ) -> Result<CodexLocalAccessState, String> {
     codex_local_access::update_local_access_client_base_url_host(client_base_url_host).await
-}
-
-#[tauri::command]
-pub async fn codex_local_access_update_image_generation_mode(
-    image_generation_mode: crate::models::codex_local_access::CodexLocalAccessImageGenerationMode,
-) -> Result<CodexLocalAccessState, String> {
-    codex_local_access::update_local_access_image_generation_mode(image_generation_mode).await
 }
 
 #[tauri::command]
@@ -3444,6 +3459,37 @@ pub async fn codex_local_access_chat_test_stream(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn batch_delete_jobs_dir_reuses_existing_directory() {
+        let root = std::env::temp_dir().join(format!(
+            "codex-batch-delete-dir-test-{}-{}",
+            std::process::id(),
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
+        let jobs_dir = root.join(CODEX_BATCH_DELETE_JOBS_DIR);
+        fs::create_dir_all(&jobs_dir).expect("create jobs dir");
+
+        ensure_codex_batch_delete_jobs_dir(&jobs_dir).expect("reuse existing jobs dir");
+        assert!(jobs_dir.is_dir());
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn batch_delete_jobs_dir_rejects_existing_file() {
+        let path = std::env::temp_dir().join(format!(
+            "codex-batch-delete-file-test-{}-{}",
+            std::process::id(),
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        ));
+        fs::write(&path, b"not a directory").expect("create conflicting file");
+
+        let error = ensure_codex_batch_delete_jobs_dir(&path).expect_err("file must fail");
+        assert!(error.contains("不是目录"));
+
+        let _ = fs::remove_file(path);
+    }
 
     fn models(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).to_string()).collect()

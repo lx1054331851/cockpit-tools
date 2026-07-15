@@ -1977,7 +1977,12 @@
         "label": "統計範圍",
         "daily": "日",
         "weekly": "週",
-        "monthly": "月"
+        "monthly": "月",
+        "custom": "自訂",
+        "start": "開始",
+        "end": "結束",
+        "apply": "套用",
+        "invalid": "結束時間不得早於開始時間"
       },
       "enableBeforeActivateTitle": "服務未啟用",
       "enableBeforeActivateMessage": "API 服務目前未啟用，需要先啟用服務。是否啟用並切號？",

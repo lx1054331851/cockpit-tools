@@ -1977,7 +1977,12 @@
         "label": "Rango",
         "daily": "Día",
         "weekly": "Semana",
-        "monthly": "Mes"
+        "monthly": "Mes",
+        "custom": "Personalizado",
+        "start": "Inicio",
+        "end": "Fin",
+        "apply": "Aplicar",
+        "invalid": "La hora de fin no puede ser anterior a la de inicio"
       },
       "enableBeforeActivateTitle": "Servicio desactivado",
       "enableBeforeActivateMessage": "El servicio de API está desactivado y debe activarse primero. ¿Activar y cambiar ahora?",

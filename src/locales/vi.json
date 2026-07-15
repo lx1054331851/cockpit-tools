@@ -1977,7 +1977,12 @@
         "label": "Khoảng thống kê",
         "daily": "Ngày",
         "weekly": "Tuần",
-        "monthly": "Tháng"
+        "monthly": "Tháng",
+        "custom": "Tùy chỉnh",
+        "start": "Bắt đầu",
+        "end": "Kết thúc",
+        "apply": "Áp dụng",
+        "invalid": "Thời gian kết thúc không được sớm hơn thời gian bắt đầu"
       },
       "enableBeforeActivateTitle": "Dịch vụ chưa bật",
       "enableBeforeActivateMessage": "Dịch vụ API hiện đang tắt và cần bật trước. Bật và chuyển ngay?",

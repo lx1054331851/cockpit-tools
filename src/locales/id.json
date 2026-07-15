@@ -2027,7 +2027,12 @@
         "label": "Rentang statistik",
         "daily": "Hari",
         "weekly": "Minggu",
-        "monthly": "Bulan"
+        "monthly": "Bulan",
+        "custom": "Kustom",
+        "start": "Mulai",
+        "end": "Selesai",
+        "apply": "Terapkan",
+        "invalid": "Waktu selesai tidak boleh lebih awal dari waktu mulai"
       },
       "enableBeforeActivateTitle": "Layanan belum diaktifkan",
       "enableBeforeActivateMessage": "Layanan API saat ini dinonaktifkan dan harus diaktifkan terlebih dahulu. Aktifkan dan alihkan sekarang?",

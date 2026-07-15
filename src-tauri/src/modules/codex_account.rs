@@ -2784,18 +2784,12 @@ pub fn load_account(account_id: &str) -> Option<CodexAccount> {
     load_account_with_summary(account_id, None).ok().flatten()
 }
 
-fn migrate_bound_oauth_use_local_gateway_if_missing(
-    account: &mut CodexAccount,
-    raw_value: &serde_json::Value,
-) -> bool {
-    if !account.is_api_key_auth()
-        || normalize_optional_ref(account.bound_oauth_account_id.as_deref()).is_none()
-        || raw_value.get("bound_oauth_use_local_gateway").is_some()
-    {
+fn remove_bound_oauth_image_generation_compat(account: &mut CodexAccount) -> bool {
+    if !account.bound_oauth_use_local_gateway {
         return false;
     }
 
-    account.bound_oauth_use_local_gateway = true;
+    account.bound_oauth_use_local_gateway = false;
     true
 }
 
@@ -2842,25 +2836,17 @@ fn load_account_with_summary(
             &path, &content,
         )
     {
-        // When deserialize returned a plaintext legacy file, keep original JSON for field-presence migrations.
-        let raw_value = if needs_rotation {
-            serde_json::from_str::<serde_json::Value>(&content).ok()
-        } else {
-            serde_json::to_value(&account).ok()
-        };
         let migrated_index_summary = summary
             .map(|summary| apply_index_summary_to_account_detail(&mut account, summary))
             .unwrap_or(false);
-        let migrated_bound_oauth = raw_value
-            .as_ref()
-            .map(|value| migrate_bound_oauth_use_local_gateway_if_missing(&mut account, value))
-            .unwrap_or(false);
+        let removed_image_generation_compat =
+            remove_bound_oauth_image_generation_compat(&mut account);
         let migrated_wire_api = migrate_apikey_fun_wire_api(&mut account);
         let migrated_websocket = normalize_api_key_websocket_capability(&mut account);
         if needs_rotation
             || migrated_wire_api
             || migrated_websocket
-            || migrated_bound_oauth
+            || removed_image_generation_compat
             || migrated_index_summary
         {
             let account_for_rewrite = account.clone();
@@ -2885,7 +2871,7 @@ fn load_account_with_summary(
     let mut account = parse_codex_account_compat(value.clone(), account_id, summary)?
         .ok_or_else(|| format!("账号详情缺少可识别凭据 ({})", path.display()))?;
     let _ = migrate_apikey_fun_wire_api(&mut account);
-    let _ = migrate_bound_oauth_use_local_gateway_if_missing(&mut account, &value);
+    let _ = remove_bound_oauth_image_generation_compat(&mut account);
 
     let account_for_rewrite = account.clone();
     crate::modules::deferred_account_rewrite::schedule_account_rewrite_if_unchanged(
@@ -6981,9 +6967,7 @@ fn get_codex_batch_import_sessions_dir() -> PathBuf {
     let data_dir = account::get_data_dir()
         .or_else(|_| account::resolve_data_dir())
         .unwrap_or_else(|_| PathBuf::from(".antigravity_cockpit"));
-    let dir = data_dir.join(CODEX_BATCH_IMPORT_SESSIONS_DIR);
-    let _ = fs::create_dir_all(&dir);
-    dir
+    data_dir.join(CODEX_BATCH_IMPORT_SESSIONS_DIR)
 }
 
 fn sanitize_codex_batch_import_session_id(session_id: &str) -> Result<String, String> {
@@ -7003,6 +6987,25 @@ fn sanitize_codex_batch_import_session_id(session_id: &str) -> Result<String, St
 fn codex_batch_import_session_snapshot_path(session_id: &str) -> Result<PathBuf, String> {
     let safe_id = sanitize_codex_batch_import_session_id(session_id)?;
     Ok(get_codex_batch_import_sessions_dir().join(format!("{}.json", safe_id)))
+}
+
+fn ensure_codex_batch_import_sessions_dir(path: &Path) -> Result<(), String> {
+    if path.is_dir() {
+        return Ok(());
+    }
+    if path.exists() {
+        return Err(format!(
+            "创建导入会话目录失败: path={} 不是目录",
+            path.display()
+        ));
+    }
+    fs::create_dir(path).map_err(|error| {
+        format!(
+            "创建导入会话目录失败: path={}, error={}",
+            path.display(),
+            error
+        )
+    })
 }
 
 fn codex_batch_import_snapshot_from_session(
@@ -7045,7 +7048,7 @@ fn save_codex_batch_import_session_snapshot(
 ) -> Result<(), String> {
     let path = codex_batch_import_session_snapshot_path(session_id)?;
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|error| format!("创建导入会话目录失败: {}", error))?;
+        ensure_codex_batch_import_sessions_dir(parent)?;
     }
     let snapshot = codex_batch_import_snapshot_from_session(session);
     let content = serde_json::to_string_pretty(&snapshot)
@@ -7906,7 +7909,8 @@ pub fn start_codex_batch_import_from_files(
         total: 0,
         items: Vec::new(),
     };
-    save_codex_batch_import_session_snapshot(&session_id, &session)?;
+    // 会话快照用于崩溃恢复，失败时保留当前进程内任务，不能阻断批量导入。
+    save_codex_batch_import_session_snapshot_best_effort(&session_id, &session);
     {
         let mut sessions = CODEX_BATCH_IMPORT_SESSIONS.lock().unwrap();
         sessions.insert(session_id.clone(), session);
@@ -7929,7 +7933,7 @@ pub fn cancel_codex_batch_import(session_id: &str) -> Result<(), String> {
         session.status = "cancelled".to_string();
         session.clone()
     };
-    save_codex_batch_import_session_snapshot(session_id, &session_snapshot)?;
+    save_codex_batch_import_session_snapshot_best_effort(session_id, &session_snapshot);
     Ok(())
 }
 
@@ -7945,12 +7949,12 @@ pub fn resume_codex_batch_import(app: tauri::AppHandle, session_id: &str) -> Res
         }
         if session.next_index >= session.source_items.len() {
             session.status = "ready".to_string();
-            save_codex_batch_import_session_snapshot(session_id, session)?;
+            save_codex_batch_import_session_snapshot_best_effort(session_id, session);
             return Ok(());
         }
         session.cancel.store(false, Ordering::SeqCst);
         session.status = "scanning".to_string();
-        save_codex_batch_import_session_snapshot(session_id, session)?;
+        save_codex_batch_import_session_snapshot_best_effort(session_id, session);
     }
 
     let task_session_id = session_id.to_string();
@@ -7995,7 +7999,7 @@ pub fn confirm_codex_batch_import(
             session.clone(),
         )
     };
-    save_codex_batch_import_session_snapshot(session_id, &session_snapshot)?;
+    save_codex_batch_import_session_snapshot_best_effort(session_id, &session_snapshot);
 
     let mut imported = Vec::new();
     let mut failed = Vec::new();
@@ -8571,7 +8575,7 @@ mod tests {
     }
 
     #[test]
-    fn load_account_migrates_legacy_bound_oauth_api_key_to_disable_image_generation() {
+    fn load_account_keeps_removed_image_generation_compat_disabled() {
         let _lock = crate::modules::test_support::env_lock()
             .lock()
             .expect("lock test env");
@@ -8602,7 +8606,7 @@ mod tests {
 
         let loaded = load_account(&account.id).expect("load account");
 
-        assert!(loaded.bound_oauth_use_local_gateway);
+        assert!(!loaded.bound_oauth_use_local_gateway);
         let account_path = accounts_dir.join(format!("{}.json", account.id));
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
@@ -8617,7 +8621,7 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
         let reloaded = load_account(&account.id).expect("reload migrated account");
-        assert!(reloaded.bound_oauth_use_local_gateway);
+        assert!(!reloaded.bound_oauth_use_local_gateway);
     }
 
     #[test]
@@ -11778,7 +11782,6 @@ pub fn update_account_app_speed(
 pub async fn update_api_key_bound_oauth_account(
     account_id: &str,
     bound_oauth_account_id: Option<String>,
-    bound_oauth_use_local_gateway: bool,
 ) -> Result<CodexAccount, String> {
     let mut account =
         load_account(account_id).ok_or_else(|| format!("账号不存在: {}", account_id))?;
@@ -11792,7 +11795,7 @@ pub async fn update_api_key_bound_oauth_account(
         let _ = validate_api_key_bound_oauth_account(&account, bound_id)?;
     }
     account.bound_oauth_account_id = bound_id.clone();
-    account.bound_oauth_use_local_gateway = bound_id.is_some() && bound_oauth_use_local_gateway;
+    account.bound_oauth_use_local_gateway = false;
     save_account(&account)?;
 
     let is_current = load_account_index()

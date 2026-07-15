@@ -1977,7 +1977,12 @@
         "label": "Zakres statystyk",
         "daily": "Dzień",
         "weekly": "Tydzień",
-        "monthly": "Miesiąc"
+        "monthly": "Miesiąc",
+        "custom": "Własny",
+        "start": "Początek",
+        "end": "Koniec",
+        "apply": "Zastosuj",
+        "invalid": "Czas zakończenia nie może być wcześniejszy niż rozpoczęcia"
       },
       "enableBeforeActivateTitle": "Usługa nie jest włączona",
       "enableBeforeActivateMessage": "Usługa API jest obecnie wyłączona i trzeba ją najpierw włączyć. Włączyć i przełączyć teraz?",

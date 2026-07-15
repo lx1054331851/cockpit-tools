@@ -1977,7 +1977,12 @@
         "label": "Intervallo statistiche",
         "daily": "Giorno",
         "weekly": "Settimana",
-        "monthly": "Mese"
+        "monthly": "Mese",
+        "custom": "Personalizzato",
+        "start": "Inizio",
+        "end": "Fine",
+        "apply": "Applica",
+        "invalid": "L’ora di fine non può precedere quella di inizio"
       },
       "enableBeforeActivateTitle": "Servizio non abilitato",
       "enableBeforeActivateMessage": "Il servizio API è attualmente disattivato e deve essere prima abilitato. Abilitare e cambiare ora?",

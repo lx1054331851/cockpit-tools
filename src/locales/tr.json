@@ -1977,7 +1977,12 @@
         "label": "İstatistik aralığı",
         "daily": "Gün",
         "weekly": "Hafta",
-        "monthly": "Ay"
+        "monthly": "Ay",
+        "custom": "Özel",
+        "start": "Başlangıç",
+        "end": "Bitiş",
+        "apply": "Uygula",
+        "invalid": "Bitiş zamanı başlangıç zamanından önce olamaz"
       },
       "enableBeforeActivateTitle": "Hizmet etkin değil",
       "enableBeforeActivateMessage": "API hizmeti şu anda devre dışı ve önce etkinleştirilmesi gerekiyor. Şimdi etkinleştirip geçiş yapılsın mı?",

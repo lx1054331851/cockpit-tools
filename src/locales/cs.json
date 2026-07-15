@@ -1977,7 +1977,12 @@
         "label": "Rozsah statistik",
         "daily": "Den",
         "weekly": "Týden",
-        "monthly": "Měsíc"
+        "monthly": "Měsíc",
+        "custom": "Vlastní",
+        "start": "Začátek",
+        "end": "Konec",
+        "apply": "Použít",
+        "invalid": "Čas konce nesmí být dříve než čas začátku"
       },
       "enableBeforeActivateTitle": "Služba není zapnutá",
       "enableBeforeActivateMessage": "Služba API je momentálně vypnutá a je potřeba ji nejdříve zapnout. Zapnout a přepnout nyní?",

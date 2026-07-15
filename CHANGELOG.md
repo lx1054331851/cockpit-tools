@@ -7,6 +7,24 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.3.3] - 2026-07-15
+
+### Added
+
+- **Codex API Service supports random account routing**: new requests can distribute across eligible accounts while preserving session affinity, cooldown, account health, quota reserve, and model eligibility rules.
+- **Optional immediate SSE 200 responses for the sidecar gateway**: commits `200 OK` and an `: accepted` SSE comment before the upstream stream opens; disabled by default, with upstream failures reported as SSE errors after headers are committed.
+
+### Changed
+
+- **Removed the `image_generation` disable feature**: the previous request filtering and OAuth local-gateway workaround for providers returning `Image generation is not enabled` are no longer used; image generation remains available through the normal Codex API path.
+- **Devin/Windsurf no longer participates in background token keepalive**: Cockpit will not automatically refresh and write back the local login without an explicit user action, avoiding background macOS Keychain prompts; manual account switching and bound-instance startup still inject credentials when requested.
+
+### Fixed
+
+- **Fixed Codex API Service startup being rejected for OAuth-bound accounts**: profiles using OAuth `auth.json` / Keychain login state now pass local-gateway takeover validation, while API-key-only profiles continue using the image-generation compatibility configuration.
+- **Fixed Codex accounts failing to batch-import or batch-delete under special Windows mount paths**: batch operations are no longer blocked when their task snapshot directory cannot be created, and existing directories are no longer recreated.
+
+---
 ## [1.3.2] - 2026-07-15
 
 ### Highlights

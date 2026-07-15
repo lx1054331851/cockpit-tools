@@ -2247,7 +2247,12 @@
         "label": "统计范围",
         "daily": "日",
         "weekly": "周",
-        "monthly": "月"
+        "monthly": "月",
+        "custom": "自定义",
+        "start": "开始",
+        "end": "结束",
+        "apply": "应用",
+        "invalid": "结束时间不能早于开始时间"
       },
       "quotaPool": {
         "title": "额度池",
