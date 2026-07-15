@@ -150,6 +150,17 @@ export async function clearCodexBatchDelete(jobId: string): Promise<void> {
 }
 
 /** 从本地 auth.json 导入账号 */
+/** 导入 named Codex access token（personal access token / at-*）账号 */
+export async function importCodexAccessTokenAccount(
+  name: string,
+  accessToken: string,
+): Promise<CodexAccount> {
+  return await invoke('import_codex_access_token_account', {
+    name,
+    accessToken,
+  });
+}
+
 export async function importCodexFromLocal(): Promise<CodexAccount> {
   return await invoke('import_codex_from_local');
 }
@@ -219,6 +230,9 @@ export interface CodexBatchImportPreview {
 export interface CodexBatchImportConfirmResult {
   imported: CodexAccount[];
   failed: { email: string; error: string }[];
+  cancelled: boolean;
+  processed: number;
+  total: number;
 }
 
 export async function startCodexBatchImportFromFiles(
@@ -274,6 +288,11 @@ export async function refreshCodexSubscriptionInfo(accountId: string): Promise<C
 /** 刷新所有账号配额 */
 export async function refreshAllCodexQuotas(): Promise<number> {
   return await invoke('refresh_all_codex_quotas');
+}
+
+/** 按 ID 列表限流并发刷新配额（分组/本地访问批量）；后端统一限流并只做一次 tray 更新 */
+export async function refreshCodexQuotasBatch(accountIds: string[]): Promise<number> {
+  return await invoke('refresh_codex_quotas_batch', { accountIds });
 }
 
 /** 新 OAuth 流程：开始登录 */
@@ -338,6 +357,7 @@ export async function addCodexAccountWithApiKey(
   apiWireApi?: CodexProviderWireApi,
   apiSupportsWebsockets?: boolean,
   apiKeyWriteMode?: CodexApiKeyWriteMode,
+  apiSyncModelCatalogToCodex?: boolean,
 ): Promise<CodexAccount> {
   return await invoke('add_codex_account_with_api_key', {
     apiKey,
@@ -346,6 +366,7 @@ export async function addCodexAccountWithApiKey(
     apiProviderId: apiProviderId ?? null,
     apiProviderName: apiProviderName ?? null,
     apiModelCatalog: apiModelCatalog ?? null,
+    apiSyncModelCatalogToCodex: apiSyncModelCatalogToCodex ?? null,
     apiWireApi: apiWireApi ?? null,
     apiSupportsWebsockets: apiSupportsWebsockets ?? false,
     apiSupportsVision: apiSupportsVision ?? false,
@@ -374,6 +395,7 @@ export async function updateCodexApiKeyCredentials(
   apiWireApi?: CodexProviderWireApi,
   apiSupportsWebsockets?: boolean,
   apiKeyWriteMode?: CodexApiKeyWriteMode,
+  apiSyncModelCatalogToCodex?: boolean,
 ): Promise<CodexAccount> {
   return await invoke('update_codex_api_key_credentials', {
     accountId,
@@ -383,6 +405,7 @@ export async function updateCodexApiKeyCredentials(
     apiProviderId: apiProviderId ?? null,
     apiProviderName: apiProviderName ?? null,
     apiModelCatalog: apiModelCatalog ?? null,
+    apiSyncModelCatalogToCodex: apiSyncModelCatalogToCodex ?? null,
     apiWireApi: apiWireApi ?? null,
     apiSupportsWebsockets: apiSupportsWebsockets ?? false,
     apiSupportsVision: apiSupportsVision ?? false,
@@ -405,12 +428,10 @@ export async function updateCodexApiKeyWriteMode(
 export async function updateCodexApiKeyBoundOAuthAccount(
   accountId: string,
   boundOauthAccountId: string | null,
-  boundOauthUseLocalGateway = false,
 ): Promise<CodexAccount> {
   return await invoke('update_codex_api_key_bound_oauth_account', {
     accountId,
     boundOauthAccountId,
-    boundOauthUseLocalGateway,
   });
 }
 
