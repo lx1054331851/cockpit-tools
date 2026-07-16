@@ -110,6 +110,7 @@ const DEFAULT_SESSION_AFFINITY_TTL_MS: i64 = 60 * 60 * 1000;
 const MAX_RETRY_INTERVAL_MIN_MS: u64 = 0;
 const MAX_RETRY_INTERVAL_MAX_MS: u64 = 30 * 1000;
 const DEFAULT_MAX_RETRY_INTERVAL_MS: u64 = 3 * 1000;
+const MAX_CONCURRENT_IMAGE_REQUESTS_PER_ACCOUNT: u16 = 16;
 const LOCAL_ACCESS_TIMEOUT_MIN_MS: u64 = 1_000;
 const LOCAL_ACCESS_TIMEOUT_MAX_MS: u64 = 600_000;
 const LEGACY_STREAM_TOTAL_TIMEOUT_MAX_MS: u64 = 30 * 60 * 1000;
@@ -6434,6 +6435,13 @@ fn open_local_access_logs_db_once(
         "request_kind",
         "request_kind TEXT NOT NULL DEFAULT 'other'",
     )?;
+    if include_service_tier_column {
+        ensure_request_logs_column(
+            &conn,
+            "service_tier",
+            "service_tier TEXT NOT NULL DEFAULT ''",
+        )?;
+    }
     ensure_request_logs_column(&conn, "success", "success INTEGER NOT NULL DEFAULT 0")?;
     ensure_request_logs_column(&conn, "http_status", "http_status INTEGER")?;
     ensure_request_logs_column(
@@ -9001,12 +9009,26 @@ fn build_lan_base_url(port: u16) -> Option<String> {
 }
 
 fn sidecar_config_fingerprint(config_content: &str, manifest_content: &str) -> String {
+    let stable_config_content = stable_sidecar_config_for_fingerprint(config_content);
     let stable_manifest_content = stable_sidecar_manifest_for_fingerprint(manifest_content);
     let mut hasher = Sha1::new();
-    hasher.update(config_content.as_bytes());
+    hasher.update(stable_config_content.as_bytes());
     hasher.update(b"\n--manifest--\n");
     hasher.update(stable_manifest_content.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+fn stable_sidecar_config_for_fingerprint(config_content: &str) -> String {
+    let Ok(mut config) = serde_json::from_str::<Value>(config_content) else {
+        return config_content.to_string();
+    };
+    if let Some(config) = config.as_object_mut() {
+        // CLIProxyAPI watches the config file and applies payload defaults to new
+        // requests. Excluding this hot-reloadable field keeps active streams alive
+        // when the API service speed changes.
+        config.remove("payload");
+    }
+    serde_json::to_string(&config).unwrap_or_else(|_| config_content.to_string())
 }
 
 fn stable_sidecar_manifest_for_fingerprint(manifest_content: &str) -> String {
@@ -9733,6 +9755,8 @@ fn sidecar_auth_json_for_account(
         "plan_type": account.plan_type.clone(),
         "excluded_models": excluded_models,
         "disable_cooling": collection.disable_cooling,
+        // Enable upstream Codex Responses WebSocket executor for OAuth accounts.
+        "websockets": true,
     });
     if account_is_access_token_only(account) {
         value["auth_mode"] = json!("personal_access_token");
@@ -10520,6 +10544,7 @@ async fn prepare_sidecar_launch_config_in_dir(
         })).collect::<Vec<_>>(),
         "debugLogs": collection.debug_logs,
         "immediateSseResponse": collection.immediate_sse_response,
+        "maxConcurrentImageRequests": collection.max_concurrent_image_requests,
     });
 
     let mut config = Map::new();
@@ -11320,6 +11345,9 @@ fn build_runtime_account(
     runtime_account.bound_oauth_account_id = bound_oauth_account_id;
     runtime_account.api_model_catalog = supported_codex_model_ids();
     runtime_account.api_wire_api = Some("responses".to_string());
+    // Local relay now exposes GET /v1/responses WebSocket upgrade. Advertise
+    // the capability so Codex profiles use WS instead of always falling back.
+    runtime_account.api_supports_websockets = true;
     runtime_account
 }
 
@@ -13131,8 +13159,14 @@ fn sanitize_collection_structure(
 ) -> Result<bool, String> {
     let mut changed = false;
 
-    // 保留 ImagesOnly / Disabled：1.3.1 绑定 OAuth 本地网关会使用 ImagesOnly，
-    // 强制 Enabled 会破坏 chat 禁注入 /images 可生图 的兼容路径。
+    // v1.3.4 起已移除集合级 image_generation 禁用 UI。
+    // 遗留 Disabled / ImagesOnly 会继续从 sidecar manifest 过滤 gpt-image-2，
+    // 但静态 Codex catalog 仍包含该模型，造成 Codex 可点生图、网关却 model_not_available。
+    // 请求级控制仍保留：Responses Lite 头与 x-agtools-disable-image-generation。
+    if collection.image_generation_mode != CodexLocalAccessImageGenerationMode::Enabled {
+        collection.image_generation_mode = CodexLocalAccessImageGenerationMode::Enabled;
+        changed = true;
+    }
 
     if collection.port == 0 {
         collection.port = allocate_initial_local_port(bind_host_for_collection(collection))?;
@@ -13402,6 +13436,7 @@ async fn ensure_runtime_loaded_without_start_with_profile_restore(
                 restrict_free_accounts: true,
                 debug_logs: true,
                 immediate_sse_response: false,
+                max_concurrent_image_requests: 1,
                 bound_oauth_account_id: None,
                 bound_oauth_quota_reserve: None,
                 account_ids: Vec::new(),
@@ -14695,6 +14730,7 @@ fn new_empty_local_access_collection() -> Result<CodexLocalAccessCollection, Str
         restrict_free_accounts: true,
         debug_logs: true,
         immediate_sse_response: false,
+        max_concurrent_image_requests: 1,
         bound_oauth_account_id: None,
         bound_oauth_quota_reserve: None,
         account_ids: Vec::new(),
@@ -17333,6 +17369,7 @@ fn new_local_access_collection() -> Result<CodexLocalAccessCollection, String> {
         restrict_free_accounts: true,
         debug_logs: true,
         immediate_sse_response: false,
+        max_concurrent_image_requests: 1,
         bound_oauth_account_id: None,
         bound_oauth_quota_reserve: None,
         account_ids: Vec::new(),
@@ -17772,6 +17809,7 @@ pub async fn update_local_access_routing_options(
     max_retry_interval_ms: u64,
     disable_cooling: bool,
     immediate_sse_response: bool,
+    max_concurrent_image_requests: u16,
 ) -> Result<CodexLocalAccessState, String> {
     ensure_runtime_loaded().await?;
 
@@ -17794,6 +17832,8 @@ pub async fn update_local_access_routing_options(
         max_retry_interval_ms.clamp(MAX_RETRY_INTERVAL_MIN_MS, MAX_RETRY_INTERVAL_MAX_MS);
     collection.disable_cooling = disable_cooling;
     collection.immediate_sse_response = immediate_sse_response;
+    collection.max_concurrent_image_requests = max_concurrent_image_requests
+        .clamp(1, MAX_CONCURRENT_IMAGE_REQUESTS_PER_ACCOUNT);
     collection.updated_at = now_ms();
     save_collection_to_disk(&collection)?;
 
@@ -23468,7 +23508,8 @@ mod tests {
         build_codex_client_models_response, build_collection_base_url, build_images_api_payload,
         build_local_access_api_key, build_local_models_response,
         build_model_provider_gateway_test_collection, build_ordered_account_ids,
-        build_request_routing_hint, build_upstream_websocket_url, calculate_usage_cost_usd,
+        build_request_routing_hint, build_runtime_account, build_upstream_websocket_url,
+        calculate_usage_cost_usd,
         calendar_stats_window_starts, canonical_model_for_client_model,
         classify_upstream_error_category, cleanup_profile_takeover_without_backup,
         cleanup_provider_gateway_profile_model_overrides, codex_price,
@@ -23505,6 +23546,7 @@ mod tests {
         resolve_sidecar_upstream_base_url_with, resolve_supported_model_alias,
         resolve_upstream_target, restore_config_toml_from_takeover_backup,
         sanitize_collection_with_accounts, scutil_proxy_map,
+        selected_account_ids_have_image_generation_capacity,
         should_retry_single_account_upstream_status, should_treat_response_as_stream,
         should_try_next_account, sidecar_account_manifest_value,
         sidecar_api_key_account_scope_values, sidecar_api_key_manifest_values,
@@ -23614,6 +23656,7 @@ mod tests {
             restrict_free_accounts: true,
             debug_logs: true,
             immediate_sse_response: false,
+            max_concurrent_image_requests: 1,
             bound_oauth_account_id: None,
             bound_oauth_quota_reserve: None,
             account_ids,
@@ -24612,6 +24655,31 @@ wire_api = "responses"
     }
 
     #[test]
+    fn sidecar_fingerprint_ignores_hot_reloadable_payload_defaults() {
+        let manifest = r#"{"accounts":[],"routingStrategy":"auto"}"#;
+        let standard = r#"{"host":"127.0.0.1","port":58393}"#;
+        let priority = r#"{
+          "host": "127.0.0.1",
+          "port": 58393,
+          "payload": {"default":[{"models":[{"name":"gpt-*","protocol":"openai/responses"}],"params":{"service_tier":"priority"}}]}
+        }"#;
+        let other_port = r#"{
+          "host": "127.0.0.1",
+          "port": 58394,
+          "payload": {"default":[{"models":[{"name":"gpt-*","protocol":"openai/responses"}],"params":{"service_tier":"priority"}}]}
+        }"#;
+
+        assert_eq!(
+            sidecar_config_fingerprint(standard, manifest),
+            sidecar_config_fingerprint(priority, manifest),
+        );
+        assert_ne!(
+            sidecar_config_fingerprint(priority, manifest),
+            sidecar_config_fingerprint(other_port, manifest),
+        );
+    }
+
+    #[test]
     fn sidecar_fingerprint_ignores_dynamic_quota_snapshot_changes() {
         let config = r#"{"host":"127.0.0.1","port":58393}"#;
         let manifest_available_high = r#"{
@@ -25059,6 +25127,18 @@ wire_api = "responses"
             auth_json.get("expired").and_then(Value::as_i64),
             Some(4_102_444_800i64)
         );
+        assert_eq!(auth_json.get("websockets").and_then(Value::as_bool), Some(true));
+    }
+
+    #[test]
+    fn build_runtime_account_enables_websockets_for_local_api_service() {
+        let account = build_runtime_account(
+            "http://127.0.0.1:1455/v1".to_string(),
+            "agt_codex_test".to_string(),
+            None,
+        );
+        assert!(account.api_supports_websockets);
+        assert_eq!(account.api_wire_api.as_deref(), Some("responses"));
     }
 
     #[test]
@@ -25637,6 +25717,40 @@ wire_api = "responses"
         assert_eq!(loaded.1, long_error);
         assert!(loaded.1.contains("tail-marker"));
         assert_eq!(loaded.2, 7);
+
+        drop(conn);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn request_log_db_adds_service_tier_to_existing_schema() {
+        let dir = make_temp_dir("codex-local-access-service-tier-migration");
+        let db_path = dir.join("request_logs.sqlite");
+        let conn = open_local_access_logs_db_once(&db_path, false).expect("open legacy logs db");
+        conn.execute(
+            "INSERT INTO request_logs (event_key, timestamp, request_id) VALUES (?1, ?2, ?3)",
+            rusqlite::params!["legacy-event", 1_700_000_000_000_i64, "legacy-request"],
+        )
+        .expect("insert legacy request log");
+        let legacy_column_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('request_logs') WHERE name = 'service_tier'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("inspect legacy schema");
+        assert_eq!(legacy_column_count, 0);
+        drop(conn);
+
+        let conn = open_local_access_logs_db_once(&db_path, true).expect("migrate logs db");
+        let migrated: (String, String) = conn
+            .query_row(
+                "SELECT request_id, service_tier FROM request_logs WHERE event_key = ?1",
+                ["legacy-event"],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read migrated request log");
+        assert_eq!(migrated, ("legacy-request".to_string(), String::new()));
 
         drop(conn);
         let _ = fs::remove_dir_all(dir);
@@ -29530,7 +29644,7 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
     }
 
     #[test]
-    fn sanitize_collection_preserves_saved_image_generation_mode() {
+    fn sanitize_collection_migrates_legacy_image_generation_mode_to_enabled() {
         for mode in [
             CodexLocalAccessImageGenerationMode::ImagesOnly,
             CodexLocalAccessImageGenerationMode::Disabled,
@@ -29538,11 +29652,55 @@ data: {"error":{"code":"server_error","type":"upstream","message":"stream aborte
             let mut collection = test_local_access_collection(Vec::new());
             collection.image_generation_mode = mode;
 
-            let _ = sanitize_collection_with_accounts(&mut collection, &[])
+            let (changed, _) = sanitize_collection_with_accounts(&mut collection, &[])
                 .expect("collection should sanitize");
 
-            assert_eq!(collection.image_generation_mode, mode);
+            assert!(
+                changed,
+                "legacy image generation mode {mode:?} should be migrated"
+            );
+            assert_eq!(
+                collection.image_generation_mode,
+                CodexLocalAccessImageGenerationMode::Enabled
+            );
         }
+    }
+
+    #[test]
+    fn legacy_disabled_image_mode_no_longer_blocks_image_capacity_after_sanitize() {
+        let mut paid = test_account_with_plan("plus");
+        paid.id = "oauth-plus".to_string();
+        let accounts = vec![paid.clone()];
+
+        let mut collection = test_local_access_collection(vec![paid.id.clone()]);
+        collection.image_generation_mode = CodexLocalAccessImageGenerationMode::Disabled;
+
+        assert!(
+            !selected_account_ids_have_image_generation_capacity(
+                &collection.account_ids,
+                collection.image_generation_mode,
+                Some(accounts.as_slice()),
+                None,
+            ),
+            "disabled mode should hide image capacity before migration"
+        );
+
+        let (changed, _) = sanitize_collection_with_accounts(&mut collection, &accounts)
+            .expect("collection should sanitize");
+        assert!(changed);
+        assert_eq!(
+            collection.image_generation_mode,
+            CodexLocalAccessImageGenerationMode::Enabled
+        );
+        assert!(
+            selected_account_ids_have_image_generation_capacity(
+                &collection.account_ids,
+                collection.image_generation_mode,
+                Some(accounts.as_slice()),
+                None,
+            ),
+            "plus OAuth pool should expose image capacity after migration"
+        );
     }
 
     #[test]
