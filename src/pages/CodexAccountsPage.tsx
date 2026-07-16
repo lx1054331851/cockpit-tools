@@ -6684,6 +6684,7 @@ export function CodexAccountsPage() {
         selectedQuickSwitchProvider.visionRoutingModel,
         selectedQuickSwitchProvider.wireApi ?? undefined,
         selectedQuickSwitchProvider.supportsWebsockets,
+        quickSwitchAccount.api_key_write_mode ?? "standard",
         quickSwitchAccount.api_sync_model_catalog_to_codex === true,
       );
       setMessage({
@@ -7989,6 +7990,7 @@ export function CodexAccountsPage() {
   const handleSubmitApiKeyCredentials = useCallback(async () => {
     const accountId = editingApiKeyCredentialsId;
     if (!accountId) return;
+    const editingAccount = accounts.find((item) => item.id === accountId) ?? null;
 
     const validation = validateApiKeyCredentialInputs(
       editingApiKeyCredentialsValue,
@@ -8039,6 +8041,7 @@ export function CodexAccountsPage() {
         providerPayload.apiVisionRoutingModel,
         providerPayload.apiWireApi,
         providerPayload.apiSupportsWebsockets,
+        editingAccount?.api_key_write_mode ?? "standard",
         editingApiSyncModelCatalogToCodex,
       );
       if (
@@ -8119,6 +8122,7 @@ export function CodexAccountsPage() {
       setSavingApiKeyCredentials(false);
     }
   }, [
+    accounts,
     buildApiProviderPayload,
     editingApiBaseUrlCredentialsValue,
     editingApiKeyCredentialsId,
