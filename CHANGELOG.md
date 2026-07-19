@@ -7,6 +7,37 @@ All notable changes to Cockpit Tools will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
+## [1.3.10] - 2026-07-19
+
+### Added
+
+- **Codex API Service can show account count and quotas in the ChatGPT client**: the feature is enabled by default; after restarting the corresponding Codex instance, the API Service account count together with 5-hour and weekly quota appears below the composer and follows window and composer layout changes. Users who do not need the feature or encounter display issues can turn it off in Settings.
+- **Codex Token / JSON input shows per-account progress for bulk imports**: JSON arrays, Sub2API account arrays, newline-delimited JSON, and token lines are imported sequentially while the status area and import button show real progress such as `1/10` and `2/10`; single-account objects remain intact, and partial failures preserve successful imports while reporting the failed count and reasons.
+
+### Changed
+
+- **Codex account deletion now provides fast, immediate feedback**: an account disappears from the UI as soon as it is removed from local persistent storage, while API Service pool cleanup and gateway synchronization continue in the background instead of blocking the delete action.
+
+### Fixed
+
+- **Fixed Codex accounts remaining temporarily visible after Windows batch deletion**: the account list now reconciles with the local account store as batch progress advances and when a job is paused, completed, or manually cleared; deleting every account is allowed to synchronize an empty list, and deletion events refresh the floating card window, so a failed switch is no longer required before stale accounts disappear.
+- **Fixed the Add Note button in the Codex authorization dialog losing its project styling**: note actions rendered inside the portal now use the same pill-button styling as the accounts page instead of falling back to the browser-native button appearance.
+
+---
+## [1.3.9] - 2026-07-17
+
+### Changed
+
+- **Trae CN / TRAE SOLO CN quota and plan logic aligned with official v2 and community work (#1281)**: CN account refresh prefers pay v2 (`ide_user_pay_status` / `ide_user_ent_usage`) and falls back with `user_current_entitlement_list`; recognizes CN product types such as `CNExpress(100)` and `Pro+ Pack(5)`; shows fast-request remaining counts and Solo pack concurrency, uses “synced, remaining pending” when data exists but remaining quota cannot be derived, and avoids guessing free remaining; the CN add-account flow documents full JSON only (no raw token). Thanks @sqmw ([#1281](https://github.com/jlcodes99/cockpit-tools/pull/1281)).
+
+### Fixed
+
+- **Fixed Windows current-user NSIS updates unexpectedly requesting administrator privileges (#1642)**: when Tauri cannot identify the installer bundle type, the updater now selects NSIS for writable user-level installations and keeps the conservative MSI fallback for protected directories; explicit NSIS/MSI metadata remains authoritative, so genuine system-level MSI installations keep their existing update behavior. Thanks @xdd666t ([#1642](https://github.com/jlcodes99/cockpit-tools/pull/1642)).
+- **Fixed Codex Responses Lite dropping namespaced collaboration tools (#1647)**: namespace tool definitions are now preserved across top-level `tools`, nested `input[].additional_tools`, payload overrides, and namespace `tool_choice`; derived GPT sessions can again use `spawn_agent`, `wait_agent`, `send_message`, `followup_task`, `interrupt_agent`, and `list_agents`, while Sol / Terra / Luna shorthand in spawn requests is normalized to the exact GPT-5.6 model IDs. ([#1647](https://github.com/jlcodes99/cockpit-tools/issues/1647))
+- **Fixed expired or stale Codex accounts sometimes remaining visible after deletion (#1646)**: removing an account no longer waits for API Service gateway restart or fails solely because pool reconciliation is unavailable; pool references are persisted first, gateway reconciliation continues in the background, and local deletion proceeds so the account disappears immediately without requiring another valid account to be added. ([#1646](https://github.com/jlcodes99/cockpit-tools/issues/1646))
+- **Fixed HTTP 200 Responses streams treating upstream overloads as non-retryable `400` errors (#1651)**: `server_is_overloaded` / `service_unavailable_error` now trigger short credential cooldown and safe account failover before any output is sent, while `model_at_capacity` is treated as a retryable capacity limit; terminal Responses errors preserve a valid `response.failed` SSE event so Codex reports the real upstream failure instead of a generic disconnected stream. ([#1651](https://github.com/jlcodes99/cockpit-tools/issues/1651))
+
+---
 ## [1.3.8] - 2026-07-17
 
 ### Added
